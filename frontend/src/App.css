@@ -1,42 +1,95 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap');
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
+@import '~slick-carousel/slick/slick.css';
+@import '~slick-carousel/slick/slick-theme.css';
+
+@layer components {
+  .hoverEffect {
+    @apply transition-colors duration-300 cursor-pointer;
   }
-  to {
-    transform: rotate(360deg);
+  .headerSedenavLi {
+    @apply hover:underline underline-offset-2 cursor-pointer text-gray-300 hover:text-white;
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+/* ============= NavLink active Start here ============== */
+nav .active li {
+  color: black;
+  font-weight: 600;
+  text-decoration: 1px underline black;
+}
+
+@media screen and (max-width: 665px) {
+  nav .active li {
+    color: white;
+    font-weight: 600;
+    text-decoration: 1px underline white;
   }
 }
 
-.card {
-  padding: 2em;
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+/* ============= NavLink active End here ================ */
+
+/* ============= Slick Slider Custom CSS Start here ============== */
+.slick-slider {
+  position: relative;
 }
 
-.read-the-docs {
-  color: #888;
+.slick-dots {
+  position: absolute !important;
+  top: 50% !important;
+  left: 7% !important;
+  transform: translateY(-50%) !important;
+  bottom: auto !important;
+  right: auto !important;
+  text-align: left !important;
+  width: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 0 !important;
+}
+
+.slick-dots li {
+  margin: 0 !important;
+  padding: 0 !important;
+  height: auto !important;
+  width: auto !important;
+  display: block !important;
+  line-height: 1 !important;
+}
+
+.slick-dots li button {
+  display: none !important;
+}
+
+.slick-dots li div {
+  margin: 0 !important;
+  padding: 0 !important;
+  height: auto !important;
+  line-height: 1.2 !important;
+}
+
+@media screen and (max-width: 576px) {
+  .slick-dots {
+    left: 2% !important;
+  }
+}
+/* ============= Slick Slider Custom CSS End here ================ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+html {
+  min-height: 100%;
+  height: auto;
+  overflow-y: scroll;
 }
