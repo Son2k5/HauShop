@@ -9,5 +9,6 @@ namespace api.Services.Interfaces
     {
         Task SendPasswordResetEmailAsync(string email, string resetLink);
         Task SendEmailAsync(string to, string subject, string body);
+        Task SendVerifyEmailAsync(string email, string verifyLink);
     }
 }

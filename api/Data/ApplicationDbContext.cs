@@ -29,6 +29,7 @@ namespace api.Data
         public DbSet<UserConnection> UserConnections { get; set; }
         public DbSet<Wishlist> Wishlists { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+        public DbSet<ShippingDetail> ShippingDetails { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -428,7 +429,7 @@ namespace api.Data
                 entity.Property(e => e.PhoneNumber).HasMaxLength(20);
                 entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.LastName).HasMaxLength(100);
-                entity.Property(e => e.Password).HasMaxLength(500);
+                entity.Property(e => e.PasswordHash).HasMaxLength(500);
                 entity.Property(e => e.MerchantId).HasMaxLength(50);
                 entity.Property(e => e.Provider).IsRequired().HasDefaultValue(Provider.Local);
                 entity.Property(e => e.GoogleId).HasMaxLength(100);
@@ -523,7 +524,23 @@ namespace api.Data
 
                 entity.HasIndex(rt => new { rt.UserId, rt.IsRevoked, rt.Expires });
             });
+            modelBuilder.Entity<ShippingDetail>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasMaxLength(50);
+                entity.Property(e => e.OrderId).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Fee).HasPrecision(18, 2);
+                entity.Property(e => e.TrackingNumber).HasMaxLength(100);
+                entity.Property(e => e.Carrier).HasMaxLength(100);
+                entity.Property(e => e.Created).HasColumnType("DATETIME(6)").HasDefaultValueSql("CURRENT_TIMESTAMP(6)").ValueGeneratedOnAdd();
 
+                entity.HasOne(e => e.Order)
+                    .WithOne(o => o.ShippingDetail) // Thêm navigation ngược trong Order
+                    .HasForeignKey<ShippingDetail>(e => e.OrderId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => e.OrderId).IsUnique();
+            });
 
         }
     }

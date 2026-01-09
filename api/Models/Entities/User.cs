@@ -14,15 +14,15 @@ namespace api.Models.Entities
         public string PhoneNumber { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
-        public string Password { get; set; }
+        public string PasswordHash { get; set; }
         public string? MerchantId { get; set; }
         public Merchant? Merchant { get; set; }
         public Provider Provider { get; set; }
-        public string GoogleId { get; set; }
-        public string FacebookId { get; set; }
-        public string Avatar { get; set; }
+        public string? GoogleId { get; set; }
+        public string? FacebookId { get; set; }
+        public string? Avatar { get; set; }
         public Role Role { get; set; }
-        public string ResetPasswordToken { get; set; }
+        public string? ResetPasswordToken { get; set; }
         public DateTime? ResetPasswordExpires { get; set; }
         public bool IsOnline { get; set; }
         public DateTime? LastSeen { get; set; }

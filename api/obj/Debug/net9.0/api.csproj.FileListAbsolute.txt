@@ -168,12 +168,6 @@ D:\Nam3\HauShop\api\obj\Debug\net9.0\scopedcss\bundle\api.styles.css
 D:\Nam3\HauShop\api\obj\Debug\net9.0\staticwebassets.build.json
 D:\Nam3\HauShop\api\obj\Debug\net9.0\staticwebassets.development.json
 D:\Nam3\HauShop\api\obj\Debug\net9.0\staticwebassets.build.endpoints.json
-D:\Nam3\HauShop\api\obj\Debug\net9.0\staticwebassets\msbuild.api.Microsoft.AspNetCore.StaticWebAssets.props
-D:\Nam3\HauShop\api\obj\Debug\net9.0\staticwebassets\msbuild.api.Microsoft.AspNetCore.StaticWebAssetEndpoints.props
-D:\Nam3\HauShop\api\obj\Debug\net9.0\staticwebassets\msbuild.build.api.props
-D:\Nam3\HauShop\api\obj\Debug\net9.0\staticwebassets\msbuild.buildMultiTargeting.api.props
-D:\Nam3\HauShop\api\obj\Debug\net9.0\staticwebassets\msbuild.buildTransitive.api.props
-D:\Nam3\HauShop\api\obj\Debug\net9.0\staticwebassets.pack.json
 D:\Nam3\HauShop\api\obj\Debug\net9.0\api.csproj.Up2Date
 D:\Nam3\HauShop\api\obj\Debug\net9.0\api.dll
 D:\Nam3\HauShop\api\obj\Debug\net9.0\refint\api.dll
@@ -181,3 +175,7 @@ D:\Nam3\HauShop\api\obj\Debug\net9.0\api.pdb
 D:\Nam3\HauShop\api\obj\Debug\net9.0\api.genruntimeconfig.cache
 D:\Nam3\HauShop\api\obj\Debug\net9.0\ref\api.dll
 D:\Nam3\HauShop\api\bin\Debug\net9.0\BCrypt.Net-Next.dll
+D:\Nam3\HauShop\api\obj\Debug\net9.0\staticwebassets.build.json.cache
+D:\Nam3\HauShop\api\bin\Debug\net9.0\BouncyCastle.Cryptography.dll
+D:\Nam3\HauShop\api\bin\Debug\net9.0\MailKit.dll
+D:\Nam3\HauShop\api\bin\Debug\net9.0\MimeKit.dll

@@ -12,6 +12,7 @@ namespace api.Services.Interfaces
     {
         string GenerateAccessToken(User user);
         string GenerateRefreshToken();
+        int GetRefreshTokenExpirationDays();
     }
     public class TokenService : ITokenService
     {
@@ -25,7 +26,7 @@ namespace api.Services.Interfaces
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier,user.Id.ToString()),
-                new Claim(ClaimTypes.Name, $"{user.FirstName.Trim()} {user.LastName.Trim()}".Trim()),
+                new Claim(ClaimTypes.Name, $"{user.FirstName} {user.LastName}".Trim()),
                 new Claim(ClaimTypes.Role, user.Role.ToString()),
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),

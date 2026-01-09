@@ -20,6 +20,7 @@ namespace api.Models.Entities
         public DateTime? Updated { get; set; }
         public ICollection<Payment> Payments { get; set; }
         public ICollection<OrderItem> OrderItems { get; set; }
+        public ShippingDetail? ShippingDetail { get; set; }
     }
 
 }

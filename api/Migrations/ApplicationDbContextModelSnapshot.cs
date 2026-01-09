@@ -662,7 +662,8 @@ namespace api.Migrations
             modelBuilder.Entity("api.Models.Entities.RefreshToken", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("varchar(255)");
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("datetime");
@@ -751,6 +752,48 @@ namespace api.Migrations
                         });
                 });
 
+            modelBuilder.Entity("api.Models.Entities.ShippingDetail", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("Carrier")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime>("Created")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("DATETIME(6)")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+
+                    b.Property<DateTime?>("EstimatedDelivery")
+                        .HasColumnType("datetime");
+
+                    b.Property<decimal>("Fee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("Method")
+                        .HasColumnType("int");
+
+                    b.Property<string>("OrderId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("TrackingNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId")
+                        .IsUnique();
+
+                    b.ToTable("ShippingDetails");
+                });
+
             modelBuilder.Entity("api.Models.Entities.SupportTicket", b =>
                 {
                     b.Property<string>("Id")
@@ -827,7 +870,6 @@ namespace api.Migrations
                         .HasColumnType("varchar(50)");
 
                     b.Property<string>("Avatar")
-                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)");
 
@@ -842,7 +884,6 @@ namespace api.Migrations
                         .HasColumnType("varchar(200)");
 
                     b.Property<string>("FacebookId")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
@@ -852,7 +893,6 @@ namespace api.Migrations
                         .HasColumnType("varchar(100)");
 
                     b.Property<string>("GoogleId")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
@@ -873,7 +913,7 @@ namespace api.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
 
-                    b.Property<string>("Password")
+                    b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)");
@@ -892,7 +932,6 @@ namespace api.Migrations
                         .HasColumnType("datetime");
 
                     b.Property<string>("ResetPasswordToken")
-                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)");
 
@@ -1178,6 +1217,17 @@ namespace api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("api.Models.Entities.ShippingDetail", b =>
+                {
+                    b.HasOne("api.Models.Entities.Order", "Order")
+                        .WithOne("ShippingDetail")
+                        .HasForeignKey("api.Models.Entities.ShippingDetail", "OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("api.Models.Entities.SupportTicket", b =>
                 {
                     b.HasOne("api.Models.Entities.User", "AssignedTo")
@@ -1284,6 +1334,8 @@ namespace api.Migrations
                     b.Navigation("OrderItems");
 
                     b.Navigation("Payments");
+
+                    b.Navigation("ShippingDetail");
                 });
 
             modelBuilder.Entity("api.Models.Entities.Product", b =>
