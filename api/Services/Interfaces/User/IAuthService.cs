@@ -8,7 +8,7 @@ namespace api.Services.Interfaces
         Task<AuthResponseDto> RegisterAsync(RegisterDto registerDto);
 
 
-        // Task<AuthResponseDto> LoginAsync(LoginDto loginDto);
+        Task<AuthResponseDto> LoginAsync(LoginDto loginDto);
 
 
         // Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request);

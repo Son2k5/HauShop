@@ -7,8 +7,9 @@ using api.Models.Enum;
 using api.Models.Entities;
 using api.Mappings;
 using api.Services.Interfaces;
+using api.Repositories.Interfaces;
 
-namespace api.Services.Implememtation.User
+namespace api.Services.Implementations.User
 {
 
     public class AuthService : IAuthService
@@ -17,17 +18,24 @@ namespace api.Services.Implememtation.User
         public readonly ITokenService _tokenService;
         public readonly IEmailService _emailService;
         private readonly IConfiguration _config;
+        private readonly IRefreshTokenRepository _refreshTokenRepository;
+        private readonly IUserRepository _userRepository;
+
 
         public AuthService(
             ApplicationDbContext context,
             ITokenService tokenService,
             IEmailService emailService,
-            IConfiguration config)
+            IConfiguration config,
+            IUserRepository userRepository,
+            IRefreshTokenRepository refreshTokenRepository)
         {
             _config = config;
             _context = context;
             _emailService = emailService;
             _tokenService = tokenService;
+            _userRepository = userRepository;
+            _refreshTokenRepository = refreshTokenRepository;
         }
 
         public async Task<AuthResponseDto> RegisterAsync(RegisterDto registerDto)
@@ -37,6 +45,14 @@ namespace api.Services.Implememtation.User
             if (existingUser != null)
             {
                 throw new Exception("Email already exists");
+            }
+            if (string.IsNullOrWhiteSpace(registerDto.Email))
+            {
+                throw new ArgumentException("Email is required");
+            }
+            if (string.IsNullOrWhiteSpace(registerDto.Password))
+            {
+                throw new ArgumentException("Password is required");
             }
             var passwordHash = PasswordHasher.Hash(registerDto.Password);
 
@@ -63,14 +79,15 @@ namespace api.Services.Implememtation.User
             var refreshToken = new RefreshToken
             {
                 Id = Guid.NewGuid().ToString(),
+                Token = refreshTokenString,
                 UserId = user.Id,
                 Created = DateTime.UtcNow,
                 Expires = DateTime.UtcNow.AddDays(_config.GetValue<int>("Jwt:RefreshTokenExpirationDays"))
 
             };
 
-            user.RefreshTokens.Add(refreshToken);
-            _context.Users.Add(user);
+            _userRepository.Add(user);
+            _refreshTokenRepository.Add(refreshToken);
             await _context.SaveChangesAsync();
 
             return new AuthResponseDto
@@ -83,6 +100,29 @@ namespace api.Services.Implememtation.User
 
 
 
+        }
+        public async Task<AuthResponseDto> LoginAsync(LoginDto loginDto)
+        {
+            if (string.IsNullOrWhiteSpace(loginDto.Email))
+            {
+                throw new ArgumentException("Email is required");
+            }
+            if (string.IsNullOrWhiteSpace(loginDto.Password))
+            {
+                throw new ArgumentException("Password is required");
+            }
+            var user = await _userRepository.GetByEmailAsync(loginDto.Email);
+            if (user == null)
+            {
+                throw new UnauthorizedAccessException("Invalid email or password");
+            }
+            if(!PasswordHasher.Verify(loginDto.Password, user.PasswordHash))
+            {
+                throw new UnauthorizedAccessException("Invalid email or password");
+            }
+            var accessToken = _tokenService.GenerateAccessToken(user);
+            var refreshTokenString = _tokenService.GenerateRefreshToken();
+            await CleanupUser
         }
 
 

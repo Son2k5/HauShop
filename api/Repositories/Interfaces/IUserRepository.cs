@@ -9,20 +9,20 @@ namespace api.Repositories.Interfaces
 
 
         Task<User?> GetByEmailAsync(string email);
-        // Task<User?> GetByPhoneAsync(string phoneNumber);
+        Task<User?> GetByPhoneAsync(string phoneNumber);
 
-        // Task<User?> GetByGoogleIdAsync(string googleId);
-        // Task<User?> GetByFacebookIdAsync(string facebookId);
-
-
-        // // EXISTENCE CHECK
+        Task<User?> GetByGoogleIdAsync(string googleId);
+        Task<User?> GetByFacebookIdAsync(string facebookId);
 
 
-        // Task<bool> EmailExistsAsync(string email);
-        // Task<bool> PhoneExistsAsync(string phoneNumber);
+        // EXISTENCE CHECK
 
 
-        // // RESET PASSWORD
+        Task<bool> EmailExistsAsync(string email);
+        Task<bool> PhoneExistsAsync(string phoneNumber);
+
+
+        // RESET PASSWORD
 
 
         // Task<User?> GetByResetPasswordTokenAsync(string token);

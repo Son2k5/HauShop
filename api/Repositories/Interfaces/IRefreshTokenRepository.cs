@@ -8,6 +8,13 @@ namespace api.Repositories.Interfaces
 {
     public interface IRefreshTokenRepository : IRepository<RefreshToken>
     {
-        public Task AddAsync(RefreshToken token);
+        Task<RefreshToken?> GetByTokenAsync(string token);
+
+        Task<IEnumerable<RefreshToken>> GetActiveTokensByUserIdAsync(string userId);
+
+        Task<IEnumerable<RefreshToken>> GetExpiredTokensAsync();
+
+        Task RevokeAllUserTokensAsync(string userId);
+        public Task CleanupExpiredTokensAsync();
     }
 }

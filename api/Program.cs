@@ -1,6 +1,8 @@
 using System.Text;
 using api.Data;
 using api.Models.Email;
+using api.Repositories.Implementations;
+using api.Repositories.Interfaces;
 using api.Services.Implementations.User;
 using api.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -173,9 +175,13 @@ builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Emai
 // ===========================
 // 8. DEPENDENCY INJECTION
 // ===========================
+builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
-// builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+
+
 
 // ===========================
 // 9. HTTP CONTEXT ACCESSOR
