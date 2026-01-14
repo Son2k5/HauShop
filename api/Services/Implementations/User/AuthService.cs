@@ -20,6 +20,7 @@ namespace api.Services.Implementations.User
         private readonly IConfiguration _config;
         private readonly IRefreshTokenRepository _refreshTokenRepository;
         private readonly IUserRepository _userRepository;
+        private readonly int MAX_REFRESH_TOKENS_PER_USER = 5;
 
 
         public AuthService(
@@ -116,13 +117,51 @@ namespace api.Services.Implementations.User
             {
                 throw new UnauthorizedAccessException("Invalid email or password");
             }
-            if(!PasswordHasher.Verify(loginDto.Password, user.PasswordHash))
+            if (!PasswordHasher.Verify(loginDto.Password, user.PasswordHash))
             {
                 throw new UnauthorizedAccessException("Invalid email or password");
             }
             var accessToken = _tokenService.GenerateAccessToken(user);
             var refreshTokenString = _tokenService.GenerateRefreshToken();
-            await CleanupUser
+            await CleanupUserTokenAsync(user.Id);
+
+            var refreshToken = new RefreshToken
+            {
+                Id = Guid.NewGuid().ToString(),
+                Token = PasswordHasher.Hash(refreshTokenString),
+                UserId = user.Id,
+                User = user,
+                Created = DateTime.UtcNow,
+                Expires = DateTime.UtcNow.AddDays(_config.GetValue<int>("Jwt:RefreshTokenExpirationDays"))
+            };
+            _refreshTokenRepository.Add(refreshToken);
+            user.IsOnline = true;
+            user.LastSeen = DateTime.UtcNow;
+            _userRepository.Update(user);
+
+            await _context.SaveChangesAsync();
+
+
+            return new AuthResponseDto
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshTokenString,
+                User = UserMapper.MapToUserDto(user)
+            };
+
+        }
+        private async Task CleanupUserTokenAsync(string userId)
+        {
+            var activedTokens = (await _refreshTokenRepository.GetActiveTokensByUserIdAsync(userId)).ToList();
+            if (activedTokens.Count() > MAX_REFRESH_TOKENS_PER_USER)
+            {
+                var tokensRemove = activedTokens.OrderBy(e => e.Created).
+                                                Take(activedTokens.Count() - MAX_REFRESH_TOKENS_PER_USER)
+                                                .ToList();
+                _refreshTokenRepository.DeleteRange(tokensRemove);
+                await _context.SaveChangesAsync();
+            }
+
         }
 
 

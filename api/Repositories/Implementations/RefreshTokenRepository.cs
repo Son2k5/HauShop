@@ -28,9 +28,14 @@ namespace api.Repositories.Implementations
 
         public async Task<IEnumerable<RefreshToken>> GetActiveTokensByUserIdAsync(string userId)
         {
-            return await _dbSet
-                .Where(rt => rt.UserId == userId && rt.IsActive)
-                .OrderByDescending(rt => rt.Created)
+            if (string.IsNullOrWhiteSpace(userId))
+                return new List<RefreshToken>();
+
+            return await _context.RefreshTokens
+                .Where(r => r.UserId == userId
+                         && !r.IsRevoked               // thay cho !IsRevoked
+                         && r.Expires > DateTime.UtcNow)  // thay cho !IsExpired
+                .OrderByDescending(r => r.Created)              // nếu cần sắp xếp
                 .ToListAsync();
         }
 

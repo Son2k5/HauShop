@@ -3,6 +3,7 @@ using api.DTOs.User;
 using api.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using api.Services.Implementations.User;
+using Org.BouncyCastle.Ocsp;
 
 namespace api.Controllers
 {
@@ -66,6 +67,60 @@ namespace api.Controllers
                     message = "An error occurred during registration. Please try again later."
                 });
             }
+        }
+        [HttpPost("login")]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status409Conflict)]
+        public async Task<ActionResult> Login([FromBody] LoginDto loginDto)
+        {
+            try
+            {
+                var response = await _authService.LoginAsync(loginDto);
+                SetRefreshTokenCookie(response.RefreshToken);
+
+                return Ok(
+                    new
+                    {
+                        success = true,
+                        message = "Login successful",
+                        data = new
+                        {
+                            accessToken = response.AccessToken,
+                            user = response.User
+                        }
+                    }
+                );
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Validation error during login");
+                return BadRequest(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Failed login attempt for: {Email}", loginDto.Email);
+                return Unauthorized(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error during login for: {Email}", loginDto.Email);
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "An error occurred during login. Please try again later."
+                });
+            }
+
+
         }
         private void SetRefreshTokenCookie(string refreshToken)
         {
