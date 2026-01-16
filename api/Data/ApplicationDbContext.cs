@@ -504,7 +504,7 @@ namespace api.Data
 
                 entity.Property(rt => rt.Id)
                     .HasMaxLength(50)
-                    .ValueGeneratedNever(); // Vì bạn tự generate Guid
+                    .ValueGeneratedNever();
 
                 entity.Property(rt => rt.Token)
                     .IsRequired()

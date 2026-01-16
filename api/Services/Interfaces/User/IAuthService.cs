@@ -4,28 +4,19 @@ namespace api.Services.Interfaces
 {
     public interface IAuthService
     {
+        Task<AuthResponseDto> RegisterAsync(RegisterDto dto);
 
-        Task<AuthResponseDto> RegisterAsync(RegisterDto registerDto);
+        Task<AuthResponseDto> LoginAsync(LoginDto dto);
 
+        Task<AuthResponseDto> RefreshTokenAsync(string refreshToken);
 
-        Task<AuthResponseDto> LoginAsync(LoginDto loginDto);
+        Task LogoutAsync(string userId, string refreshToken);
 
+        Task ChangePasswordAsync(ChangePasswordDto dto, string userId);
 
-        // Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request);
+        Task ForgotPasswordAsync(string email);
 
-
-        // Task ChangePasswordAsync(ChangePasswordDto changePasswordDto, string userId);
-
-
-        // Task ForgotPasswordAsync(ForgotPasswordDto forgotPasswordDto);
-
-
-        // Task ResetPasswordAsync(ResetPasswordDto resetPasswordDto);
-
-
-        // Task LogoutAsync(string userId);
-
-
-        // Task RevokeRefreshTokenAsync(string refreshToken);
+        Task ResetPasswordAsync(ResetPasswordDto dto);
     }
+
 }
