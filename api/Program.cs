@@ -3,13 +3,13 @@ using api.Data;
 using api.Models.Email;
 using api.Repositories.Implementations;
 using api.Repositories.Interfaces;
-using api.Services.Implementations.User;
+using api.Services.Implementations.Auth;
 using api.Services.Interfaces;
+using api.Services.Interfaces.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,15 +37,13 @@ builder.Services.AddSwaggerGen(options =>
         Description = "E-commerce API with JWT Authentication"
     });
 
-    // Add JWT Authentication to Swagger
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
         Type = SecuritySchemeType.Http,
         Scheme = "Bearer",
         BearerFormat = "JWT",
-        In = ParameterLocation.Header,
-        Description = "Enter 'Bearer' [space] and then your token"
+        In = ParameterLocation.Header
     });
 
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -101,7 +99,7 @@ builder.Services.AddAuthentication(options =>
 .AddJwtBearer(options =>
 {
     options.SaveToken = true;
-    options.RequireHttpsMetadata = false; // Set to true in production
+    options.RequireHttpsMetadata = false;
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -111,17 +109,32 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
         ValidAudience = builder.Configuration["Jwt:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-        ClockSkew = TimeSpan.Zero // Remove default 5 minute tolerance
+        ClockSkew = TimeSpan.Zero
     };
 
-    // Handle authentication errors
     options.Events = new JwtBearerEvents
     {
+        OnMessageReceived = context =>
+        {
+            var token = context.Request.Cookies["accessToken"];
+
+            if (string.IsNullOrEmpty(token))
+            {
+                var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+                if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
+                {
+                    token = authHeader.Substring("Bearer ".Length).Trim();
+                }
+            }
+
+            context.Token = token;
+            return Task.CompletedTask;
+        },
         OnAuthenticationFailed = context =>
         {
-            if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
+            if (context.Exception is SecurityTokenExpiredException)
             {
-                context.Response.Headers.Add("Token-Expired", "true");
+                context.Response.Headers.Append("Token-Expired", "true");
             }
             return Task.CompletedTask;
         },
@@ -180,8 +193,7 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
-
-
+builder.Services.AddScoped<IOtpService, OtpService>();
 
 // ===========================
 // 9. HTTP CONTEXT ACCESSOR
@@ -196,8 +208,6 @@ var app = builder.Build();
 // ===========================
 // 10. MIDDLEWARE PIPELINE
 // ===========================
-
-// Exception Handler
 app.UseExceptionHandler(errorApp =>
 {
     errorApp.Run(async context =>
@@ -221,7 +231,6 @@ app.UseExceptionHandler(errorApp =>
     });
 });
 
-// Swagger
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -232,19 +241,12 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseStaticFiles();
-
 app.UseRouting();
-
 app.UseCors("AllowReactApp");
-
 app.UseAuthentication();
-
 app.UseAuthorization();
-
 app.MapControllers();
-
 
 app.MapGet("/health", () => Results.Ok(new
 {
@@ -253,7 +255,7 @@ app.MapGet("/health", () => Results.Ok(new
 }));
 
 // ===========================
-// 11. AUTO DATABASE MIGRATION (OPTIONAL)
+// 11. AUTO DATABASE MIGRATION
 // ===========================
 using (var scope = app.Services.CreateScope())
 {
@@ -263,7 +265,6 @@ using (var scope = app.Services.CreateScope())
         var context = services.GetRequiredService<ApplicationDbContext>();
         var logger = services.GetRequiredService<ILogger<Program>>();
 
-        // Apply pending migrations
         if (context.Database.GetPendingMigrations().Any())
         {
             logger.LogInformation("Applying database migrations...");
@@ -277,7 +278,5 @@ using (var scope = app.Services.CreateScope())
         logger.LogError(ex, "An error occurred while migrating the database");
     }
 }
-
-
 
 app.Run();

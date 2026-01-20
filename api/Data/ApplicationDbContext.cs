@@ -30,6 +30,8 @@ namespace api.Data
         public DbSet<Wishlist> Wishlists { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
         public DbSet<ShippingDetail> ShippingDetails { get; set; }
+        public DbSet<PasswordResetOtp> PasswordResetOtps { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -436,7 +438,6 @@ namespace api.Data
                 entity.Property(e => e.FacebookId).HasMaxLength(100);
                 entity.Property(e => e.Avatar).HasMaxLength(500);
                 entity.Property(e => e.Role).IsRequired().HasDefaultValue(Role.Member).HasConversion<int>();
-                entity.Property(e => e.ResetPasswordToken).HasMaxLength(500);
                 entity.Property(e => e.IsOnline).HasDefaultValue(false);
                 entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
 
@@ -448,7 +449,13 @@ namespace api.Data
                 entity.HasMany(e => e.RefreshTokens)
                     .WithOne(rt => rt.User)
                     .HasForeignKey(rt => rt.UserId)
-                    .OnDelete(DeleteBehavior.Cascade) // Xóa user → xóa hết refresh token
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired();
+
+                entity.HasMany(e => e.PasswordResetOtps)
+                    .WithOne(otp => otp.User)
+                    .HasForeignKey(otp => otp.UserId)
+                    .OnDelete(DeleteBehavior.Cascade)
                     .IsRequired();
 
                 entity.HasIndex(e => e.Email).IsUnique();
@@ -540,6 +547,29 @@ namespace api.Data
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasIndex(e => e.OrderId).IsUnique();
+            });
+            // ============ PASSWORD RESET OTP ============
+            modelBuilder.Entity<PasswordResetOtp>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasMaxLength(50);
+                entity.Property(e => e.UserId).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.OtpHash).IsRequired().HasMaxLength(500);
+                entity.Property(e => e.Purpose).IsRequired()
+                    .HasDefaultValue(OtpPurpose.ResetPassword)
+                    .HasConversion<int>();
+                entity.Property(e => e.ExpiredAt).IsRequired().HasColumnType("datetime");
+                entity.Property(e => e.IsUsed).HasDefaultValue(false);
+                entity.Property(e => e.UsedAt).HasColumnType("datetime");
+                entity.Property(e => e.CreatedAt).HasColumnType("datetime")
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+
+
+                entity.HasIndex(e => e.UserId);
+                entity.HasIndex(e => e.ExpiredAt);
+                entity.HasIndex(e => new { e.UserId, e.IsUsed, e.ExpiredAt });
+                entity.HasIndex(e => e.CreatedAt);
             });
 
         }

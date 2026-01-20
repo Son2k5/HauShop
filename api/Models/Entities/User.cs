@@ -22,8 +22,6 @@ namespace api.Models.Entities
         public string? FacebookId { get; set; }
         public string? Avatar { get; set; }
         public Role Role { get; set; }
-        public string? ResetPasswordToken { get; set; }
-        public DateTime? ResetPasswordExpires { get; set; }
         public bool IsOnline { get; set; }
         public DateTime? LastSeen { get; set; }
         public DateTime Created { get; set; }
@@ -38,5 +36,7 @@ namespace api.Models.Entities
         public ICollection<SupportTicket> SupportTicketsAssigned { get; set; }
         public ICollection<UserConnection> Connections { get; set; }
         public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
+        public ICollection<PasswordResetOtp> PasswordResetOtps { get; set; } = new List<PasswordResetOtp>();
     }
 }

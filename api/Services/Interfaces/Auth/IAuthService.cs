@@ -1,6 +1,6 @@
 
 using api.DTOs.User;
-namespace api.Services.Interfaces
+namespace api.Services.Interfaces.Auth
 {
     public interface IAuthService
     {
@@ -17,6 +17,7 @@ namespace api.Services.Interfaces
         Task ForgotPasswordAsync(string email);
 
         Task ResetPasswordAsync(ResetPasswordDto dto);
+        Task RevokeRefreshTokenAsync(string userId, string refreshToken);
     }
 
 }

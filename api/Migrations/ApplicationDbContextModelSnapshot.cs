@@ -486,6 +486,56 @@ namespace api.Migrations
                         });
                 });
 
+            modelBuilder.Entity("api.Models.Entities.PasswordResetOtp", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime>("ExpiredAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<bool>("IsUsed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("OtpHash")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<int>("Purpose")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("ExpiredAt");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "IsUsed", "ExpiredAt");
+
+                    b.ToTable("PasswordResetOtps");
+                });
+
             modelBuilder.Entity("api.Models.Entities.Payment", b =>
                 {
                     b.Property<string>("Id")
@@ -928,13 +978,6 @@ namespace api.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
-                    b.Property<DateTime?>("ResetPasswordExpires")
-                        .HasColumnType("datetime");
-
-                    b.Property<string>("ResetPasswordToken")
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)");
-
                     b.Property<int>("Role")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
@@ -1145,6 +1188,17 @@ namespace api.Migrations
                     b.Navigation("Order");
 
                     b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("api.Models.Entities.PasswordResetOtp", b =>
+                {
+                    b.HasOne("api.Models.Entities.User", "User")
+                        .WithMany("PasswordResetOtps")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("api.Models.Entities.Payment", b =>
@@ -1361,6 +1415,8 @@ namespace api.Migrations
                     b.Navigation("Connections");
 
                     b.Navigation("Orders");
+
+                    b.Navigation("PasswordResetOtps");
 
                     b.Navigation("RefreshTokens");
 

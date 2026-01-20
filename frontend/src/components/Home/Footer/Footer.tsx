@@ -1,10 +1,7 @@
 import React, { ChangeEvent, useState } from 'react';
 import { motion } from 'framer-motion';
-import FacebookTwoTone from '@mui/icons-material/FacebookTwoTone';
-import YouTube from '@mui/icons-material/YouTube';
-import GitHubIcon from '@mui/icons-material/GitHub';
+import { Icon } from '@iconify/react';
 import FooterListStyle from './FooterListStyle';
-import LinkedInIcon from '@mui/icons-material/LinkedIn';
 import { paymentCard } from '../../../assets/images';
 import Image from '../DesignLayouts/Image';
 
@@ -21,7 +18,7 @@ const Footer: React.FC = () => {
 
   const handleSubscription = () => {
     if (emailInfo === '') setErrMes('Please enter your Email !');
-    else if (!emailValidation(emailInfo?.trim() || ''))
+    else if (!emailValidation(emailInfo.trim()))
       setErrMes('Please give a valid Email');
     else {
       setSubscribe(true);
@@ -37,7 +34,8 @@ const Footer: React.FC = () => {
   return (
     <div className="w-full bg-[#F5F5f3] py-20">
       <div className="max-w-container mx-auto grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 px-4 gap-10">
-        {/* about */}
+
+        {/* About */}
         <div className="col-span-2">
           <FooterListStyle title="More About Orebi Shop" />
           <div className="flex flex-col gap-6">
@@ -47,41 +45,29 @@ const Footer: React.FC = () => {
               tenetur quo aliquam dicta similique cum harum sit sequi deleniti
               est quibusdam, dolorem nobis!
             </p>
+
             <ul className="flex items-center gap-2">
-              <a
-                href="https://facebook.com"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <li className="w-7 h-7 bg-primeColor text-gray-200 hover:text-white cursor-pointer text-lg rounded-full flex justify-center items-center hover:bg-black duration-300">
-                  <FacebookTwoTone className="" />
+              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer">
+                <li className="w-7 h-7 bg-primeColor text-gray-200 hover:text-white rounded-full flex justify-center items-center hover:bg-black duration-300">
+                  <Icon icon="mdi:facebook" className="text-lg" />
                 </li>
               </a>
-              <a
-                href="https://youtube.com"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <li className="w-7 h-7 bg-primeColor text-gray-200 hover:text-white cursor-pointer text-lg rounded-full flex justify-center items-center hover:bg-black duration-300">
-                  <YouTube className="" />
+
+              <a href="https://youtube.com" target="_blank" rel="noopener noreferrer">
+                <li className="w-7 h-7 bg-primeColor text-gray-200 hover:text-white rounded-full flex justify-center items-center hover:bg-black duration-300">
+                  <Icon icon="mdi:youtube" className="text-lg" />
                 </li>
               </a>
-              <a
-                href="https://github.com"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <li className="w-7 h-7 bg-primeColor text-gray-200 hover:text-white cursor-pointer text-lg rounded-full flex justify-center items-center hover:bg-black duration-300">
-                  <GitHubIcon className="" />
+
+              <a href="https://github.com" target="_blank" rel="noopener noreferrer">
+                <li className="w-7 h-7 bg-primeColor text-gray-200 hover:text-white rounded-full flex justify-center items-center hover:bg-black duration-300">
+                  <Icon icon="mdi:github" className="text-lg" />
                 </li>
               </a>
-              <a
-                href="https://linkedin.com"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <li className="w-7 h-7 bg-primeColor text-gray-200 hover:text-white cursor-pointer text-lg rounded-full flex justify-center items-center hover:bg-black duration-300">
-                  <LinkedInIcon className="" />
+
+              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer">
+                <li className="w-7 h-7 bg-primeColor text-gray-200 hover:text-white rounded-full flex justify-center items-center hover:bg-black duration-300">
+                  <Icon icon="mdi:linkedin" className="text-lg" />
                 </li>
               </a>
             </ul>
@@ -92,20 +78,16 @@ const Footer: React.FC = () => {
         <div>
           <ul className="flex flex-col gap-2">
             <FooterListStyle title="Shop" />
-            {[
-              'Accessories',
-              'Clothes',
-              'Electronics',
-              'Home Appliances',
-              'New Arrival',
-            ].map((item) => (
-              <li
-                key={item}
-                className="font-semibold list-none text-base text-lightText hover:text-black hover:underline decoration-[1px] decoration-gray-500 underline-offset-2 cursor-pointer duration-300"
-              >
-                {item}
-              </li>
-            ))}
+            {['Accessories', 'Clothes', 'Electronics', 'Home Appliances', 'New Arrival'].map(
+              (item) => (
+                <li
+                  key={item}
+                  className="font-semibold text-base text-lightText hover:text-black hover:underline underline-offset-2 duration-300 cursor-pointer"
+                >
+                  {item}
+                </li>
+              )
+            )}
           </ul>
         </div>
 
@@ -113,72 +95,62 @@ const Footer: React.FC = () => {
         <div>
           <ul className="flex flex-col gap-2">
             <FooterListStyle title="Account" />
-            {[
-              'Profile',
-              'Orders',
-              'Address',
-              'Account detail',
-              'Payment Options',
-            ].map((item) => (
-              <li
-                key={item}
-                className="font-semibold list-none text-base text-lightText hover:text-black hover:underline decoration-[1px] decoration-gray-500 underline-offset-2 cursor-pointer duration-300"
-              >
-                {item}
-              </li>
-            ))}
+            {['Profile', 'Orders', 'Address', 'Account detail', 'Payment Options'].map(
+              (item) => (
+                <li
+                  key={item}
+                  className="font-semibold text-base text-lightText hover:text-black hover:underline underline-offset-2 duration-300 cursor-pointer"
+                >
+                  {item}
+                </li>
+              )
+            )}
           </ul>
         </div>
 
         {/* Newsletter */}
-        <div className="flex flex-col justify-center items-center col-span-2 w-full px-4">
+        <div className="flex flex-col items-center col-span-2 px-4">
           <FooterListStyle title="Subscribe to our newsletter" />
-          <div className="w-full">
-            <p className="text-center mb-4">
-              A at pellentesque et mattis porta enim elementum.{' '}
-            </p>
-          </div>
+          <p className="text-center mb-4">
+            A at pellentesque et mattis porta enim elementum.
+          </p>
+
           {subscribe ? (
             <motion.p
               initial={{ x: 20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               transition={{ duration: 0.5 }}
-              className="w-full text-center text-base font-titleFont font-semibold text-green-600"
+              className="text-green-600 font-semibold"
             >
               Subscribed Successfully !
             </motion.p>
           ) : (
-            <div className="w-full flex flex-col xl:flex-row justify-center items-center gap-4">
-              <div className="flex flex-col w-full justify-center items-center">
-                <label htmlFor="newsletter-email" className="sr-only">
-                  Email address for newsletter subscription
-                </label>
-                <input
-                  id="newsletter-email"
-                  type="email"
-                  onChange={handleInputChange}
-                  value={emailInfo}
-                  placeholder="Enter your email ..."
-                  className="w-full h-12 border-b border-gray-400 bg-transparent px-4 text-primeColor text-lg placeholder:text-base outline-none"
-                />
-                {errMes && (
-                  <p className="text-red-500 text-sm font-semibold font-titleFont text-center items-center animate-bounce mt-2">
-                    {errMes}
-                  </p>
-                )}
-                <button
-                  onClick={handleSubscription}
-                  className="bg-white text-lightText  flex justify-center items-center mt-2 w-[30%] mx-auto h-10 hover:bg-black hover:text-white duration-300 text-base tracking-wide"
-                >
-                  Subscribe
-                </button>
-              </div>
+            <div className="w-full flex flex-col items-center gap-2">
+              <input
+                type="email"
+                value={emailInfo}
+                onChange={handleInputChange}
+                placeholder="Enter your email ..."
+                className="w-full h-12 border-b border-gray-400 bg-transparent px-4 text-primeColor outline-none"
+              />
+
+              {errMes && (
+                <p className="text-red-500 text-sm font-semibold animate-bounce">
+                  {errMes}
+                </p>
+              )}
+
+              <button
+                onClick={handleSubscription}
+                className="bg-white text-lightText w-[30%] h-10 hover:bg-black hover:text-white duration-300"
+              >
+                Subscribe
+              </button>
             </div>
           )}
+
           <Image
-            className={`w-[80%] lg:w-[60%] mx-auto ${
-              subscribe ? 'mt-2' : 'mt-6'
-            }`}
+            className={`w-[80%] lg:w-[60%] mx-auto ${subscribe ? 'mt-2' : 'mt-6'}`}
             imgSrc={paymentCard}
           />
         </div>
