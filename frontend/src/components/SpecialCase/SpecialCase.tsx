@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCartIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+import { Icon } from '@iconify/react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
 
@@ -13,12 +13,19 @@ const SpecialCase: React.FC = () => {
 
   return (
     <div className="fixed top-52 right-2 z-20 hidden md:flex flex-col gap-2">
+      
       {/* Profile */}
       <Link to="/signin">
         <div className="bg-white w-16 h-[70px] rounded-md flex flex-col gap-1 text-[#33475b] justify-center items-center shadow-lg overflow-x-hidden group cursor-pointer">
           <div className="flex justify-center items-center">
-            <UserCircleIcon className="w-6 h-6 -translate-x-12 group-hover:translate-x-3 transition-transform duration-200" />
-            <UserCircleIcon className="w-6 h-6 -translate-x-3 group-hover:translate-x-12 transition-transform duration-200" />
+            <Icon
+              icon="heroicons-outline:user-circle"
+              className="w-6 h-6 -translate-x-12 group-hover:translate-x-3 transition-transform duration-200"
+            />
+            <Icon
+              icon="heroicons-outline:user-circle"
+              className="w-6 h-6 -translate-x-3 group-hover:translate-x-12 transition-transform duration-200"
+            />
           </div>
           <p className="text-xs font-semibold font-titleFont">Profile</p>
         </div>
@@ -28,10 +35,17 @@ const SpecialCase: React.FC = () => {
       <Link to="/cart">
         <div className="bg-white w-16 h-[70px] rounded-md flex flex-col gap-1 text-[#33475b] justify-center items-center shadow-lg overflow-x-hidden group cursor-pointer relative">
           <div className="flex justify-center items-center">
-            <ShoppingCartIcon className="w-6 h-6 -translate-x-12 group-hover:translate-x-3 transition-transform duration-200" />
-            <ShoppingCartIcon className="w-6 h-6 -translate-x-3 group-hover:translate-x-12 transition-transform duration-200" />
+            <Icon
+              icon="heroicons-outline:shopping-cart"
+              className="w-6 h-6 -translate-x-12 group-hover:translate-x-3 transition-transform duration-200"
+            />
+            <Icon
+              icon="heroicons-outline:shopping-cart"
+              className="w-6 h-6 -translate-x-3 group-hover:translate-x-12 transition-transform duration-200"
+            />
           </div>
           <p className="text-xs font-semibold font-titleFont">Shop Now</p>
+
           {totalQuantity > 0 && (
             <p className="absolute top-1 right-2 bg-primeColor text-white w-4 h-4 rounded-full flex items-center justify-center font-semibold">
               {totalQuantity}
@@ -39,6 +53,7 @@ const SpecialCase: React.FC = () => {
           )}
         </div>
       </Link>
+
     </div>
   );
 };

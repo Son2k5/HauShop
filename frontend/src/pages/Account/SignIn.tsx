@@ -1,5 +1,5 @@
 import React, { useState, ChangeEvent, FormEvent } from 'react';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { Icon } from '@iconify/react';
 import { Link } from 'react-router-dom';
 import { logoLight } from '../../assets/images';
 
@@ -50,12 +50,14 @@ const SignIn: React.FC = () => {
           <Link to="/">
             <img src={logoLight} alt="logoImg" className="w-28" />
           </Link>
+
           <div className="flex flex-col gap-1 -mt-1">
             <h1 className="font-titleFont text-xl font-medium">
               Stay sign in for more
             </h1>
             <p className="text-base">When you sign in, you are with us!</p>
           </div>
+
           {[
             'Get started fast with OREBI',
             'Access all OREBI services',
@@ -63,7 +65,7 @@ const SignIn: React.FC = () => {
           ].map((title, idx) => (
             <div key={idx} className="w-[300px] flex items-start gap-3">
               <span className="text-green-500 mt-1">
-                <CheckCircleIcon />
+                <Icon icon="mdi:check-circle" className="w-5 h-5" />
               </span>
               <p className="text-base text-gray-300">
                 <span className="text-white font-semibold font-titleFont">
@@ -75,18 +77,22 @@ const SignIn: React.FC = () => {
               </p>
             </div>
           ))}
+
           <div className="flex items-center justify-between mt-10">
             <Link to="/">
               <p className="text-sm font-titleFont font-semibold text-gray-300 hover:text-white cursor-pointer duration-300">
                 © OREBI
               </p>
             </Link>
+
             <p className="text-sm font-titleFont font-semibold text-gray-300 hover:text-white cursor-pointer duration-300">
               Terms
             </p>
+
             <p className="text-sm font-titleFont font-semibold text-gray-300 hover:text-white cursor-pointer duration-300">
               Privacy
             </p>
+
             <p className="text-sm font-titleFont font-semibold text-gray-300 hover:text-white cursor-pointer duration-300">
               Security
             </p>
@@ -102,10 +108,7 @@ const SignIn: React.FC = () => {
               {successMsg}
             </p>
             <Link to="/signup">
-              <button
-                className="w-full h-10 bg-primeColor text-gray-200 rounded-md text-base font-titleFont font-semibold 
-                tracking-wide hover:bg-black hover:text-white duration-300"
-              >
+              <button className="w-full h-10 bg-primeColor text-gray-200 rounded-md text-base font-titleFont font-semibold tracking-wide hover:bg-black hover:text-white duration-300">
                 Sign Up
               </button>
             </Link>
@@ -116,6 +119,7 @@ const SignIn: React.FC = () => {
               <h1 className="font-titleFont underline underline-offset-4 decoration-[1px] font-semibold text-3xl mdl:text-4xl mb-4">
                 Sign in
               </h1>
+
               <div className="flex flex-col gap-3">
                 {/* Email */}
                 <div className="flex flex-col gap-.5">
@@ -159,10 +163,11 @@ const SignIn: React.FC = () => {
 
                 <button
                   onClick={handleSignUp}
-                  className="bg-primeColor hover:bg-black text-gray-200 hover:text-white cursor-pointer w-full text-base font-medium h-10 rounded-md  duration-300"
+                  className="bg-primeColor hover:bg-black text-gray-200 hover:text-white cursor-pointer w-full text-base font-medium h-10 rounded-md duration-300"
                 >
                   Sign In
                 </button>
+
                 <p className="text-sm text-center font-titleFont font-medium">
                   Don't have an Account?{' '}
                   <Link to="/signup">
