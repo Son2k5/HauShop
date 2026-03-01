@@ -26,5 +26,6 @@ namespace api.Models.Entities
         public ICollection<CartItem> CartItems { get; set; }
         public ICollection<Review> Reviews { get; set; }
         public ICollection<Wishlist> Wishlists { get; set; }
+        public ICollection<ProductVariant> ProductVariants { get; set; }
     }
 }
