@@ -1,37 +1,76 @@
+
+export type Role = "Admin" | "Member" | "Merchant";
+
+// Provider.cs  →  Local=0 | Google=1
+export type Provider = "Local" | "Google";
+
+export type OtpPurpose =
+  | "ResetPassword"
+  | "EmailVerification"
+  | "PhoneVerification"
+  | "TwoFactorAuth"
+  | "LoginVerification";
+
+// ── Request DTOs ──────────────────────────────────────────────────
 export interface RegisterDto {
-    email: string;
-    password: string;
-    firstname: string;
-    lastname?: string;
-    phoneNumber: string
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  password: string;
 }
+
 export interface LoginDto {
-    email: string;
-    password: string
+  email: string;
+  password: string;
 }
-export interface forgotPasswordDto {
-    email: string
+
+export interface ForgotPasswordDto {
+  email: string;
 }
-export interface resetPasswordDto 
-{
-    email: string;
-    password: string;
-    otp : string
+
+export interface ResetPasswordDto {
+  email: string;
+  otp: string;
+  newPassword: string;
 }
-export interface changePasswordDto {
-    currentPassword: string;
-    newPassword: string
+
+export interface ChangePasswordDto {
+  currentPassword: string;
+  newPassword: string;
 }
-export interface authUser{
-    email: string;
-    password: string;
-    firstname: string;
-    lastname?: string;
-    phoneNumber: string;
-    role: string;
+
+// ── Response DTOs ─────────────────────────────────────────────────
+export interface UserDto {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  avatar: string | null;
+  role: Role;
+  provider: Provider;
+  isOnline: boolean;
+  lastSeen: string | null;
+  created: string;
 }
-export interface authResponse{
-    accessToken : string;
-    refreshToken : string;
-    user: authUser;
+
+export interface AuthResponse {
+  message: string;
+  user: UserDto;
+}
+
+// ── Auth State ────────────────────────────────────────────────────
+export type AuthStatus = "idle" | "loading" | "authenticated" | "unauthenticated";
+
+export interface AuthState {
+  user: UserDto | null;
+  status: AuthStatus;
+  error: string | null;
+}
+
+// ── API Error ─────────────────────────────────────────────────────
+export interface ApiError {
+  message: string;
+  statusCode?: number;
 }

@@ -4,6 +4,5 @@ namespace api.Models.Enum
     {
         Local = 0,
         Google = 1,
-        Facebook = 2
     }
 }

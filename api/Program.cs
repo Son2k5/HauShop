@@ -116,15 +116,15 @@ builder.Services.AddAuthentication(options =>
     {
         OnMessageReceived = context =>
         {
+
             var token = context.Request.Cookies["accessToken"];
+
 
             if (string.IsNullOrEmpty(token))
             {
                 var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
                 if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
-                {
-                    token = authHeader.Substring("Bearer ".Length).Trim();
-                }
+                    token = authHeader["Bearer ".Length..].Trim();
             }
 
             context.Token = token;
@@ -133,9 +133,7 @@ builder.Services.AddAuthentication(options =>
         OnAuthenticationFailed = context =>
         {
             if (context.Exception is SecurityTokenExpiredException)
-            {
                 context.Response.Headers.Append("Token-Expired", "true");
-            }
             return Task.CompletedTask;
         },
         OnChallenge = context =>
@@ -159,14 +157,16 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
-    options.AddPolicy("CustomerOnly", policy => policy.RequireRole("Customer"));
+    options.AddPolicy("MemberOnly", policy => policy.RequireRole("Member"));   // ✅ sửa từ CustomerOnly
     options.AddPolicy("MerchantOnly", policy => policy.RequireRole("Merchant"));
 });
 
 // ===========================
 // 6. CORS CONFIGURATION
 // ===========================
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>()
     ?? new[] { "http://localhost:5173", "http://localhost:3000" };
 
 builder.Services.AddCors(options =>
@@ -186,7 +186,15 @@ builder.Services.AddCors(options =>
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 
 // ===========================
-// 8. DEPENDENCY INJECTION
+// 8. HTTP CLIENT (Google API calls)
+// ===========================
+builder.Services.AddHttpClient("google", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
+// ===========================
+// 9. DEPENDENCY INJECTION
 // ===========================
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
@@ -194,9 +202,10 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
 
 // ===========================
-// 9. HTTP CONTEXT ACCESSOR
+// 10. HTTP CONTEXT ACCESSOR
 // ===========================
 builder.Services.AddHttpContextAccessor();
 
@@ -206,7 +215,7 @@ builder.Services.AddHttpContextAccessor();
 var app = builder.Build();
 
 // ===========================
-// 10. MIDDLEWARE PIPELINE
+// 11. MIDDLEWARE PIPELINE
 // ===========================
 app.UseExceptionHandler(errorApp =>
 {
@@ -255,7 +264,7 @@ app.MapGet("/health", () => Results.Ok(new
 }));
 
 // ===========================
-// 11. AUTO DATABASE MIGRATION
+// 12. AUTO DATABASE MIGRATION
 // ===========================
 using (var scope = app.Services.CreateScope())
 {

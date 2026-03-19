@@ -8,20 +8,22 @@ namespace api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class AuthController : ControllerBase
+    public partial class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
         private readonly ILogger<AuthController> _logger;
         private readonly IConfiguration _config;
+        private readonly IGoogleAuthService _googleAuthService;
 
         public AuthController(
             IAuthService authService,
             ILogger<AuthController> logger,
-            IConfiguration configuration)
+            IConfiguration configuration, IGoogleAuthService googleAuthService)
         {
             _authService = authService;
             _logger = logger;
             _config = configuration;
+            _googleAuthService = googleAuthService;
         }
 
         // REGISTER - GỬI COOKIE
