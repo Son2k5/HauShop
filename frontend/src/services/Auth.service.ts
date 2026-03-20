@@ -36,7 +36,7 @@ export const authService = {
         req<AuthResponse>("/login", {method:  "POST", body:JSON.stringify(dto)}),
     logout: () =>
         req<{message : string}>("/logout", {method:  "POST"}),
-    refreskToken: () =>
+    refreshToken: () =>
         req<{message: string}>("/refresh-token", {method:  "POST"}),
     resetPassword: (dto: ResetPasswordDto) =>
         req<{message: string}>("/reset-password",{method:"POST", body: JSON.stringify(dto)}),

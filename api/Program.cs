@@ -10,8 +10,14 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using DotNetEnv;
 
 var builder = WebApplication.CreateBuilder(args);
+// ===========================
+// SET UP ENV
+// ===========================
+DotNetEnv.Env.Load();
+builder.Configuration.AddEnvironmentVariables();
 
 // ===========================
 // 1. CONTROLLERS & API EXPLORER
@@ -65,8 +71,12 @@ builder.Services.AddSwaggerGen(options =>
 // ===========================
 // 3. DATABASE CONFIGURATION
 // ===========================
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string not found");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (string.IsNullOrEmpty(connectionString))
+{
+    throw new InvalidOperationException("Connection string is missing. Check your .env file.");
+}
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
@@ -87,8 +97,12 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // ===========================
 // 4. JWT AUTHENTICATION
 // ===========================
-var jwtKey = builder.Configuration["Jwt:Key"]
-    ?? throw new InvalidOperationException("JWT Key is not configured");
+var jwtKey = builder.Configuration["Jwt:Key"];
+
+if (string.IsNullOrEmpty(jwtKey))
+{
+    throw new InvalidOperationException("JWT Key is missing. Check your .env file.");
+}
 
 builder.Services.AddAuthentication(options =>
 {
