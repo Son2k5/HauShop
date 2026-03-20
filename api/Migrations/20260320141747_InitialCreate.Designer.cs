@@ -12,7 +12,7 @@ using api.Data;
 namespace api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260117165830_InitialCreate")]
+    [Migration("20260320141747_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -20,7 +20,7 @@ namespace api.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.10")
+                .HasAnnotation("ProductVersion", "9.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
@@ -712,6 +712,61 @@ namespace api.Migrations
                     b.ToTable("ProductCategories");
                 });
 
+            modelBuilder.Entity("api.Models.Entities.ProductVariant", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime?>("CreateAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<string>("CreateBy")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("ImageKey")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("longtext");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(65,30)");
+
+                    b.Property<string>("ProductId")
+                        .IsRequired()
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("Size")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Sku")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("Stock")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdateAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<string>("UpdateBy")
+                        .HasColumnType("longtext");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("ProductVariant");
+                });
+
             modelBuilder.Entity("api.Models.Entities.RefreshToken", b =>
                 {
                     b.Property<string>("Id")
@@ -1244,6 +1299,17 @@ namespace api.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("api.Models.Entities.ProductVariant", b =>
+                {
+                    b.HasOne("api.Models.Entities.Product", "Product")
+                        .WithMany("ProductVariants")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("api.Models.Entities.RefreshToken", b =>
                 {
                     b.HasOne("api.Models.Entities.User", "User")
@@ -1402,6 +1468,8 @@ namespace api.Migrations
                     b.Navigation("OrderItems");
 
                     b.Navigation("ProductCategories");
+
+                    b.Navigation("ProductVariants");
 
                     b.Navigation("Reviews");
 

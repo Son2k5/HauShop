@@ -3,6 +3,8 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import SignIn         from "./pages/Account/SignIn";
 import SignUp from "./pages/Account/SignUp";
+import ForgotPassword from "./pages/Account/ForgotPassword";
+import ResetPassword  from "./pages/Account/ResetPassword";
 
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
@@ -16,6 +18,8 @@ export default function App() {
       {/* ── Public ────────────────────────────────── */}
       <Route path="/signin"          element={<SignIn />} />
       <Route path="/signup" element={<SignUp />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password"  element={<ResetPassword />} />
       {/* ── Protected ─────────────────────────────── */}
       <Route
         path="/"

@@ -3,9 +3,9 @@
 import React, { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { logoMainLight } from "../../assets/images";
-import {test} from "../../assets/images"
+import { logoLight } from "../../assets/images";
 import { useAuthActions } from "../../hooks/useAuthActions";
+import { type ApiError } from "../../@types/auth.type";
 
 // ── Helpers ───────────────────────────────────────────────────────
 const GOOGLE_ERRORS: Record<string, string> = {
@@ -16,21 +16,14 @@ const GOOGLE_ERRORS: Record<string, string> = {
 };
 
 const SignIn = () => {
-  // ============= Initial State Start here =============
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
-  // ============= Initial State End here ===============
-
-  // ============= Error Msg Start here =================
   const [errEmail,    setErrEmail]    = useState("");
   const [errPassword, setErrPassword] = useState("");
-  // ============= Error Msg End here ===================
-
   const [successMsg,   setSuccessMsg]   = useState("");
   const [serverErrMsg, setServerErrMsg] = useState(""); // lỗi từ API / Google
   const [loading,      setLoading]      = useState(false);
-
-  // ── Hooks ─────────────────────────────────────────────────────
+  const [showPassword, setShowPassword] = useState(false);
   const navigate       = useNavigate();
   const location       = useLocation();
   const [searchParams] = useSearchParams();
@@ -75,8 +68,31 @@ const SignIn = () => {
         setPassword("");
         navigate(from, { replace: true });
       } catch (err) {
-        setServerErrMsg((err as { message?: string }).message ?? "Invalid email or password");
-      } finally {
+        const e = err as ApiError;
+  
+        if (e.errors && Object.keys(e.errors).length > 0) {
+          // Normalize keys to lowercase để match cả PascalCase lẫn camelCase từ server
+          const errs: Record<string, string[]> = {};
+          for (const key in e.errors) {
+            errs[key.toLowerCase()] = e.errors[key];
+          }
+          if (errs["email"]?.length)    setErrEmail(errs["email"].join(" • "));
+          if (errs["password"]?.length) setErrPassword(errs["password"].join(" • "));
+
+          // Unknown field errors
+          const knownKeys = ["email", "password"];
+          const unknownErrors = Object.keys(errs).filter(k => !knownKeys.includes(k));
+          if (unknownErrors.length > 0) {
+            setServerErrMsg(unknownErrors.map(k => errs[k].join(", ")).join(" | "));
+          }
+        } else if (e.statusCode === 401) {
+          setServerErrMsg("Invalid email or password.");
+        } else if (e.statusCode && e.statusCode >= 500) {
+          setServerErrMsg("Server error. Please try again later.");
+        } else {
+          setServerErrMsg(e.message ?? "Invalid email or password");
+        }
+     } finally {
         setLoading(false);
       }
     }
@@ -86,8 +102,8 @@ const SignIn = () => {
     <div className="w-full h-screen flex items-center justify-center">
       <div className="w-1/2 hidden lgl:inline-flex h-full text-white">
         <div className="w-[450px] h-full bg-primeColor px-10 flex flex-col gap-6 justify-center">
-          <Link to="/">
-            <img src={test} alt="logoImg" className="w-40" />
+          <Link to="/home">
+            <img src={logoLight} alt="logoImg" className="w-28" />
           </Link>
           <div className="flex flex-col gap-1 -mt-1">
             <h1 className="font-titleFont text-xl font-medium">
@@ -97,7 +113,7 @@ const SignIn = () => {
           </div>
           <div className="w-[300px] flex items-start gap-3">
             <span className="text-green-500 mt-1">
-              <Icon icon="mdi:check-circle" width="24" height="24" />
+              <Icon icon="md:check-circle" width="24" height="24" />
             </span>
             <p className="text-base text-gray-300">
               <span className="text-white font-semibold font-titleFont">
@@ -109,26 +125,27 @@ const SignIn = () => {
           </div>
           <div className="w-[300px] flex items-start gap-3">
             <span className="text-green-500 mt-1">
-              <Icon icon="mdi:check-circle" width="24" height="24" />
+              <Icon icon="md:check-circle" width="24" height="24" />
             </span>
             <p className="text-base text-gray-300">
               <span className="text-white font-semibold font-titleFont">
                 Access all HAUSHOP services
               </span>
               <br />
-              Personalized privileges. Track your orders in real-time, save your favorites to a wishlist, and get early access to limited drops.
+                Personalized privileges. Track your orders in real-time, save your favorites to a wishlist, and get early access to limited drops.
             </p>
           </div>
           <div className="w-[300px] flex items-start gap-3">
             <span className="text-green-500 mt-1">
-              <Icon icon="mdi:check-circle" width="24" height="24" />
+              <Icon icon="md:check-circle" width="24" height="24" />
             </span>
             <p className="text-base text-gray-300">
               <span className="text-white font-semibold font-titleFont">
                 Trusted by online Shoppers
               </span>
               <br />
-              Quality you can feel. Express your style with high-end materials and a flexible 30-day return policy.
+                Quality you can feel. Express your style with high-end materials and a flexible 30-day return policy.
+
             </p>
           </div>
           <div className="flex items-center justify-between mt-10">
@@ -167,9 +184,9 @@ const SignIn = () => {
         ) : (
           <form
             onSubmit={handleSignUp}
-            className="w-full lgl:w-[450px] h-screen flex items-center justify-center"
+            className="w-full lgl:w-[450px] h-full flex items-center justify-center"
           >
-            <div className="px-6 py-4 w-full h-[90%] flex flex-col justify-center overflow-y-scroll scrollbar-thin scrollbar-thumb-primeColor">
+            <div className="px-6 py-4 w-full flex flex-col justify-center">
               <h1 className="font-titleFont underline underline-offset-4 decoration-[1px] font-semibold text-3xl mdl:text-4xl mb-4">
                 Sign in
               </h1>
@@ -187,7 +204,7 @@ const SignIn = () => {
                 {/* Email */}
                 <div className="flex flex-col gap-.5">
                   <p className="font-titleFont text-base font-semibold text-gray-600">
-                    Email
+                    Work Email
                   </p>
                   <input
                     onChange={handleEmail}
@@ -210,14 +227,33 @@ const SignIn = () => {
                   <p className="font-titleFont text-base font-semibold text-gray-600">
                     Password
                   </p>
-                  <input
-                    onChange={handlePassword}
-                    value={password}
-                    className="w-full h-8 placeholder:text-sm placeholder:tracking-wide px-4 text-base font-medium placeholder:font-normal rounded-md border-[1px] border-gray-400 outline-none"
-                    type="password"
-                    placeholder="Create password"
-                    autoComplete="current-password"
-                  />
+                  <div className="relative">
+                    <input
+                      onChange={handlePassword}
+                      value={password}
+                      className="w-full h-8 placeholder:text-sm placeholder:tracking-wide px-4 pr-10 text-base font-medium placeholder:font-normal rounded-md border-[1px] border-gray-400 outline-none"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Create password"
+                      autoComplete="current-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(p => !p)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-5 0-9-4-9-7s4-7 9-7a9.97 9.97 0 014.9 1.275M15 12a3 3 0 11-4.5-2.598M3 3l18 18"/>
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                   {errPassword && (
                     <p className="text-sm text-red-500 font-titleFont font-semibold px-4">
                       <span className="font-bold italic mr-1">!</span>
@@ -247,13 +283,14 @@ const SignIn = () => {
                     </svg>
                   ) : "Sign In"}
                 </button>
-                  {/* Divider */}
+
+                {/* Divider */}
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-[1px] bg-gray-200" />
                   <span className="text-xs text-gray-400 font-medium">or</span>
                   <div className="flex-1 h-[1px] bg-gray-200" />
                 </div>
-
+                {/* Google Sign-in */}
                 <button
                   type="button"
                   onClick={loginWithGoogle}

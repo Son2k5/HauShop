@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using api.Services.Interfaces.Auth;
 using api.DTOs.User;
+using FluentValidation;
 
 namespace api.Controllers
 {
@@ -14,16 +15,24 @@ namespace api.Controllers
         private readonly ILogger<AuthController> _logger;
         private readonly IConfiguration _config;
         private readonly IGoogleAuthService _googleAuthService;
+        private readonly IValidator<RegisterDto> _registerValidator;
+        private readonly IValidator<LoginDto> _loginValidator;
+
 
         public AuthController(
             IAuthService authService,
             ILogger<AuthController> logger,
-            IConfiguration configuration, IGoogleAuthService googleAuthService)
+            IConfiguration configuration,
+             IGoogleAuthService googleAuthService,
+             IValidator<RegisterDto> registerValidator,
+             IValidator<LoginDto> loginValidator)
         {
             _authService = authService;
             _logger = logger;
             _config = configuration;
             _googleAuthService = googleAuthService;
+            _registerValidator = registerValidator;
+            _loginValidator = loginValidator;
         }
 
         // REGISTER - GỬI COOKIE
@@ -34,6 +43,15 @@ namespace api.Controllers
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
+            var validationResult = await _registerValidator.ValidateAsync(dto);
+            if (!validationResult.IsValid)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    errors = validationResult.ToDictionary()
+                });
+            }
             var result = await _authService.RegisterAsync(dto);
 
             SetAccessTokenCookie(result.AccessToken);
@@ -55,6 +73,15 @@ namespace api.Controllers
         {
             try
             {
+                var validationResult = await _loginValidator.ValidateAsync(dto);
+                if (!validationResult.IsValid)
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        errors = validationResult.ToDictionary()
+                    });
+                }
                 var result = await _authService.LoginAsync(dto);
 
                 SetAccessTokenCookie(result.AccessToken);

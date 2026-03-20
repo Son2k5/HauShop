@@ -21,8 +21,12 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
   try { data = await res.json(); } catch {  }
  
   if (!res.ok) {
-    const err = data as { message?: string } | null;
-    throw { message: err?.message ?? `HTTP ${res.status}`, statusCode: res.status } as ApiError;
+    const err = data as { message?: string; errors?: Record<string, string[]> } | null;
+    throw { 
+        message:    err?.message ?? `HTTP ${res.status}`,
+        statusCode: res.status,
+        errors:     err?.errors ?? null, 
+    } as ApiError;
   }
  
   return data as T;

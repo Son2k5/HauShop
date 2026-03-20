@@ -8,6 +8,7 @@ namespace api.Validators.Auth
     {
         public LoginDtoValidator()
         {
+            ClassLevelCascadeMode = CascadeMode.Continue;
             RuleFor(x => x.Email)
                 .NotEmpty().WithMessage("Email is required")
                 .EmailAddress().WithMessage("Invalid email format");

@@ -447,6 +447,46 @@ namespace api.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
+                name: "ProductVariant",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "varchar(255)", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    ProductId = table.Column<string>(type: "varchar(50)", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Size = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Color = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Sku = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Price = table.Column<decimal>(type: "decimal(65,30)", nullable: false),
+                    Stock = table.Column<int>(type: "int", nullable: false),
+                    ImageUrl = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    ImageKey = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    CreateAt = table.Column<DateTime>(type: "datetime", nullable: true),
+                    CreateBy = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    UpdateAt = table.Column<DateTime>(type: "datetime", nullable: true),
+                    UpdateBy = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    IsActive = table.Column<bool>(type: "tinyint(1)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ProductVariant", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ProductVariant_Products_ProductId",
+                        column: x => x.ProductId,
+                        principalTable: "Products",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
                 name: "Reviews",
                 columns: table => new
                 {
@@ -895,6 +935,11 @@ namespace api.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_ProductVariant_ProductId",
+                table: "ProductVariant",
+                column: "ProductId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_RefreshTokens_Expires",
                 table: "RefreshTokens",
                 column: "Expires");
@@ -1059,6 +1104,9 @@ namespace api.Migrations
 
             migrationBuilder.DropTable(
                 name: "ProductCategories");
+
+            migrationBuilder.DropTable(
+                name: "ProductVariant");
 
             migrationBuilder.DropTable(
                 name: "RefreshTokens");

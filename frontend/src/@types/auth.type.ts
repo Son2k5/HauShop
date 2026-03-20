@@ -33,6 +33,7 @@ export interface ResetPasswordDto {
   email: string;
   otp: string;
   newPassword: string;
+  confirmPassword: string;
 }
 
 export interface ChangePasswordDto {
@@ -73,4 +74,11 @@ export interface AuthState {
 export interface ApiError {
   message: string;
   statusCode?: number;
+  errors?:    Record<string, string[]> | null;
+}
+
+export interface ApiErrorResponse{
+  success: boolean;
+  message : string;
+  errors?: Record<string, string[]>; 
 }

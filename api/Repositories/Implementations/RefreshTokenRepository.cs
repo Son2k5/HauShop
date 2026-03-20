@@ -42,8 +42,8 @@ namespace api.Repositories.Implementations
         public async Task RevokeAllUserTokensAsync(string userId)
         {
             var tokens = await _dbSet
-                .Where(rt => rt.UserId == userId && rt.IsActive)
-                .ToListAsync();
+            .Where(rt => rt.UserId == userId && !rt.IsRevoked && rt.Expires > DateTime.UtcNow)
+            .ToListAsync();
 
             foreach (var token in tokens)
             {

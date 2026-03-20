@@ -11,6 +11,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using DotNetEnv;
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using api.Validators;
+using api.Validators.Auth;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 // ===========================
@@ -20,7 +25,7 @@ DotNetEnv.Env.Load();
 builder.Configuration.AddEnvironmentVariables();
 
 // ===========================
-// 1. CONTROLLERS & API EXPLORER
+// CONTROLLERS & API EXPLORER
 // ===========================
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -32,7 +37,7 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 
 // ===========================
-// 2. SWAGGER WITH JWT
+// SWAGGER WITH JWT
 // ===========================
 builder.Services.AddSwaggerGen(options =>
 {
@@ -69,7 +74,7 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 // ===========================
-// 3. DATABASE CONFIGURATION
+// DATABASE CONFIGURATION
 // ===========================
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
@@ -95,7 +100,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 });
 
 // ===========================
-// 4. JWT AUTHENTICATION
+// JWT AUTHENTICATION
 // ===========================
 var jwtKey = builder.Configuration["Jwt:Key"];
 
@@ -166,17 +171,17 @@ builder.Services.AddAuthentication(options =>
 });
 
 // ===========================
-// 5. AUTHORIZATION POLICIES
+// AUTHORIZATION POLICIES
 // ===========================
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
-    options.AddPolicy("MemberOnly", policy => policy.RequireRole("Member"));   // ✅ sửa từ CustomerOnly
+    options.AddPolicy("MemberOnly", policy => policy.RequireRole("Member"));
     options.AddPolicy("MerchantOnly", policy => policy.RequireRole("Merchant"));
 });
 
 // ===========================
-// 6. CORS CONFIGURATION
+// CORS CONFIGURATION
 // ===========================
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
@@ -195,20 +200,42 @@ builder.Services.AddCors(options =>
 });
 
 // ===========================
-// 7. EMAIL SETTINGS
+// EMAIL SETTINGS
 // ===========================
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 
 // ===========================
-// 8. HTTP CLIENT (Google API calls)
+//  HTTP CLIENT (Google API calls)
 // ===========================
 builder.Services.AddHttpClient("google", client =>
 {
     client.Timeout = TimeSpan.FromSeconds(30);
 });
+// ===========================
+// VALIDATOR
+// ===========================
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var errors = context.ModelState
+        .Where(e => e.Value.Errors.Count > 0)
+        .ToDictionary(
+            kvp => kvp.Key,
+            kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray()
+        );
+        return new BadRequestObjectResult(new
+        {
+            success = false,
+            message = "Validation failded",
+            errors = errors
+        });
+    };
+});
+
 
 // ===========================
-// 9. DEPENDENCY INJECTION
+//  DEPENDENCY INJECTION
 // ===========================
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
@@ -217,9 +244,12 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+builder.Services.AddValidatorsFromAssemblyContaining<RegisterDtoValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<LoginDtoValidator>();
+
 
 // ===========================
-// 10. HTTP CONTEXT ACCESSOR
+//  HTTP CONTEXT ACCESSOR
 // ===========================
 builder.Services.AddHttpContextAccessor();
 
@@ -229,7 +259,7 @@ builder.Services.AddHttpContextAccessor();
 var app = builder.Build();
 
 // ===========================
-// 11. MIDDLEWARE PIPELINE
+// MIDDLEWARE PIPELINE
 // ===========================
 app.UseExceptionHandler(errorApp =>
 {
@@ -278,7 +308,7 @@ app.MapGet("/health", () => Results.Ok(new
 }));
 
 // ===========================
-// 12. AUTO DATABASE MIGRATION
+// AUTO DATABASE MIGRATION
 // ===========================
 using (var scope = app.Services.CreateScope())
 {
