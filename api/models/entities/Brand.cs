@@ -12,8 +12,8 @@ namespace api.Models.Entities
         public string Id { get; set; }
         public string Name { get; set; }
         public string Slug { get; set; }
-        public byte[] ImageData { get; set; }
-        public string ImageContentType { get; set; }
+        public byte[]? ImageData { get; set; }
+        public string? ImageContentType { get; set; }
         public string Description { get; set; }
         public bool IsActive { get; set; }
         public string? MerchantId { get; set; }

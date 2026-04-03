@@ -31,6 +31,7 @@ namespace api.Data
         public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
         public DbSet<ShippingDetail> ShippingDetails { get; set; }
         public DbSet<PasswordResetOtp> PasswordResetOtps { get; set; }
+        public DbSet<ProductVariant> ProductVariants { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -336,6 +337,34 @@ namespace api.Data
                 entity.HasIndex(e => e.IsActive);
 
                 entity.ToTable(t => t.HasCheckConstraint("CK_Product_Price", "`Price` >= 0"));
+            });
+            modelBuilder.Entity<ProductVariant>(entity =>
+            {
+                entity.ToTable("productvariant");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasMaxLength(50);
+                entity.Property(e => e.ProductId).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Size).HasMaxLength(20);
+                entity.Property(e => e.Color).HasMaxLength(50);
+                entity.Property(e => e.Sku).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Price).HasPrecision(18, 2).IsRequired();
+                entity.Property(e => e.Stock).IsRequired().HasDefaultValue(0);
+                entity.Property(e => e.IsActive).HasDefaultValue(true);
+                entity.Property(e => e.CreateAt).HasColumnName("createat").HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.HasOne(e => e.Product)
+                    .WithMany(p => p.ProductVariants)
+                    .HasForeignKey(e => e.ProductId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => e.Sku).IsUnique();
+                entity.HasIndex(e => e.ProductId);
+
+                entity.ToTable(t =>
+                {
+                    t.HasCheckConstraint("CK_Variant_Price", "`Price` >= 0");
+                    t.HasCheckConstraint("CK_Variant_Stock", "`Stock` >= 0");
+                });
             });
 
             // ============ PRODUCT CATEGORY ============

@@ -16,6 +16,12 @@ using FluentValidation.AspNetCore;
 using api.Validators;
 using api.Validators.Auth;
 using Microsoft.AspNetCore.Mvc;
+using CloudinaryDotNet;
+using api.services.implementations.cloud;
+using api.services.interfaces.cloud;
+using api.services.interfaces.user;
+using api.Services.Implementations;
+
 
 var builder = WebApplication.CreateBuilder(args);
 // ===========================
@@ -72,6 +78,28 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 });
+// ===========================
+// CLOUDINARY
+// ===========================
+builder.Services.AddSingleton(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+
+    var cloudName = config["CloudinarySettings:CloudName"];
+    var apiKey = config["CloudinarySettings:ApiKey"];
+    var apiSecret = config["CloudinarySettings:ApiSecret"];
+
+    Console.WriteLine($"Cloudinary Key: {apiKey}");
+
+    var account = new Account(cloudName, apiKey, apiSecret);
+    var cloudinary = new Cloudinary(account);
+    cloudinary.Api.Secure = true;
+    return cloudinary;
+});
+
+
+builder.Services.Configure<IISServerOptions>(o => o.MaxRequestBodySize = 209715200);
+builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 209715200);
 
 // ===========================
 // DATABASE CONFIGURATION
@@ -246,6 +274,9 @@ builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterDtoValidator>();
 builder.Services.AddValidatorsFromAssemblyContaining<LoginDtoValidator>();
+builder.Services.AddScoped<CloudinaryService>();
+builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 
 // ===========================

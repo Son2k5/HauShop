@@ -16,6 +16,7 @@ namespace api.Models.Entities
         public string LastName { get; set; }
         public string PasswordHash { get; set; }
         public string? MerchantId { get; set; }
+        public string? AvatarPublicId { get; set; }
         public Merchant? Merchant { get; set; }
         public Provider Provider { get; set; }
         public string? GoogleId { get; set; }

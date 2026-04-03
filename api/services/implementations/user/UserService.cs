@@ -1,0 +1,106 @@
+using api.Data;
+using api.DTOs.User;
+using api.Repositories.Interfaces;
+using api.Services.Interfaces;
+using api.services.interfaces.cloud;
+using Microsoft.AspNetCore.Http;
+using api.services.interfaces.user;
+
+namespace api.Services.Implementations
+{
+    public class UserService : IUserService
+    {
+        private readonly IUserRepository _userRepository;
+        private readonly ApplicationDbContext _context;
+        private readonly ICloudinaryService _cloudinaryService;
+
+        public UserService(
+            IUserRepository userRepository,
+            ApplicationDbContext context,
+            ICloudinaryService cloudinaryService
+        )
+        {
+            _userRepository = userRepository;
+            _context = context;
+            _cloudinaryService = cloudinaryService;
+        }
+
+        public async Task<UserDto> GetCurrentUserAsync(string userId)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+                throw new Exception("User not found");
+
+            return MapToDto(user);
+        }
+
+        public async Task<UserDto> UpdateAvatarAsync(string userId, IFormFile file)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+                throw new Exception("User not found");
+
+            // Validate file
+            if (file == null || file.Length == 0)
+                throw new ArgumentException("File is required");
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
+            var extension = Path.GetExtension(file.FileName).ToLower();
+
+            if (!allowedExtensions.Contains(extension))
+                throw new ArgumentException("Invalid file format");
+
+            if (file.Length > 5 * 1024 * 1024)
+                throw new ArgumentException("File size must be less than 5MB");
+
+            // Upload to Cloudinary
+            var uploadResult = await _cloudinaryService.UploadAvatarAsync(file, userId);
+
+            if (!uploadResult.Success)
+                throw new Exception(uploadResult.Error);
+
+            // Update DB
+            user.Avatar = uploadResult.Url;
+            user.Updated = DateTime.UtcNow;
+
+            _userRepository.Update(user);
+            await _context.SaveChangesAsync();
+
+            return MapToDto(user);
+        }
+
+        public async Task<UserDto> RemoveAvatarAsync(string userId)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+                throw new Exception("User not found");
+
+            user.Avatar = null;
+            user.Updated = DateTime.UtcNow;
+
+            _userRepository.Update(user);
+            await _context.SaveChangesAsync();
+
+            return MapToDto(user);
+        }
+
+        // 🔥 helper để tránh lặp code
+        private UserDto MapToDto(dynamic user)
+        {
+            return new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                PhoneNumber = user.PhoneNumber,
+                Avatar = user.Avatar,
+                Role = user.Role.ToString(),
+                MerchantId = user.MerchantId,
+                Created = user.Created,
+                IsOnline = user.IsOnline,
+                LastSeen = user.LastSeen
+            };
+        }
+    }
+}

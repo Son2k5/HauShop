@@ -97,12 +97,10 @@ namespace api.Migrations
                         .HasColumnType("varchar(2000)");
 
                     b.Property<string>("ImageContentType")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
                     b.Property<byte[]>("ImageData")
-                        .IsRequired()
                         .HasColumnType("longblob");
 
                     b.Property<bool>("IsActive")
@@ -712,14 +710,19 @@ namespace api.Migrations
             modelBuilder.Entity("api.Models.Entities.ProductVariant", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("varchar(255)");
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
 
                     b.Property<string>("Color")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
 
                     b.Property<DateTime?>("CreateAt")
-                        .HasColumnType("datetime");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime")
+                        .HasColumnName("createat")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<string>("CreateBy")
                         .HasColumnType("longtext");
@@ -731,25 +734,33 @@ namespace api.Migrations
                         .HasColumnType("longtext");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("tinyint(1)");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
 
                     b.Property<decimal>("Price")
-                        .HasColumnType("decimal(65,30)");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("ProductId")
                         .IsRequired()
+                        .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
 
                     b.Property<string>("Size")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
 
                     b.Property<string>("Sku")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
 
                     b.Property<int>("Stock")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<DateTime?>("UpdateAt")
                         .HasColumnType("datetime");
@@ -761,7 +772,15 @@ namespace api.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("ProductVariant");
+                    b.HasIndex("Sku")
+                        .IsUnique();
+
+                    b.ToTable("productvariant", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Variant_Price", "`Price` >= 0");
+
+                            t.HasCheckConstraint("CK_Variant_Stock", "`Stock` >= 0");
+                        });
                 });
 
             modelBuilder.Entity("api.Models.Entities.RefreshToken", b =>

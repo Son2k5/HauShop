@@ -16,5 +16,8 @@ namespace api.DTOs.User
         public string Role { get; set; }
         public string? MerchantId { get; set; }
         public DateTime Created { get; set; }
+        public bool? IsOnline { get; set; }
+        public DateTime? LastSeen { get; set; }
+
     }
 }
