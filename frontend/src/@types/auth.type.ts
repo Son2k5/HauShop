@@ -16,7 +16,7 @@ export interface RegisterDto {
   firstName: string;
   lastName: string;
   email: string;
-  phoneNumber: string;
+  phoneNumber?: string;
   password: string;
 }
 
@@ -48,17 +48,24 @@ export interface UserDto {
   firstName: string;
   lastName: string;
   phoneNumber: string;
-  avatar: string | null;
+  avatar?: string | null;
   role: Role;
-  provider: Provider;
+  provider?: Provider;
   isOnline: boolean;
   lastSeen: string | null;
   created: string;
+
 }
 
 export interface AuthResponse {
   message: string;
   user: UserDto;
+}
+
+export interface UpdateProfileDto {
+    firstName?: string;
+    lastName?: string;
+    phoneNumber?: string;
 }
 
 // ── Auth State ────────────────────────────────────────────────────

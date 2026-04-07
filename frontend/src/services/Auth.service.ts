@@ -1,58 +1,61 @@
-
+import api from "../api/apiClient";
 import type {
-  RegisterDto,
-  LoginDto,
-  ForgotPasswordDto,
-  ResetPasswordDto,
-  ChangePasswordDto,
-  AuthResponse,
-  ApiError,
-} from "../@types/auth.type.ts";
-const BASE = "https://localhost:7288/api/auth";
+    RegisterDto,
+    LoginDto,
+    ForgotPasswordDto,
+    ResetPasswordDto,
+    ChangePasswordDto,
+    AuthResponse
+} from "../@types/auth.type";
 
-async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",   
-    ...init,
-  });
- 
-  let data: unknown = null;
-  try { data = await res.json(); } catch {  }
- 
-  if (!res.ok) {
-    const err = data as { message?: string; errors?: Record<string, string[]> } | null;
-    throw { 
-        message:    err?.message ?? `HTTP ${res.status}`,
-        statusCode: res.status,
-        errors:     err?.errors ?? null, 
-    } as ApiError;
-  }
- 
-  return data as T;
-}
-
-// Auth Service
-export const authService = {
-    register: (dto:RegisterDto) =>
-        req<AuthResponse>("/register", {method:  "POST", body:JSON.stringify(dto)}),
-    login: (dto:LoginDto) =>
-        req<AuthResponse>("/login", {method:  "POST", body:JSON.stringify(dto)}),
-    logout: () =>
-        req<{message : string}>("/logout", {method:  "POST"}),
-    refreshToken: () =>
-        req<{message: string}>("/refresh-token", {method:  "POST"}),
-    resetPassword: (dto: ResetPasswordDto) =>
-        req<{message: string}>("/reset-password",{method:"POST", body: JSON.stringify(dto)}),
-    forgotPassword: (dto: ForgotPasswordDto) =>
-        req<{message: string}>("/forgot-password", {method: "POST", body: JSON.stringify(dto)}),
-    changePassword : (dto: ChangePasswordDto) =>
-        req<{message: string}>("/change-password",{method:"POST", body: JSON.stringify(dto)}),
-    revokeToke: () =>
-        req<{message: string}>("/revoke-token",{method:"POST"}),
-
-    loginWithGoogle: () =>{
-        window.location.href ="https://localhost:7288/api/auth/google" 
+// Helper để extract error từ Axios error
+function extractError(error: any): string {
+    if (error.response?.data?.errors) {
+        // FluentValidation errors - object với key là field, value là array messages
+        const errors = error.response.data.errors;
+        return Object.values(errors).flat().join(', ');
     }
-
+    return error.response?.data?.message || error.message || 'An error occurred';
 }
+
+export const authService = {
+    register: async (dto: RegisterDto) => {
+        try {
+            const res = await api.post<AuthResponse>("/auth/register", dto);
+            return res.data;
+        } catch (error: any) {
+            throw new Error(extractError(error));
+        }
+    },
+
+    login: async (dto: LoginDto) => {
+        try {
+            const res = await api.post<AuthResponse>("/auth/login", dto);
+            return res.data;
+        } catch (error: any) {
+            throw new Error(extractError(error));
+        }
+    },
+
+    logout: () => 
+        api.post("/auth/logout").then(res => res.data),
+
+    refreshToken: () => 
+        api.post("/auth/refresh-token").then(res => res.data),
+
+    resetPassword: (dto: ResetPasswordDto) => 
+        api.post("/auth/reset-password", dto).then(res => res.data),
+
+    forgotPassword: (dto: ForgotPasswordDto) => 
+        api.post("/auth/forgot-password", dto).then(res => res.data),
+
+    changePassword: (dto: ChangePasswordDto) => 
+        api.post("/auth/change-password", dto).then(res => res.data),
+
+    revokeToken: () => 
+        api.post("/auth/revoke-token").then(res => res.data),
+
+    loginWithGoogle: () => {
+        window.location.href = "https://localhost:7288/api/auth/google";
+    }
+};

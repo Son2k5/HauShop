@@ -2,15 +2,14 @@ using api.DTOs.cloud;
 using api.services.interfaces.cloud;
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
-using Microsoft.AspNetCore.Http;
 
 namespace api.services.implementations.cloud
 {
     public class CloudinaryService : ICloudinaryService
     {
         private readonly Cloudinary _cloudinary;
-        // Gom tất cả vào 1 đường dẫn duy nhất
-        private const string FOLDER_PATH = "haushop/product";
+
+        private const string PRODUCT_FOLDER = "haushop/product";
         private const string AVATAR_FOLDER = "haushop/avatars";
 
         public CloudinaryService(Cloudinary cloudinary)
@@ -18,11 +17,12 @@ namespace api.services.implementations.cloud
             _cloudinary = cloudinary;
         }
 
+        // ── Product images ────────────────────────────────────────────────────
+
         public async Task<UploadResultDto> UploadAsync(IFormFile file)
         {
             var nameOnly = Path.GetFileNameWithoutExtension(file.FileName).ToLower();
-            // PublicId cố định: haushop/product/ten-file
-            var publicId = $"{FOLDER_PATH}/{nameOnly}";
+            var publicId = $"{PRODUCT_FOLDER}/{nameOnly}";
 
             await using var stream = file.OpenReadStream();
 
@@ -40,7 +40,7 @@ namespace api.services.implementations.cloud
             return new UploadResultDto
             {
                 FileName = nameOnly,
-                SubFolder = FOLDER_PATH,
+                SubFolder = PRODUCT_FOLDER,
                 PublicId = result.PublicId,
                 Url = result.SecureUrl?.ToString(),
                 Success = result.Error == null,
@@ -69,8 +69,13 @@ namespace api.services.implementations.cloud
             return _cloudinary.Api.UrlImgUp.BuildUrl(publicId);
         }
 
-        // ==================== AVATAR METHODS (Thêm mới) ====================
+        // ── Avatar ────────────────────────────────────────────────────────────
 
+        /// <summary>
+        /// Upload ảnh avatar cho user.
+        /// Validate định dạng và kích thước file.
+        /// Tự động crop về 400x400, gravity face, tối ưu chất lượng.
+        /// </summary>
         public async Task<UploadResultDto> UploadAvatarAsync(IFormFile file, string userId)
         {
             if (file == null || file.Length == 0)
@@ -81,12 +86,11 @@ namespace api.services.implementations.cloud
             if (!allowedExtensions.Contains(extension))
                 throw new ArgumentException("Invalid file format. Allowed: jpg, jpeg, png, webp, gif");
 
-            // Validate file size (max 5MB)
             if (file.Length > 5 * 1024 * 1024)
                 throw new ArgumentException("File size must be less than 5MB");
 
-            // Tạo publicId duy nhất cho avatar
-            var timestamp = DateTime.UtcNow.Ticks;
+            // PublicId dùng userId + timestamp để tránh cache ảnh cũ trên CDN
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             var publicId = $"{AVATAR_FOLDER}/{userId}_{timestamp}";
 
             await using var stream = file.OpenReadStream();
@@ -95,14 +99,14 @@ namespace api.services.implementations.cloud
             {
                 File = new FileDescription(file.FileName, stream),
                 PublicId = publicId,
-                Overwrite = true,
+                Overwrite = true,      // false vì mỗi lần upload là publicId mới (có timestamp)
                 UseFilename = true,
-                UniqueFilename = true,
+                UniqueFilename = false,
                 Transformation = new Transformation()
                     .Width(400)
                     .Height(400)
                     .Crop("fill")
-                    .Gravity("face")
+                    .Gravity("face")    // Căn khuôn mặt vào trung tâm
                     .Quality("auto")
                     .FetchFormat("auto")
             };
@@ -119,13 +123,18 @@ namespace api.services.implementations.cloud
                 Error = result.Error?.Message,
             };
         }
+
+        /// <summary>
+        /// Xóa ảnh avatar trên Cloudinary theo publicId.
+        /// Chỉ xóa nếu publicId thuộc thư mục avatars để bảo vệ ảnh khác.
+        /// </summary>
         public async Task<bool> DeleteAvatarAsync(string publicId)
         {
             if (string.IsNullOrEmpty(publicId))
                 return false;
 
-            // Chỉ xóa nếu publicId thuộc thư mục avatars
-            if (!publicId.Contains(AVATAR_FOLDER))
+            // Bảo vệ: chỉ cho phép xóa file trong thư mục avatars
+            if (!publicId.StartsWith(AVATAR_FOLDER, StringComparison.OrdinalIgnoreCase))
                 return false;
 
             var result = await _cloudinary.DestroyAsync(new DeletionParams(publicId));
@@ -134,8 +143,7 @@ namespace api.services.implementations.cloud
 
         public string GetDefaultAvatarUrl()
         {
-            // Có thể trả về URL avatar mặc định từ Cloudinary hoặc từ local
-            return "https://res.cloudinary.com/your-cloud-name/image/upload/v1/haushop/avatars/default-avatar";
+            return string.Empty; // Trả về empty → frontend dùng SVG fallback
         }
     }
 }

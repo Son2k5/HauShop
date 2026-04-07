@@ -5,7 +5,7 @@ export interface UploadResponse {
 }
 
 // Dán cứng URL Backend của bạn tại đây
-const BASE_API = "http://localhost:5271";
+const BASE_API = "https://localhost:7288";
 
 /**
  * Hàm upload hàng loạt ảnh với cơ chế chia nhỏ (Batching)

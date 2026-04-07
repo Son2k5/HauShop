@@ -320,6 +320,23 @@ namespace api.Services.Implementations.Auth
                 otpCode
             );
         }
+        public async Task<UserDto> GetCurrentUserAsync(string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                throw new ArgumentException("User ID is required");
+            }
+
+            var user = await _userRepository.GetByIdAsync(userId);
+
+            if (user == null)
+            {
+                throw new KeyNotFoundException("User not found");
+            }
+
+            // Sử dụng Mapper để chuyển đổi từ Entity sang DTO
+            return UserMapper.MapToUserDto(user);
+        }
 
         public async Task ResetPasswordAsync(ResetPasswordDto dto)
         {

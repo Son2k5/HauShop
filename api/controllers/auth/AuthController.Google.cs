@@ -30,9 +30,9 @@ namespace api.Controllers
         [HttpGet("google/callback")]
         [AllowAnonymous]
         public async Task<IActionResult> GoogleCallback(
-            [FromQuery] string? code,
-            [FromQuery] string? state,
-            [FromQuery] string? error)
+     [FromQuery] string? code,
+     [FromQuery] string? state,
+     [FromQuery] string? error)
         {
             var frontendUrl = _config["Google:FrontendUrl"] ?? "http://localhost:3000";
 
@@ -42,20 +42,26 @@ namespace api.Controllers
             if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(state))
                 return Redirect($"{frontendUrl}/signin?error=invalid_request");
 
-            // Lấy state từ cookie để đối chiếu
+            // 1. Lấy state từ cookie
             var expectedState = Request.Cookies["oauth_state"];
-            Response.Cookies.Delete("oauth_state"); // Xóa ngay sau khi dùng
+
+            // 2. Kiểm tra NGHIÊM NGẶT: Nếu không có state trong cookie thì chặn luôn
+            if (string.IsNullOrEmpty(expectedState))
+            {
+                _logger.LogWarning("Google Auth failed: oauth_state cookie is missing.");
+                return Redirect($"{frontendUrl}/signin?error=session_expired");
+            }
+
+            Response.Cookies.Delete("oauth_state");
 
             try
             {
-                // Gọi service xử lý login/register bằng Google code
-                var result = await _googleAuthService.HandleCallbackAsync(code, state, expectedState ?? "");
+                // 3. Truyền expectedState (chắc chắn không null) vào service
+                var result = await _googleAuthService.HandleCallbackAsync(code, state, expectedState);
 
-                // Tận dụng các hàm có sẵn trong file AuthController.cs 
                 SetAccessTokenCookie(result.AccessToken);
                 SetRefreshTokenCookie(result.RefreshToken);
 
-                // Đăng nhập thành công, điều hướng về trang chủ Frontend
                 return Redirect($"{frontendUrl}/");
             }
             catch (Exception ex)

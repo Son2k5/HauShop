@@ -1,178 +1,326 @@
-
-
 import React, {
-  createContext,
-  useCallback,
-  useEffect,
-  useMemo,
-  useReducer,
-  useRef,
-} from "react";
-import { authService } from "../services/Auth.service";
+    createContext,
+    useCallback,
+    useEffect,
+    useMemo,
+    useReducer,
+} from 'react';
+import { authService } from '../services/Auth.service';
+import { userService } from '../services/userService';
 import type {
-  AuthState,
-  ChangePasswordDto,
-  LoginDto,
-  RegisterDto,
-  UserDto,
-} from "../@types/auth.type";
+    AuthState,
+    ChangePasswordDto,
+    LoginDto,
+    RegisterDto,
+    UserDto,
+} from '../@types/auth.type';
 
-// ── Storage helpers (export để hooks dùng) ────────────────────────
-const STORAGE_KEY = "_u";
+// ── Storage ──────────────────────────────────────────────────────────────────
+// Chỉ lưu UserDto (thông tin hiển thị UI) vào localStorage.
+// accessToken và refreshToken luôn nằm trong HttpOnly cookie — KHÔNG lưu ở đây.
+const STORAGE_KEY = '_u';
 
-export const storage = {
-  load:  (): UserDto | null => { try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) as UserDto : null; } catch { return null; } },
-  save:  (u: UserDto)       => localStorage.setItem(STORAGE_KEY, JSON.stringify(u)),
-  clear: ()                  => localStorage.removeItem(STORAGE_KEY),
+const storage = {
+    load: (): UserDto | null => {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            return raw ? (JSON.parse(raw) as UserDto) : null;
+        } catch {
+            return null;
+        }
+    },
+    save: (u: UserDto): void => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
+    },
+    clear: (): void => {
+        localStorage.removeItem(STORAGE_KEY);
+    },
 };
 
-// ── Reducer ───────────────────────────────────────────────────────
+// ── State & Reducer ───────────────────────────────────────────────────────────
+type State = {
+    user: UserDto | null;
+    status: 'idle' | 'authenticated' | 'unauthenticated';
+    loading: boolean;
+    error: string | null;
+};
+
 type Action =
-  | { type: "LOADING" }
-  | { type: "SET_USER";    payload: UserDto }
-  | { type: "SIGN_OUT" }
-  | { type: "SET_ERROR";   payload: string }
-  | { type: "CLEAR_ERROR" };
+    | { type: 'LOADING' }
+    | { type: 'SET_USER'; payload: UserDto }
+    | { type: 'SIGN_OUT' }
+    | { type: 'SET_ERROR'; payload: string }
+    | { type: 'CLEAR_ERROR' };
 
-function reducer(state: AuthState, action: Action): AuthState {
-  switch (action.type) {
-    case "LOADING":     return { ...state, status: "loading",           error: null };
-    case "SET_USER":    return { user: action.payload, status: "authenticated",  error: null };
-    case "SIGN_OUT":    return { user: null,           status: "unauthenticated", error: null };
-    case "SET_ERROR":   return { ...state,             status: "unauthenticated", error: action.payload };
-    case "CLEAR_ERROR": return { ...state,             error: null };
-    default:            return state;
-  }
+function reducer(state: State, action: Action): State {
+    switch (action.type) {
+        case 'LOADING':
+            return { ...state, loading: true, error: null };
+        case 'SET_USER':
+            return {
+                user: action.payload,
+                status: 'authenticated',
+                loading: false,
+                error: null,
+            };
+        case 'SIGN_OUT':
+            return {
+                user: null,
+                status: 'unauthenticated',
+                loading: false,
+                error: null,
+            };
+        case 'SET_ERROR':
+            return {
+                ...state,
+                loading: false,
+                // Không đổi status khi có lỗi - chỉ đổi khi SIGN_OUT hoặc LOGIN failed
+                // Điều này tránh logout user khi upload avatar hoặc các operation khác fail
+                error: action.payload,
+            };
+        case 'CLEAR_ERROR':
+            return { ...state, error: null };
+        default:
+            return state;
+    }
 }
 
-// Khởi tạo đồng bộ từ localStorage:
-// - có cached user → "loading" (verify token ở background)
-// - không có       → "unauthenticated" (không cần gọi API)
-function getInitialState(): AuthState {
-  const user = storage.load();
-  return { user, status: user ? "loading" : "unauthenticated", error: null };
+function getInitialState(): State {
+    const user = storage.load();
+    return {
+        user,
+        status: user ? 'authenticated' : 'unauthenticated',
+        loading: false,
+        error: null,
+    };
 }
 
-// ── Context types (export để hooks import) ────────────────────────
-export interface AuthStateValue extends AuthState {
-  isAuthenticated: boolean;
-  isLoading:       boolean;
+// ── Context types ────────────────────────────────────────────────────────────
+export interface AuthStateValue {
+    user: UserDto | null;
+    status: 'idle' | 'authenticated' | 'unauthenticated';
+    loading: boolean;
+    error: string | null;
+    isAuthenticated: boolean;
 }
 
 export interface AuthActionsValue {
-  login:           (dto: LoginDto)             => Promise<UserDto>;
-  register:        (dto: RegisterDto)          => Promise<UserDto>;
-  logout:          ()                          => Promise<void>;
-  changePassword:  (dto: ChangePasswordDto)    => Promise<void>;
-  loginWithGoogle: ()                          => void;
-  clearError:      ()                          => void;
-  patchUser:       (partial: Partial<UserDto>) => void;
+    login: (dto: LoginDto) => Promise<UserDto>;
+    register: (dto: RegisterDto) => Promise<UserDto>;
+    loginWithGoogle: () => void;
+    logout: () => Promise<void>;
+    changePassword: (dto: ChangePasswordDto) => Promise<void>;
+    updateAvatar: (file: File) => Promise<void>;
+    removeAvatar: () => Promise<void>;
+    refreshUser: () => Promise<void>;
+    clearError: () => void;
 }
 
-// ── Context objects (export để hooks dùng — components không import trực tiếp) ──
-export const AuthStateContext   = createContext<AuthStateValue   | null>(null);
+export interface AuthContextType extends State {
+    isAuthenticated: boolean;
+    login: (dto: LoginDto) => Promise<UserDto>;
+    register: (dto: RegisterDto) => Promise<UserDto>;
+    loginWithGoogle: () => void;
+    logout: () => Promise<void>;
+    changePassword: (dto: ChangePasswordDto) => Promise<void>;
+    updateAvatar: (file: File) => Promise<void>;
+    removeAvatar: () => Promise<void>;
+    refreshUser: () => Promise<void>;
+    clearError: () => void;
+}
+
+export const AuthStateContext = createContext<AuthStateValue | null>(null);
 export const AuthActionsContext = createContext<AuthActionsValue | null>(null);
+export const AuthContext = createContext<AuthContextType | null>(null);
 
-// ── Provider ──────────────────────────────────────────────────────
+// ── Provider ──────────────────────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, getInitialState);
-  const isMounted         = useRef(true);
+    const [state, dispatch] = useReducer(reducer, undefined, getInitialState);
 
-  useEffect(() => {
-    isMounted.current = true;
-    return () => { isMounted.current = false; };
-  }, []);
+    // Sync nhiều tab: nếu tab khác logout (xóa _u) thì tab này cũng sign out
+    useEffect(() => {
+        const handler = (e: StorageEvent) => {
+            if (e.key === STORAGE_KEY && e.newValue === null) {
+                dispatch({ type: 'SIGN_OUT' });
+            }
+        };
+        window.addEventListener('storage', handler);
+        return () => window.removeEventListener('storage', handler);
+    }, []);
 
-  // Verify session 1 lần khi mount — chỉ nếu có cached user
-  useEffect(() => {
-    if (state.status !== "loading") return;
-    let cancelled = false;
+    // ── Actions ───────────────────────────────────────────────────────────────
 
-    authService.refreshToken()
-      .then(() => {
-        if (cancelled || !isMounted.current) return;
-        dispatch({ type: "SET_USER", payload: state.user! });
-      })
-      .catch(() => {
-        if (cancelled || !isMounted.current) return;
+    const login = useCallback(async (dto: LoginDto): Promise<UserDto> => {
+        dispatch({ type: 'LOADING' });
+        try {
+            const response = await authService.login(dto);
+            // Xử lý cả trường hợp backend trả về PascalCase và camelCase
+            const user = response.user || (response as any).User;
+
+            if (!user) {
+                throw new Error('User data not found in response');
+            }
+
+            storage.save(user);
+            dispatch({ type: 'SET_USER', payload: user });
+            return user;
+        } catch (e: unknown) {
+            const errorMessage = e instanceof Error ? e.message : 'Login failed';
+            dispatch({ type: 'SET_ERROR', payload: errorMessage });
+            throw e;
+        }
+    }, []);
+
+    const register = useCallback(async (dto: RegisterDto): Promise<UserDto> => {
+        dispatch({ type: 'LOADING' });
+        try {
+            const response = await authService.register(dto);
+            // Xử lý cả trường hợp backend trả về PascalCase và camelCase
+            const user = response.user || (response as any).User;
+
+            if (!user) {
+                throw new Error('User data not found in response');
+            }
+
+            storage.save(user);
+            dispatch({ type: 'SET_USER', payload: user });
+            return user;
+        } catch (e: unknown) {
+            const errorMessage = e instanceof Error ? e.message : 'Register failed';
+            dispatch({ type: 'SET_ERROR', payload: errorMessage });
+            throw e;
+        }
+    }, []);
+
+    const loginWithGoogle = useCallback(() => {
+        authService.loginWithGoogle();
+    }, []);
+
+    const logout = useCallback(async (): Promise<void> => {
+        try {
+            await authService.logout();
+        } catch {
+            // Dù API fail vẫn clear local state
+        }
         storage.clear();
-        dispatch({ type: "SIGN_OUT" });
-      });
+        dispatch({ type: 'SIGN_OUT' });
+    }, []);
 
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // chỉ chạy 1 lần khi mount
+    const changePassword = useCallback(async (dto: ChangePasswordDto): Promise<void> => {
+        await authService.changePassword(dto);
+        // Đổi mật khẩu → revoke tất cả token → bắt login lại
+        storage.clear();
+        dispatch({ type: 'SIGN_OUT' });
+    }, []);
 
-  // ── Actions — useCallback giữ reference ổn định ───────────────
-  const login = useCallback(async (dto: LoginDto): Promise<UserDto> => {
-    dispatch({ type: "LOADING" });
-    try {
-      const { user } = await authService.login(dto);
-      storage.save(user);
-      dispatch({ type: "SET_USER", payload: user });
-      return user;
-    } catch (e) {
-      dispatch({ type: "SET_ERROR", payload: (e as { message?: string }).message ?? "Login failed" });
-      throw e;
-    }
-  }, []);
+    /**
+     * updateAvatar: upload file → backend xử lý Cloudinary → trả UserDto mới.
+     * Dùng useCallback không phụ thuộc state.user để tránh recreate hàm khi avatar thay đổi.
+     */
+    const updateAvatar = useCallback(async (file: File): Promise<void> => {
+        dispatch({ type: 'LOADING' });
+        try {
+            const res = await userService.updateAvatar(file);
+            storage.save(res.user);
+            dispatch({ type: 'SET_USER', payload: res.user });
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : (e as { message?: string })?.message ?? 'Upload failed';
+            dispatch({ type: 'SET_ERROR', payload: msg });
+            throw e;
+        }
+    }, []); // Không phụ thuộc state.user — check auth ở backend qua cookie
 
-  const register = useCallback(async (dto: RegisterDto): Promise<UserDto> => {
-    dispatch({ type: "LOADING" });
-    try {
-      const { user } = await authService.register(dto);
-      storage.save(user);
-      dispatch({ type: "SET_USER", payload: user });
-      return user;
-    } catch (e) {
-      dispatch({ type: "SET_ERROR", payload: (e as { message?: string }).message ?? "Registration failed" });
-      throw e;
-    }
-  }, []);
+    /**
+     * removeAvatar: xóa avatar trên Cloudinary + DB → trả UserDto mới (avatar = null).
+     */
+    const removeAvatar = useCallback(async (): Promise<void> => {
+        dispatch({ type: 'LOADING' });
+        try {
+            const res = await userService.removeAvatar();
+            storage.save(res.user);
+            dispatch({ type: 'SET_USER', payload: res.user });
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : (e as { message?: string })?.message ?? 'Remove failed';
+            dispatch({ type: 'SET_ERROR', payload: msg });
+            throw e;
+        }
+    }, []); // Không phụ thuộc state.user
 
-  const logout = useCallback(async (): Promise<void> => {
-    dispatch({ type: "LOADING" });
-    try { await authService.logout(); } catch { /* clear dù server lỗi */ }
-    storage.clear();
-    dispatch({ type: "SIGN_OUT" });
-  }, []);
+    /**
+     * refreshUser: lấy thông tin user mới nhất từ server.
+     * Dùng khi component mount để đảm bảo data đồng bộ với DB.
+     * Chỉ dispatch nếu user thực sự thay đổi để tránh render loop.
+     */
+    const refreshUser = useCallback(async (): Promise<void> => {
+        try {
+            const freshUser = await userService.getCurrentUser();
+            const currentUser = storage.load();
 
-  const changePassword = useCallback(async (dto: ChangePasswordDto): Promise<void> => {
-    await authService.changePassword(dto);
-    storage.clear();
-    dispatch({ type: "SIGN_OUT" });
-  }, []);
+            // Chỉ dispatch nếu user thực sự thay đổi
+            if (JSON.stringify(freshUser) !== JSON.stringify(currentUser)) {
+                storage.save(freshUser);
+                dispatch({ type: 'SET_USER', payload: freshUser });
+            }
+        } catch {
+            // Nếu cookie hết hạn và refresh cũng fail → interceptor đã redirect /signin
+        }
+    }, []);
 
-  const loginWithGoogle = useCallback(() => authService.loginWithGoogle(), []);
+    const clearError = useCallback(() => {
+        dispatch({ type: 'CLEAR_ERROR' });
+    }, []);
 
-  const clearError = useCallback(() => dispatch({ type: "CLEAR_ERROR" }), []);
+    // ── Memo ──────────────────────────────────────────────────────────────────
+    const stateValue = useMemo<AuthStateValue>(
+        () => ({
+            user: state.user,
+            status: state.status,
+            loading: state.loading,
+            error: state.error,
+            isAuthenticated: state.status === 'authenticated',
+        }),
+        [state]
+    );
 
-  const patchUser = useCallback((partial: Partial<UserDto>) => {
-    const current = storage.load();
-    if (!current) return;
-    const updated = { ...current, ...partial };
-    storage.save(updated);
-    dispatch({ type: "SET_USER", payload: updated });
-  }, []);
+    const actionsValue = useMemo<AuthActionsValue>(
+        () => ({
+            login,
+            register,
+            loginWithGoogle,
+            logout,
+            changePassword,
+            updateAvatar,
+            removeAvatar,
+            refreshUser,
+            clearError,
+        }),
+        [login, register, loginWithGoogle, logout, changePassword, updateAvatar, removeAvatar, refreshUser, clearError]
+    );
 
-  // ── Memoized context values ────────────────────────────────────
-  const stateValue = useMemo<AuthStateValue>(() => ({
-    ...state,
-    isAuthenticated: state.status === "authenticated",
-    isLoading:       state.status === "loading" || state.status === "idle",
-  }), [state]);
+    const contextValue = useMemo<AuthContextType>(
+        () => ({
+            ...state,
+            isAuthenticated: state.status === 'authenticated',
+            login,
+            register,
+            loginWithGoogle,
+            logout,
+            changePassword,
+            updateAvatar,
+            removeAvatar,
+            refreshUser,
+            clearError,
+        }),
+        [state, login, register, loginWithGoogle, logout, changePassword, updateAvatar, removeAvatar, refreshUser, clearError]
+    );
 
-  // actionsValue KHÔNG phụ thuộc state → reference ổn định mãi mãi
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const actionsValue = useMemo<AuthActionsValue>(() => ({
-    login, register, logout, changePassword, loginWithGoogle, clearError, patchUser,
-  }), []); // intentionally empty — callbacks đã stable
-
-  return (
-    <AuthStateContext.Provider value={stateValue}>
-      <AuthActionsContext.Provider value={actionsValue}>
-        {children}
-      </AuthActionsContext.Provider>
-    </AuthStateContext.Provider>
-  );
+    return (
+        <AuthStateContext.Provider value={stateValue}>
+            <AuthActionsContext.Provider value={actionsValue}>
+                <AuthContext.Provider value={contextValue}>
+                    {children}
+                </AuthContext.Provider>
+            </AuthActionsContext.Provider>
+        </AuthStateContext.Provider>
+    );
 }

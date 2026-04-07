@@ -18,6 +18,8 @@ namespace api.Services.Interfaces.Auth
 
         Task ResetPasswordAsync(ResetPasswordDto dto);
         Task RevokeRefreshTokenAsync(string userId, string refreshToken);
+
+        Task<UserDto> GetCurrentUserAsync(string userId);
     }
 
 }

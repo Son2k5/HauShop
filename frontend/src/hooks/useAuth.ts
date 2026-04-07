@@ -11,15 +11,16 @@ export function useAuth() {
     status:          state.status,
     error:           state.error,
     isAuthenticated: state.isAuthenticated,
-    isLoading:       state.isLoading,
+    loading:         state.loading,
  
     // Actions
     login:           actions.login,
     register:        actions.register,
     logout:          actions.logout,
     changePassword:  actions.changePassword,
-    loginWithGoogle: actions.loginWithGoogle,
+    updateAvatar:    actions.updateAvatar,
+    removeAvatar:    actions.removeAvatar,
+    refreshUser:     actions.refreshUser,
     clearError:      actions.clearError,
-    patchUser:       actions.patchUser,
   };
 }
