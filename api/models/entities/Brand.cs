@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
-using api.Models.Enum;
+using api.models.enums;
 
-namespace api.Models.Entities
+namespace api.models.entities
 {
     public class Brand
     {

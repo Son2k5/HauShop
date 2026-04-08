@@ -1,10 +1,10 @@
 using MailKit.Net.Smtp;
 using MimeKit;
-using api.Models.Email;
-using api.Services.Interfaces.Auth;
+using api.models.email;
+using api.services.interfaces.auth;
 using Microsoft.Extensions.Options;
 
-namespace api.Services.Implementations.Auth
+namespace api.services.implementations.auth
 {
     public class EmailService : IEmailService
     {

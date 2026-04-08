@@ -2,7 +2,7 @@
 
 using System.Text.Json.Serialization;
 
-namespace api.DTOs.Auth
+namespace api.DTOs.user
 {
     public class GoogleUserInfoDto
     {

@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using api.Models.Entities;
+using api.models.entities;
 
-namespace api.Models.Entities
+namespace api.models.entities
 {
     public class Wishlist
     {

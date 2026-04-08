@@ -1,6 +1,6 @@
-using api.Models.Entities;
+using api.models.entities;
 
-namespace api.Repositories.Interfaces
+namespace api.repositories.interfaces
 {
     public interface IUserRepository : IRepository<User>
     {

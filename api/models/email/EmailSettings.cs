@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using MailKit.Security;
 
-namespace api.Models.Email
+namespace api.models.email
 {
     public class EmailSettings
     {

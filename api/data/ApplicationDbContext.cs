@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using api.Models.Entities;
-using api.Models.Enum;
+using api.models.entities;
+using api.models.enums;
 
-namespace api.Data
+namespace api.data
 {
     public class ApplicationDbContext : DbContext
     {

@@ -1,4 +1,4 @@
-namespace api.Services.Interfaces.Auth
+namespace api.services.interfaces.auth
 {
     public interface IEmailService
     {

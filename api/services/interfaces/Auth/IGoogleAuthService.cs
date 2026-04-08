@@ -1,7 +1,7 @@
 
-using api.DTOs.User;
+using api.DTOs.user;
 
-namespace api.Services.Interfaces.Auth
+namespace api.services.interfaces.auth
 {
     public interface IGoogleAuthService
     {

@@ -1,18 +1,17 @@
 
 using System.Text.Json;
-using api.Data;
-using api.DTOs.Auth;
-using api.DTOs.User;
-using api.Repositories.Interfaces;
-using api.Services.Interfaces;
-using api.Services.Interfaces.Auth;
+using api.data;
+using api.DTOs.user;
+using api.repositories.interfaces;
+using api.services.interfaces;
+using api.services.interfaces.auth;
 using System.Net.Http.Headers;
-using api.Models.Entities;
-using api.Models.Enum;
-using api.Helpers;
+using api.models.entities;
+using api.models.enums;
+using api.helpers;
 using Microsoft.EntityFrameworkCore;
 
-namespace api.Services.Implementations.Auth
+namespace api.services.implementations.auth
 {
     public class GoogleAuthService : IGoogleAuthService
     {

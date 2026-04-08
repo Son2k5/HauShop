@@ -1,8 +1,8 @@
-using api.DTOs.User;
+using api.DTOs.user;
 using FluentValidation;
 
 
-namespace api.Validators.Auth
+namespace api.validators.auth
 {
     public class LoginDtoValidator : AbstractValidator<LoginDto>
     {

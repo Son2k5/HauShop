@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using api.Services.Interfaces.Auth;
-using api.DTOs.User;
+using api.services.interfaces.auth;
+using api.DTOs.user;
 using FluentValidation;
 
-namespace api.Controllers
+namespace api.controllers
 {
     [ApiController]
     [Route("api/[controller]")]

@@ -1,12 +1,12 @@
-using api.Data;
-using api.DTOs.User;
-using api.Repositories.Interfaces;
-using api.Services.Interfaces;
+using api.data;
+using api.DTOs.user;
+using api.repositories.interfaces;
+using api.services.interfaces;
 using api.services.interfaces.cloud;
 using Microsoft.AspNetCore.Http;
 using api.services.interfaces.user;
 
-namespace api.Services.Implementations
+namespace api.services.implementations
 {
     public class UserService : IUserService
     {

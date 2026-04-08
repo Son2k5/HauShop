@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
-using api.Data;
-using api.Repositories.Interfaces;
+using api.data;
+using api.repositories.interfaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace api.Repositories.Implementations
+namespace api.repositories.implementations
 {
     public class Repository<T> : IRepository<T> where T : class
     {

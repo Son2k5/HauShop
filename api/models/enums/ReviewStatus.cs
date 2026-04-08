@@ -1,6 +1,6 @@
-namespace api.Models.Enum
+namespace api.models.enums
 {
-    public enum MerchantStatus
+    public enum ReviewStatus
     {
         WaitingApproval = 0,
         Rejected = 1,

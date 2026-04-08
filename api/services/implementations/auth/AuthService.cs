@@ -1,15 +1,15 @@
-using api.Data;
-using api.Helpers;
-using api.Services.Interfaces;
+using api.data;
+using api.helpers;
+using api.services.interfaces;
 using Microsoft.EntityFrameworkCore;
-using api.DTOs.User;
-using api.Models.Enum;
-using api.Models.Entities;
-using api.Mappings;
-using api.Repositories.Interfaces;
-using api.Services.Interfaces.Auth;
+using api.DTOs.user;
+using api.models.enums;
+using api.models.entities;
+using api.mappings;
+using api.repositories.interfaces;
+using api.services.interfaces.auth;
 
-namespace api.Services.Implementations.Auth
+namespace api.services.implementations.auth
 {
     public class AuthService : IAuthService
     {

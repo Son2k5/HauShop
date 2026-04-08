@@ -1,26 +1,25 @@
 using System.Text;
-using api.Data;
-using api.Models.Email;
-using api.Repositories.Implementations;
-using api.Repositories.Interfaces;
-using api.Services.Implementations.Auth;
-using api.Services.Interfaces;
-using api.Services.Interfaces.Auth;
+using api.data;
+using api.models.email;
+using api.repositories.implementations;
+using api.repositories.interfaces;
+using api.services.implementations.auth;
+using api.services.interfaces.auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using DotNetEnv;
 using FluentValidation;
-using FluentValidation.AspNetCore;
-using api.Validators;
-using api.Validators.Auth;
+using api.validators;
+using api.validators.auth;
 using Microsoft.AspNetCore.Mvc;
 using CloudinaryDotNet;
 using api.services.implementations.cloud;
 using api.services.interfaces.cloud;
 using api.services.interfaces.user;
-using api.Services.Implementations;
+using api.services.implementations;
+using api.services.interfaces;
+using api.services.implementations.seed;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -277,6 +276,7 @@ builder.Services.AddValidatorsFromAssemblyContaining<LoginDtoValidator>();
 builder.Services.AddScoped<CloudinaryService>();
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<SeedService>();
 
 
 // ===========================

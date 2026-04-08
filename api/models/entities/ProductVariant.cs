@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace api.Models.Entities
+namespace api.models.entities
 {
     public class ProductVariant
     {

@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
-using api.Models.Enum;
+using api.models.enums;
 
-namespace api.DTOs.User
+namespace api.DTOs.user
 {
     public class ForgotPasswordDto
     {

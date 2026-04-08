@@ -1,6 +1,6 @@
 
-using api.DTOs.User;
-namespace api.Services.Interfaces.Auth
+using api.DTOs.user;
+namespace api.services.interfaces.auth
 {
     public interface IAuthService
     {

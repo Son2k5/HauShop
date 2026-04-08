@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Threading.Tasks;
-using api.Models.Enum;
+using api.models.enums;
 
-namespace api.Models.Entities
+namespace api.models.entities
 {
     public class PasswordResetOtp
     {

@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using api.Data;
+using api.data;
 using api.services.interfaces.cloud;
 
-namespace api.Controllers
+namespace api.controllers
 {
     [ApiController]
     [Route("api/[controller]")]

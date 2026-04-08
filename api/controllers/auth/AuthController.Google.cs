@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using api.Services.Interfaces.Auth;
+using api.services.interfaces.auth;
 
-namespace api.Controllers
+namespace api.controllers
 {
     public partial class AuthController
     {

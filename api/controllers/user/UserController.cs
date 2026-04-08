@@ -1,13 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using api.Data;
+using api.data;
 using api.services.interfaces.cloud;
-using api.Repositories.Interfaces;
-using api.Mappings;
-using api.DTOs.User;
+using api.repositories.interfaces;
+using api.mappings;
+using api.DTOs.user;
 
-namespace api.Controllers
+namespace api.controllers
 {
     /// <summary>
     /// UserController — quản lý thông tin cá nhân và avatar của user đã đăng nhập.

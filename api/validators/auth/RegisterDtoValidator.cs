@@ -1,8 +1,8 @@
 using FluentValidation;
-using api.DTOs.User;
-using api.Repositories.Interfaces;
+using api.DTOs.user;
+using api.repositories.interfaces;
 
-namespace api.Validators
+namespace api.validators
 {
     public class RegisterDtoValidator : AbstractValidator<RegisterDto>
     {

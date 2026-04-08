@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using api.DTOs.User;
+using api.DTOs.user;
 
 namespace api.services.interfaces.user
 {

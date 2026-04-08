@@ -1,10 +1,10 @@
 
 using System.Security.Cryptography;
 using System.Text;
-using api.Services.Interfaces.Auth;
+using api.services.interfaces.auth;
 
 
-namespace api.Services.Implementations.Auth
+namespace api.services.implementations.auth
 {
     public class OtpService : IOtpService
     {

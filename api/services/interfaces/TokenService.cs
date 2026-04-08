@@ -2,11 +2,11 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using api.Models.Entities;
-using api.Models.Enum;
+using api.models.entities;
+using api.models.enums;
 using Microsoft.IdentityModel.Tokens;
 
-namespace api.Services.Interfaces
+namespace api.services.interfaces
 {
     public interface ITokenService
     {

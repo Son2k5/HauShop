@@ -1,4 +1,4 @@
-namespace api.Models.Enum
+namespace api.models.enums
 {
     public enum Provider
     {

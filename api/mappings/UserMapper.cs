@@ -1,8 +1,8 @@
 
-using api.DTOs.User;
-using api.Models.Entities;
+using api.DTOs.user;
+using api.models.entities;
 
-namespace api.Mappings
+namespace api.mappings
 {
     public class UserMapper
     {

@@ -1,9 +1,9 @@
-using api.Data;
-using api.Models.Entities;
-using api.Repositories.Interfaces;
+using api.data;
+using api.models.entities;
+using api.repositories.interfaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace api.Repositories.Implementations
+namespace api.repositories.implementations
 {
     public class RefreshTokenRepository
         : Repository<RefreshToken>, IRefreshTokenRepository
