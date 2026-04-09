@@ -17,8 +17,12 @@ namespace api.DTOs.product
         public bool IsActive { get; set; }
         public string? ImageUrl { get; set; }
         public string? ImageKey { get; set; }
+        public string? BrandId { get; set; }
         public BrandSummaryDto? Brand { get; set; }
         public List<CategorySummaryDto> Categories { get; set; } = new();
+        public List<ProductVariantSummaryDto> Variants { get; set; } = new();
+        public decimal MinVariantPrice { get; set; }
+        public int TotalStock { get; set; }
         public DateTime Created { get; set; }
         public DateTime? Updated { get; set; }
     }

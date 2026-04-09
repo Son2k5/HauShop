@@ -340,7 +340,7 @@ namespace api.data
             });
             modelBuilder.Entity<ProductVariant>(entity =>
             {
-                entity.ToTable("productvariant");
+                entity.ToTable("productvariants");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Id).HasMaxLength(50);
                 entity.Property(e => e.ProductId).IsRequired().HasMaxLength(50);
@@ -359,6 +359,8 @@ namespace api.data
 
                 entity.HasIndex(e => e.Sku).IsUnique();
                 entity.HasIndex(e => e.ProductId);
+                entity.HasIndex(e => e.IsActive);
+                entity.HasIndex(e => new { e.ProductId, e.IsActive });
 
                 entity.ToTable(t =>
                 {
@@ -383,6 +385,9 @@ namespace api.data
                     .WithMany(c => c.ProductCategories)
                     .HasForeignKey(e => e.CategoryId)
                     .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => e.ProductId);
+                entity.HasIndex(e => e.CategoryId);
             });
 
             // ============ REVIEW ============
