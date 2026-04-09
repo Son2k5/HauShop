@@ -20,6 +20,8 @@ using api.services.interfaces.user;
 using api.services.implementations;
 using api.services.interfaces;
 using api.services.implementations.seed;
+using api.services.implementations.product;
+using api.services.interfaces.product;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -276,6 +278,8 @@ builder.Services.AddValidatorsFromAssemblyContaining<LoginDtoValidator>();
 builder.Services.AddScoped<CloudinaryService>();
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<SeedService>();
 
 
