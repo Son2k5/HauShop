@@ -1,4 +1,6 @@
-// Định nghĩa cấu trúc kết quả trả về từ Backend
+import apiClient from "../api/apiClient";
+import type { ProductSummary, Product, PagedResponse, ProductQueryParams } from "../@types/product.type";
+import { object, param } from "framer-motion/client";
 export interface UploadResponse {
   uploaded: string[];
   errors: { fileName: string; error: string }[];
@@ -6,12 +8,8 @@ export interface UploadResponse {
 
 // Dán cứng URL Backend của bạn tại đây
 const BASE_API = "https://localhost:7288";
+const BASE_URL = "/product";
 
-/**
- * Hàm upload hàng loạt ảnh với cơ chế chia nhỏ (Batching)
- * @param files Mảng các đối tượng File cần upload
- * @param onProgress Callback để cập nhật tiến độ cho giao diện
- */
 export async function uploadImages(
   files: File[], 
   onProgress?: (current: number, total: number) => void
@@ -56,4 +54,47 @@ export async function uploadImages(
   }
   
   return results;
+}
+
+ const get = async <T>(
+    url: string,
+    params?: object,
+    signal?: AbortSignal
+  ): Promise<T> => {
+    const res = await apiClient.get<T>(url, {
+      ...(params ? { params } : {}),
+      ...(signal ? { signal } : {}),
+    });
+    return res.data;
+  };
+export const productService = {
+  getAll : async(
+    params: ProductQueryParams ={},
+    signal? : AbortSignal,
+
+  ): Promise<PagedResponse<ProductSummary>> =>{
+    const cleanParams = Object.fromEntries(
+      //chuyen doi object thanh cap key value
+      Object.entries(params).filter(
+        ([_,v]) => v!== undefined && v != null && v!== ''
+      )
+    );
+    return get<PagedResponse<ProductSummary>>(
+      BASE_URL, cleanParams, signal
+    );
+  },
+
+  getById: async(id: string , signal: AbortSignal) : Promise<Product> =>{
+    if(!id) throw new Error("Product id is required");
+    return get<Product>(`${BASE_URL}/${id}`, undefined, signal);
+  },
+
+  getBySlug: async (slug: string, signal?: AbortSignal): Promise<Product> => {
+      if (!slug) throw new Error('Slug is required');
+      return get<Product>(
+        `${BASE_URL}/slug/${encodeURIComponent(slug)}`,
+        undefined,
+        signal
+      );
+    },
 }

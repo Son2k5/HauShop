@@ -430,7 +430,7 @@ namespace api.data
                 entity.Property(e => e.ChatRoomId).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.Subject).IsRequired().HasMaxLength(500);
                 entity.Property(e => e.Status).IsRequired().HasDefaultValue(SupportTicketStatus.Open);
-                entity.Property(e => e.Priority).IsRequired().HasDefaultValue(SupportTicketPriority.Medium);
+                entity.Property(e => e.Priority).IsRequired().HasDefaultValue(SupportTicketPriority.Medium).HasConversion<int>();
                 entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                 entity.HasOne(st => st.Customer)
@@ -471,7 +471,7 @@ namespace api.data
                 entity.Property(e => e.GoogleId).HasMaxLength(100);
                 entity.Property(e => e.FacebookId).HasMaxLength(100);
                 entity.Property(e => e.Avatar).HasMaxLength(500);
-                entity.Property(e => e.Role).IsRequired().HasDefaultValue(Role.Member).HasConversion<int>();
+                entity.Property(e => e.Role).IsRequired().HasDefaultValue(Role.Member).HasConversion<int>().HasSentinel(Role.Member);
                 entity.Property(e => e.IsOnline).HasDefaultValue(false);
                 entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
 

@@ -22,7 +22,7 @@ namespace api.models.entities
         public string? GoogleId { get; set; }
         public string? FacebookId { get; set; }
         public string? Avatar { get; set; }
-        public Role Role { get; set; }
+        public Role Role { get; set; } = Role.Member;
         public bool IsOnline { get; set; }
         public DateTime? LastSeen { get; set; }
         public DateTime Created { get; set; }

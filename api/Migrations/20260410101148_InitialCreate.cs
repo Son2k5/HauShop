@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace api.Migrations
 {
     /// <inheritdoc />
-    public partial class setup : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -912,6 +912,11 @@ namespace api.Migrations
                 column: "CategoryId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_ProductCategories_ProductId",
+                table: "ProductCategories",
+                column: "ProductId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Products_BrandId",
                 table: "Products",
                 column: "BrandId");
@@ -939,9 +944,19 @@ namespace api.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_productvariants_IsActive",
+                table: "productvariants",
+                column: "IsActive");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_productvariants_ProductId",
                 table: "productvariants",
                 column: "ProductId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_productvariants_ProductId_IsActive",
+                table: "productvariants",
+                columns: new[] { "ProductId", "IsActive" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_productvariants_Sku",

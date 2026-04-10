@@ -24,11 +24,19 @@ using api.services.implementations.product;
 using api.services.interfaces.product;
 
 
+// Load .env BEFORE creating builder
+DotNetEnv.Env.Load();
+
+
 var builder = WebApplication.CreateBuilder(args);
+Console.WriteLine("=== DEBUG ===");
+Console.WriteLine("Working dir: " + Directory.GetCurrentDirectory());
+Console.WriteLine("ENV file exists: " + File.Exists(Path.Combine(Directory.GetCurrentDirectory(), ".env")));
+Console.WriteLine("Connection string: " + builder.Configuration.GetConnectionString("DefaultConnection"));
+Console.WriteLine("=============");
 // ===========================
 // SET UP ENV
 // ===========================
-DotNetEnv.Env.Load();
 builder.Configuration.AddEnvironmentVariables();
 
 // ===========================

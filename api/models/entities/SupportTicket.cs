@@ -16,8 +16,8 @@ namespace api.models.entities
         public string ChatRoomId { get; set; }
         public ChatRoom ChatRoom { get; set; }
         public string Subject { get; set; }
-        public SupportTicketStatus Status { get; set; }
-        public SupportTicketPriority Priority { get; set; }
+        public SupportTicketStatus Status { get; set; } = SupportTicketStatus.Open;
+        public SupportTicketPriority Priority { get; set; } = SupportTicketPriority.Low;
         public DateTime Created { get; set; }
         public DateTime? ClosedAt { get; set; }
     }

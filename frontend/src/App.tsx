@@ -13,15 +13,39 @@ import NotFound from "./pages/NotFound";
 
 import { AuthProvider } from "./context/authContext";
 import Header from "./components/layout/Header";
-import { Footer } from "./components/footer";
+import  Footer  from "./components/layout/Footer";
+import PromoBar from "./components/layout/Promobar";
+import { HeroBanner, BestSellers } from "./components/home";
+import type { Product } from "./components/product";
+
+// Home page component with all sections
+function HomePage() {
+  const handleAddToCart = (product: Product) => {
+    console.log("Thêm vào giỏ:", product);
+    // TODO: Implement cart functionality
+  };
+
+  const handleBuyNow = (product: Product) => {
+    console.log("Mua ngay:", product);
+    // TODO: Implement buy now functionality
+  };
+
+  return (
+    <>
+      <HeroBanner />
+      <BestSellers onAddToCart={handleAddToCart} onBuyNow={handleBuyNow} />
+    </>
+  );
+}
 
 export default function App() {
   return (
     <AuthProvider>
+      <PromoBar />
       <Header />
       <main>
         <Routes>
-          <Route path="/" element={<h2>Welcome to HauShop</h2>} />
+          <Route path="/" element={<HomePage />} />
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
