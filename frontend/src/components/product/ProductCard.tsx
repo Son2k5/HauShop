@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export interface Product {
   id: string;
   name: string;
   category: string;
-  price: string;
-  oldPrice?: string;
+  price: number;
+  oldPrice?: number;
   discount?: string;
   badge?: string;
   badgeVariant?: "hot" | "new" | "sale";
@@ -33,7 +33,7 @@ const ClothingIcon = () => (
   </svg>
 );
 
-const badgeColors: Record<string, string> = {
+const badgeColors: Record<"hot" | "new" | "sale", string> = {
   hot: "bg-primeColor",
   new: "bg-primeColor",
   sale: "bg-success",
@@ -42,27 +42,37 @@ const badgeColors: Record<string, string> = {
 export default function ProductCard({ product: p, onAddToCart, onBuyNow }: Props) {
   const [added, setAdded] = useState(false);
   const [wished, setWished] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
+
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleAdd = () => {
     onAddToCart(p);
     setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
+
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+    timeoutRef.current = setTimeout(() => {
+      setAdded(false);
+    }, 2000);
   };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  const stars = Math.max(0, Math.min(5, p.stars));
 
   return (
     <div
       className="group relative bg-white border border-gray-200 transition-all duration-350 hover:-translate-y-2.5 hover:shadow-cardHover hover:border-transparent w-full max-w-[320px]"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Image */}
       <div className="relative overflow-hidden" style={{ height: 380, background: p.bgColor }}>
         <div className="w-full h-full flex items-center justify-center transition-transform duration-500 group-hover:scale-105">
           <ClothingIcon />
         </div>
 
-        {/* Badge */}
         {p.badge && (
           <span
             className={`absolute top-3.5 left-3.5 text-white text-[11px] px-3 py-1.5 tracking-widest font-semibold z-10 rounded-sm shadow-md ${
@@ -73,7 +83,6 @@ export default function ProductCard({ product: p, onAddToCart, onBuyNow }: Props
           </span>
         )}
 
-        {/* Wishlist button */}
         <button
           onClick={() => setWished(!wished)}
           className="absolute top-3.5 right-3.5 w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center z-10 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 hover:bg-red-500 hover:border-red-500 shadow-md"
@@ -86,13 +95,11 @@ export default function ProductCard({ product: p, onAddToCart, onBuyNow }: Props
           </svg>
         </button>
 
-        {/* Quick view */}
         <div className="absolute bottom-0 inset-x-0 bg-primeColor/85 text-white text-xs tracking-widest py-3 text-center font-medium opacity-0 translate-y-full group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 z-10 cursor-pointer">
           👁 XEM NHANH
         </div>
       </div>
 
-      {/* Body */}
       <div className="px-6 pt-5 pb-6">
         <p className="text-[11px] tracking-[1.5px] uppercase text-lightText mb-2 font-bodyFont">
           {p.category}
@@ -101,20 +108,22 @@ export default function ProductCard({ product: p, onAddToCart, onBuyNow }: Props
           {p.name}
         </h3>
 
-        {/* Stars */}
         <div className="flex items-center gap-1 mb-4">
           {Array.from({ length: 5 }).map((_, i) => (
-            <StarIcon key={i} filled={i < p.stars} />
+            <StarIcon key={i} filled={i < stars} />
           ))}
           <span className="text-xs text-lightText font-bodyFont ml-1.5">({p.reviewCount} đánh giá)</span>
         </div>
 
-        {/* Price row */}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-baseline gap-2">
-            <span className="text-[22px] font-bold text-red-500 font-titleFont">{p.price}</span>
+            <span className="text-[22px] font-bold text-red-500 font-titleFont">
+              {p.price.toLocaleString("vi-VN")}₫
+            </span>
             {p.oldPrice && (
-              <span className="text-sm text-lightText line-through font-bodyFont">{p.oldPrice}</span>
+              <span className="text-sm text-lightText line-through font-bodyFont">
+                {p.oldPrice.toLocaleString("vi-VN")}₫
+              </span>
             )}
           </div>
           {p.discount && (
@@ -124,9 +133,7 @@ export default function ProductCard({ product: p, onAddToCart, onBuyNow }: Props
           )}
         </div>
 
-        {/* Action buttons */}
         <div className="flex flex-col gap-3">
-          {/* Nút Thêm giỏ hàng - nổi lên với shadow */}
           <button
             onClick={handleAdd}
             className={`flex items-center justify-center gap-2 py-3.5 px-4 text-sm font-semibold font-bodyFont tracking-[0.6px] transition-all duration-250 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 ${
@@ -153,7 +160,6 @@ export default function ProductCard({ product: p, onAddToCart, onBuyNow }: Props
             )}
           </button>
 
-          {/* Nút Mua ngay - chữ màu đỏ */}
           <button
             onClick={() => onBuyNow(p)}
             className="flex items-center justify-center gap-2 py-3.5 px-4 text-sm font-semibold font-bodyFont tracking-[0.6px] text-red-600 bg-red-50 border-2 border-red-600 transition-all duration-250 rounded-lg hover:bg-red-600 hover:text-white hover:shadow-lg hover:shadow-red-500/30 transform hover:-translate-y-1"

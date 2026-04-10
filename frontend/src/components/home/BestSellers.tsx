@@ -100,31 +100,24 @@ const MOCK_PRODUCTS: ProductSummary[] = [
 
 // Map API data to ProductCard format
 const mapToProduct = (p: ProductSummary): Product => {
-  // Determine category type from first category name
   const catName = p.categories[0]?.name?.toLowerCase() || "";
   let cat: "women" | "men" | "acc" = "women";
   if (catName.includes("nam") || catName.includes("men")) cat = "men";
   else if (catName.includes("nữ") || catName.includes("women")) cat = "women";
   else if (catName.includes("phụ kiện") || catName.includes("acc")) cat = "acc";
 
-  // Generate random stars and reviews for demo (replace with real data)
-  const stars = Math.floor(Math.random() * 2) + 4; // 4-5 stars
+  const stars = Math.floor(Math.random() * 2) + 4;
   const reviewCount = Math.floor(Math.random() * 200) + 50;
 
-  // Format price
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(price);
-
-  // Determine badge and discount based on logic
   let badge: string | undefined;
   let badgeVariant: "hot" | "new" | "sale" | undefined;
-  let oldPrice: string | undefined;
+  let oldPrice: number | undefined;
   let discount: string | undefined;
 
   if (p.minVariantPrice && p.minVariantPrice < p.price) {
     badge = "SALE";
     badgeVariant = "sale";
-    oldPrice = formatPrice(p.price);
+    oldPrice = p.price;
     const discountPercent = Math.round(((p.price - p.minVariantPrice) / p.price) * 100);
     discount = `-${discountPercent}%`;
   } else if (new Date(p.created).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000) {
@@ -135,7 +128,6 @@ const mapToProduct = (p: ProductSummary): Product => {
     badgeVariant = "hot";
   }
 
-  // Background colors based on category
   const bgColors: Record<string, string> = {
     women: "#f5eae8",
     men: "#e8eef5",
@@ -146,7 +138,7 @@ const mapToProduct = (p: ProductSummary): Product => {
     id: p.id,
     name: p.name,
     category: p.categories[0]?.name || "Không phân loại",
-    price: formatPrice(p.minVariantPrice || p.price),
+    price: p.minVariantPrice || p.price,
     oldPrice,
     discount,
     badge,
@@ -176,34 +168,29 @@ export default function BestSellers({ onAddToCart, onBuyNow }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("all");
   const { ref, visible } = useScrollReveal<HTMLDivElement>();
 
-  // Fetch products from backend
+  const queryParams = useMemo(() => ({
+    pageSize: 9,
+    sortBy: "created" as const,
+    sortOrder: "desc" as const,
+  }), []);
+
   const {
     products: apiProducts,
     isLoading,
     error,
-    pagination,
-  } = useProducts({
-    pageSize: 9,
-    sortBy: "created",
-    sortOrder: "desc",
-  });
+  } = useProducts(queryParams);
 
-  // Fallback to mock data if API fails or returns empty
-  const effectiveProducts = (apiProducts?.length > 0) ? apiProducts : MOCK_PRODUCTS;
+  // FIX: wrap in useMemo để tránh tạo reference mới mỗi render → vòng lặp vô hạn
+  const productsToUse = useMemo(
+    () => (apiProducts.length > 0 ? apiProducts : MOCK_PRODUCTS),
+    [apiProducts]
+  );
 
-  // Debug: log API data
-  console.log("API Products:", apiProducts);
-  console.log("Loading:", isLoading);
-  console.log("Error:", error);
+  const mappedProducts = useMemo(
+    () => productsToUse.map(mapToProduct),
+    [productsToUse]
+  );
 
-  // Transform API data to ProductCard format (fallback to mock if API empty)
-  const productsToUse = apiProducts.length > 0 ? apiProducts : MOCK_PRODUCTS;
-  const mappedProducts = useMemo(() => {
-    console.log("Mapping products, count:", productsToUse.length);
-    return productsToUse.map(mapToProduct);
-  }, [productsToUse]);
-
-  // Filter by category
   const filtered = useMemo(() => {
     if (activeTab === "all") return mappedProducts;
     return mappedProducts.filter((p) => p.cat === activeTab);
@@ -272,7 +259,7 @@ export default function BestSellers({ onAddToCart, onBuyNow }: Props) {
           ))}
         </div>
 
-        {/* Grid — 3 columns, large cards */}
+        {/* Grid */}
         {filtered.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
             {filtered.map((product, i) => (

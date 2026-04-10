@@ -11,13 +11,16 @@ interface UseProductReturn {
 
 export const useProduct = (slug: string): UseProductReturn => {
   const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
+  const lastSlugRef = useRef<string | null>(null);
 
   const fetchProduct = useCallback(async (targetSlug: string) => {
-    // Huy request truoc do neu co
+    if (lastSlugRef.current === targetSlug) return;
+    lastSlugRef.current = targetSlug;
+
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -28,13 +31,11 @@ export const useProduct = (slug: string): UseProductReturn => {
     try {
       const data = await productService.getBySlug(targetSlug, controller.signal);
 
-      // Bo qua neu request da bi huy
       if (controller.signal.aborted) return;
 
       setProduct(data);
     } catch (err: any) {
-      // Bo qua loi abort
-      if (err.name === 'AbortError' || err.name === 'CanceledError') return;
+      if (controller.signal.aborted) return;
 
       const message =
         err?.response?.data?.message ||
@@ -43,20 +44,20 @@ export const useProduct = (slug: string): UseProductReturn => {
 
       setError(message);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     if (!slug) {
-      setLoading(false);
       setError('Thieu slug san pham');
       return;
     }
 
     fetchProduct(slug);
 
-    // Cleanup: huy request khi unmount hoac slug thay doi
     return () => {
       abortRef.current?.abort();
     };
@@ -64,6 +65,9 @@ export const useProduct = (slug: string): UseProductReturn => {
 
   const refetch = useCallback(() => {
     if (!slug) return Promise.resolve();
+
+    lastSlugRef.current = null;
+
     return fetchProduct(slug);
   }, [slug, fetchProduct]);
 
