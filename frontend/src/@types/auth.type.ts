@@ -75,6 +75,7 @@ export interface AuthState {
   user: UserDto | null;
   status: AuthStatus;
   error: string | null;
+  
 }
 
 // ── API Error ─────────────────────────────────────────────────────

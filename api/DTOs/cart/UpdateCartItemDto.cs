@@ -4,7 +4,7 @@ namespace api.DTOs.cart
 {
     public class UpdateCartItemDto
     {
-        [Range(0, int.MaxValue, ErrorMessage = "Quantity must be non-negative")]
+        [Range(1, int.MaxValue, ErrorMessage = "Quantity phải lớn hơn 0")]
         public int Quantity { get; set; }
     }
 }

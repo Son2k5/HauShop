@@ -1,5 +1,11 @@
 import apiClient from "../api/apiClient";
-import type { ProductSummary, Product, PagedResponse, ProductQueryParams } from "../@types/product.type";
+import type   {
+  PagedProductDto,
+  ProductDto,
+  ProductQueryDto,
+  CreateProductDto,
+  UpdateProductDto,
+} from "../@types/product.type.ts";
 
 export interface UploadResponse {
   uploaded: string[];
@@ -53,42 +59,124 @@ export async function uploadImages(
   return results;
 }
 
-const get = async <T>(
-  url: string,
-  params?: object,
-  signal?: AbortSignal
-): Promise<T> => {
-  const res = await apiClient.get<T>(url, {
-    ...(params ? { params } : {}),
-    ...(signal ? { signal } : {}),
+function getToken(): string | null {
+  return localStorage.getItem("_token");
+}
+ 
+async function request<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const token = getToken();
+  const res = await fetch(`${BASE_API}/api${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers ?? {}),
+    },
   });
-  return res.data;
-};
-
+ 
+  if (!res.ok) {
+    // Thử parse lỗi có cấu trúc từ FluentValidation / controller
+    const body = await res.json().catch(() => null);
+    const message =
+      body?.errors
+        ? Object.values(body.errors as Record<string, string[]>)
+            .flat()
+            .join("; ")
+        : `HTTP ${res.status}`;
+    throw new Error(message);
+  }
+ 
+  // 204 No Content
+  if (res.status === 204) return undefined as T;
+ 
+  return res.json() as Promise<T>;
+}
+ 
+// ─── Build query string từ ProductQueryDto ────────────────────────────────────
+ 
+function buildQuery(params: ProductQueryDto): string {
+  const q = new URLSearchParams();
+  if (params.search)     q.set("search",     params.search);
+  if (params.brandId)    q.set("brandId",    params.brandId);
+  if (params.categoryId) q.set("categoryId", params.categoryId);
+  if (params.minPrice != null) q.set("minPrice", String(params.minPrice));
+  if (params.maxPrice != null) q.set("maxPrice", String(params.maxPrice));
+  if (params.isActive  != null) q.set("isActive", String(params.isActive));
+  if (params.sortBy)     q.set("sortBy",     params.sortBy);
+  if (params.sortOrder)  q.set("sortOrder",  params.sortOrder);
+  if (params.page)       q.set("page",       String(params.page));
+  if (params.pageSize)   q.set("pageSize",   String(params.pageSize));
+  const str = q.toString();
+  return str ? `?${str}` : "";
+}
+ 
+// ─── Public API ──────────────────────────────────────────────────────────────
+ 
 export const productService = {
-  getAll: async (
-    params: ProductQueryParams = {},
-    signal?: AbortSignal,
-  ): Promise<PagedResponse<ProductSummary>> => {
-    const cleanParams = Object.fromEntries(
-      Object.entries(params).filter(
-        ([_, v]) => v !== undefined && v != null && v !== ''
-      )
-    );
-    return get<PagedResponse<ProductSummary>>(BASE_URL, cleanParams, signal);
+  /**
+   * GET /api/product
+   * Lấy danh sách sản phẩm có phân trang, filter, sort
+   */
+  getAll(query: ProductQueryDto = {}): Promise<PagedProductDto> {
+    return request<PagedProductDto>(`/product${buildQuery(query)}`);
   },
-
-  getById: async (id: string, signal: AbortSignal): Promise<Product> => {
-    if (!id) throw new Error("Product id is required");
-    return get<Product>(`${BASE_URL}/${id}`, undefined, signal);
+ 
+  /**
+   * GET /api/product/{id}
+   */
+  getById(id: string): Promise<ProductDto> {
+    return request<ProductDto>(`/product/${id}`);
   },
-
-  getBySlug: async (slug: string, signal?: AbortSignal): Promise<Product> => {
-    if (!slug) throw new Error('Slug is required');
-    return get<Product>(
-      `${BASE_URL}/slug/${encodeURIComponent(slug)}`,
-      undefined,
-      signal
-    );
+ 
+  /**
+   * GET /api/product/slug/{slug}
+   * Dùng cho product detail page (SEO-friendly URL)
+   */
+  getBySlug(slug: string): Promise<ProductDto> {
+    return request<ProductDto>(`/product/slug/${slug}`);
+  },
+ 
+  /**
+   * POST /api/product   [Admin, Merchant]
+   * Flow ảnh: 1) POST /api/image/upload → nhận imageUrl + imageKey
+   *            2) Gọi hàm này với imageUrl + imageKey đã có
+   */
+  create(dto: CreateProductDto): Promise<ProductDto> {
+    return request<ProductDto>("/product", {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
+  },
+ 
+  /**
+   * PUT /api/product/{id}   [Admin, Merchant]
+   * Chỉ gửi các field cần update (partial)
+   * Để xóa brand: truyền brandId = "null"
+   */
+  update(id: string, dto: UpdateProductDto): Promise<ProductDto> {
+    return request<ProductDto>(`/product/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(dto),
+    });
+  },
+ 
+  /**
+   * DELETE /api/product/{id}   [Admin, Merchant]
+   * Backend tự xóa ảnh Cloudinary
+   */
+  delete(id: string): Promise<void> {
+    return request<void>(`/product/${id}`, { method: "DELETE" });
+  },
+ 
+  /**
+   * PATCH /api/product/{id}/toggle-active   [Admin, Merchant]
+   */
+  toggleActive(id: string): Promise<ProductDto> {
+    return request<ProductDto>(`/product/${id}/toggle-active`, {
+      method: "PATCH",
+    });
   },
 };

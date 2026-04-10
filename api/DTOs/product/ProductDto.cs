@@ -23,6 +23,12 @@ namespace api.DTOs.product
         public List<ProductVariantSummaryDto> Variants { get; set; } = new();
         public decimal MinVariantPrice { get; set; }
         public int TotalStock { get; set; }
+
+        // Tồn kho và Rating
+        public int Stock { get; set; }
+        public decimal AverageRating { get; set; }
+        public int ReviewCount { get; set; }
+
         public DateTime Created { get; set; }
         public DateTime? Updated { get; set; }
     }

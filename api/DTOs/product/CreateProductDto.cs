@@ -19,5 +19,10 @@ namespace api.DTOs.product
 
         public string? ImageUrl { get; set; }
         public string? ImageKey { get; set; }
+
+        // Tồn kho và Rating (optional)
+        public int Stock { get; set; } = 0;
+        public decimal AverageRating { get; set; } = 0;
+        public int ReviewCount { get; set; } = 0;
     }
 }

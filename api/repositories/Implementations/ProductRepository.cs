@@ -96,6 +96,11 @@ namespace api.repositories.implementations
                         .Where(v => v.IsActive)
                         .Sum(v => (int?)v.Stock) ?? 0,
 
+                    // Tồn kho và Rating từ Product entity
+                    Stock = p.Stock,
+                    AverageRating = p.AverageRating,
+                    ReviewCount = p.ReviewCount,
+
                     Created = p.Created,
                 })
                 .ToListAsync(ct);
@@ -173,6 +178,50 @@ namespace api.repositories.implementations
         public async Task<int> SaveChangesAsync(CancellationToken ct = default)
         {
             return await _context.SaveChangesAsync(ct);
+        }
+
+        /// <summary>
+        /// Tính toán và cập nhật AverageRating và ReviewCount cho product từ Reviews
+        /// </summary>
+        public async Task UpdateProductRatingAsync(string productId, CancellationToken ct = default)
+        {
+            var product = await _dbSet.FindAsync(new object[] { productId }, ct);
+            if (product == null) return;
+
+            var stats = await _context.Reviews
+                .AsNoTracking()
+                .Where(r => r.ProductId == productId && r.Status == models.enums.ReviewStatus.Approved)
+                .GroupBy(r => r.ProductId)
+                .Select(g => new
+                {
+                    AverageRating = g.Average(r => r.Rating),
+                    ReviewCount = g.Count()
+                })
+                .FirstOrDefaultAsync(ct);
+
+            product.AverageRating = stats != null ? (decimal)stats.AverageRating : 0;
+            product.ReviewCount = stats?.ReviewCount ?? 0;
+            product.Updated = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync(ct);
+        }
+
+        /// <summary>
+        /// Tính toán và cập nhật tổng Stock từ ProductVariants
+        /// </summary>
+        public async Task UpdateProductStockAsync(string productId, CancellationToken ct = default)
+        {
+            var product = await _dbSet.FindAsync(new object[] { productId }, ct);
+            if (product == null) return;
+
+            var totalStock = await _context.ProductVariants
+                .Where(v => v.ProductId == productId && v.IsActive)
+                .SumAsync(v => (int?)v.Stock, ct) ?? 0;
+
+            product.Stock = totalStock;
+            product.Updated = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync(ct);
         }
     }
 }

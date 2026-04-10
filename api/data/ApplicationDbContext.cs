@@ -325,6 +325,11 @@ namespace api.data
                 entity.Property(e => e.BrandId).HasMaxLength(50);
                 entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                // Tồn kho và Rating
+                entity.Property(e => e.Stock).HasDefaultValue(0);
+                entity.Property(e => e.AverageRating).HasPrecision(3, 2).HasDefaultValue(0);
+                entity.Property(e => e.ReviewCount).HasDefaultValue(0);
+
                 entity.HasOne(e => e.Brand)
                     .WithMany(b => b.Products)
                     .HasForeignKey(e => e.BrandId)
@@ -337,6 +342,11 @@ namespace api.data
                 entity.HasIndex(e => e.IsActive);
 
                 entity.ToTable(t => t.HasCheckConstraint("CK_Product_Price", "`Price` >= 0"));
+                entity.ToTable(t => t.HasCheckConstraint("CK_Product_Stock", "`Stock` >= 0"));
+                entity.ToTable(t => t.HasCheckConstraint("CK_Product_AverageRating", "`AverageRating` >= 0 AND `AverageRating` <= 5"));
+
+                entity.HasIndex(e => e.Stock);
+                entity.HasIndex(e => e.AverageRating);
             });
             modelBuilder.Entity<ProductVariant>(entity =>
             {

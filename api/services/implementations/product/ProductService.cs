@@ -83,6 +83,9 @@ namespace api.services.implementations.product
                 BrandId = string.IsNullOrEmpty(dto.BrandId) ? null : dto.BrandId,
                 ImageUrl = dto.ImageUrl ?? string.Empty,
                 ImageKey = dto.ImageKey ?? string.Empty,
+                Stock = dto.Stock,
+                AverageRating = dto.AverageRating,
+                ReviewCount = dto.ReviewCount,
                 Created = DateTime.UtcNow,
             };
 
@@ -145,6 +148,9 @@ namespace api.services.implementations.product
             if (dto.Price.HasValue) product.Price = dto.Price.Value;
             if (dto.Taxable.HasValue) product.Taxable = dto.Taxable.Value;
             if (dto.IsActive.HasValue) product.IsActive = dto.IsActive.Value;
+            if (dto.Stock.HasValue) product.Stock = dto.Stock.Value;
+            if (dto.AverageRating.HasValue) product.AverageRating = dto.AverageRating.Value;
+            if (dto.ReviewCount.HasValue) product.ReviewCount = dto.ReviewCount.Value;
 
             // "null" string = xóa brand (tránh nullable conflict qua JSON)
             if (dto.BrandId != null)

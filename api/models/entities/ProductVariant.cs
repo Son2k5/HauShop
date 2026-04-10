@@ -25,5 +25,6 @@ namespace api.models.entities
         public string? UpdateBy { get; set; }
 
         public bool IsActive { get; set; }
+        public ICollection<CartItem> CartItems { get; set; } = new List<CartItem>();
     }
 }

@@ -18,6 +18,11 @@ namespace api.DTOs.product
         // Tổng tồn kho variant đang active
         public int? TotalStock { get; set; }
 
+        // Tồn kho và Rating
+        public int Stock { get; set; }
+        public decimal AverageRating { get; set; }
+        public int ReviewCount { get; set; }
+
         public bool IsActive { get; set; }
         public string? BrandId { get; set; }
         public string? BrandName { get; set; }

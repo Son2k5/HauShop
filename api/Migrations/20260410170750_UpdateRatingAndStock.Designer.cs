@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using api.data;
 
@@ -11,9 +12,11 @@ using api.data;
 namespace api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260410170750_UpdateRatingAndStock")]
+    partial class UpdateRatingAndStock
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -189,17 +192,12 @@ namespace api.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
 
-                    b.Property<string>("ProductVariantId")
-                        .HasColumnType("varchar(50)");
-
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ProductId");
-
-                    b.HasIndex("ProductVariantId");
 
                     b.HasIndex("CartId", "ProductId");
 
@@ -1231,15 +1229,9 @@ namespace api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("api.models.entities.ProductVariant", "ProductVariant")
-                        .WithMany("CartItems")
-                        .HasForeignKey("ProductVariantId");
-
                     b.Navigation("Cart");
 
                     b.Navigation("Product");
-
-                    b.Navigation("ProductVariant");
                 });
 
             modelBuilder.Entity("api.models.entities.Category", b =>
@@ -1534,11 +1526,6 @@ namespace api.Migrations
                     b.Navigation("Reviews");
 
                     b.Navigation("Wishlists");
-                });
-
-            modelBuilder.Entity("api.models.entities.ProductVariant", b =>
-                {
-                    b.Navigation("CartItems");
                 });
 
             modelBuilder.Entity("api.models.entities.User", b =>
