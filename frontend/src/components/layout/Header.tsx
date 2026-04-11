@@ -1,628 +1,817 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import React, { useState, useRef, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
+import { useAppSelector } from "../../store/hooks";
 
 const Header: React.FC = () => {
-    const {
-        user,
-        isAuthenticated,
-        logout,
-        updateAvatar,
-        removeAvatar,
-        refreshUser,
-    } = useAuth();
+  const {
+    user,
+    isAuthenticated,
+    logout,
+    updateAvatar,
+    removeAvatar,
+    refreshUser,
+  } = useAuth();
 
-    const navigate = useNavigate();
-    const location = useLocation();
-    const [showUserMenu, setShowUserMenu] = useState(false);
-    const [showSearchBar, setShowSearchBar] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [uploadingAvatar, setUploadingAvatar] = useState(false);
-    const [showMobileMenu, setShowMobileMenu] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const menuRef = useRef<HTMLDivElement>(null);
-    const searchInputRef = useRef<HTMLInputElement>(null);
-    const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const totalQty = useAppSelector((state) => state.cart.totalQty);
 
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-                setShowUserMenu(false);
-            }
-            if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
-                const target = event.target as HTMLElement;
-                if (!target.closest('[data-mobile-toggle]')) {
-                    setShowMobileMenu(false);
-                }
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-    useEffect(() => {
-        if (showSearchBar && searchInputRef.current) {
-            searchInputRef.current.focus();
-        }
-    }, [showSearchBar]);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showSearchBar, setShowSearchBar] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-    // Lock body scroll when mobile menu is open
-    useEffect(() => {
-        if (showMobileMenu) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
-        return () => {
-            document.body.style.overflow = '';
-        };
-    }, [showMobileMenu]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
-    // Close mobile menu on route change
-    useEffect(() => {
-        setShowMobileMenu(false);
-    }, [location.pathname]);
-
-    // Chỉ chạy một lần khi mount để sync user từ localStorage
-    useEffect(() => {
-        const storedUser = localStorage.getItem('_u');
-        if (storedUser && !user) {
-            refreshUser();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Chỉ chạy 1 lần khi mount
-
-    const handleAvatarClick = () => {
-        if (isAuthenticated) {
-            setShowUserMenu(prev => !prev);
-        } else {
-            navigate('/signin');
-        }
-    };
-
-    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        e.target.value = '';
-
-        if (!file.type.startsWith('image/')) {
-            alert('Please select an image file');
-            return;
-        }
-
-        if (file.size > 5 * 1024 * 1024) {
-            alert('Image size should be less than 5MB');
-            return;
-        }
-
-        setUploadingAvatar(true);
-        try {
-            await updateAvatar(file);
-            setShowUserMenu(false);
-        } catch (error) {
-            console.error('Failed to upload avatar:', error);
-            alert('Failed to upload avatar. Please try again.');
-        } finally {
-            setUploadingAvatar(false);
-        }
-    };
-
-    const handleRemoveAvatar = async () => {
-        if (!confirm('Are you sure you want to remove your avatar?')) return;
-
-        try {
-            await removeAvatar();
-            setShowUserMenu(false);
-        } catch (error) {
-            console.error('Failed to remove avatar:', error);
-            alert('Failed to remove avatar. Please try again.');
-        }
-    };
-
-    const handleLogout = async () => {
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setShowUserMenu(false);
-        await logout();
-        navigate('/signin');
+      }
+
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        const target = event.target as HTMLElement;
+        if (!target.closest("[data-mobile-toggle]")) {
+          setShowMobileMenu(false);
+        }
+      }
     };
 
-    const navLinks = [
-        { name: 'Home', path: '/' },
-        { name: 'Shop', path: '/shop' },
-        { name: 'Contact', path: '/contact-us' },
-        { name: 'About', path: '/about-us' },
-    ];
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-    const avatarUrl = user?.avatar;
+  useEffect(() => {
+    if (showSearchBar && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [showSearchBar]);
 
-    return (
-        <>
-            <header className="w-full bg-white border-b border-gray-200 sticky top-0 z-50">
-                {/* Container responsive cho các kích thước màn hình */}
-                <div className="mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
-                    {/*
-                        Responsive container widths:
-                        - Mobile (<768px): full width
-                        - Tablet (768-1024px): max-w-full
-                        - Laptop 16.5" (~1366-1440px): max-w-7xl (1280px)
-                        - 24" monitor (1920px+): max-w-[1600px]
-                    */}
-                    <div className="max-w-full lg:max-w-7xl xl:max-w-[1440px] 2xl:max-w-[1600px] mx-auto">
-                        <div className="flex justify-between items-center h-16 lg:h-18 2xl:h-20 gap-4 lg:gap-6 xl:gap-8 2xl:gap-12">
-                            {/* Logo */}
-                            <Link to="/" className="flex-shrink-0">
-                                <span className="text-xl sm:text-2xl lg:text-2xl xl:text-3xl 2xl:text-3xl font-bold text-black" style={{ fontFamily: 'Inter, sans-serif' }}>
-                                    HAUSHOP
-                                </span>
-                            </Link>
+  useEffect(() => {
+    if (showMobileMenu) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
 
-                            {/* Desktop Navigation - hidden on mobile/tablet (<lg), show on lg+ */}
-                            <nav className="hidden lg:flex items-center gap-4 xl:gap-6 2xl:gap-10">
-                                {navLinks.map((link) => (
-                                    <Link
-                                        key={link.path}
-                                        to={link.path}
-                                        className={`text-sm xl:text-base 2xl:text-lg font-normal transition-colors hover:text-red-500 whitespace-nowrap ${location.pathname === link.path
-                                            ? 'text-red-500 border-b-2 border-red-500 pb-1'
-                                            : 'text-black'
-                                            }`}
-                                        style={{ fontFamily: 'Poppins, sans-serif' }}
-                                    >
-                                        {link.name}
-                                    </Link>
-                                ))}
-                                {!isAuthenticated && (
-                                    <Link
-                                        to="/signup"
-                                        className="text-sm xl:text-base 2xl:text-lg font-normal text-black transition-colors hover:text-red-500 whitespace-nowrap"
-                                        style={{ fontFamily: 'Poppins, sans-serif' }}
-                                    >
-                                        Sign Up
-                                    </Link>
-                                )}
-                            </nav>
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showMobileMenu]);
 
-                            {/* Mobile/Tablet: Hamburger + Search toggle - hidden on lg+ */}
-                            <div className="flex items-center gap-2 lg:hidden">
-                                <button
-                                    onClick={() => setShowSearchBar(!showSearchBar)}
-                                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                                    aria-label="Toggle search"
-                                >
-                                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                    </svg>
-                                </button>
-                                <button
-                                    data-mobile-toggle
-                                    onClick={() => setShowMobileMenu(!showMobileMenu)}
-                                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                                    aria-label="Toggle menu"
-                                >
-                                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
-                                    </svg>
-                                </button>
-                            </div>
+  useEffect(() => {
+    setShowMobileMenu(false);
+  }, [location.pathname]);
 
-                            {/* Right side: Search + Icons - Desktop */}
-                            <div className="hidden lg:flex items-center gap-3 xl:gap-4 2xl:gap-6">
-                                {/* Search bar */}
-                                <div className="flex items-center bg-gray-100 rounded-lg px-3 xl:px-4 py-2 2xl:py-2.5">
-                                    <input
-                                        ref={searchInputRef}
-                                        type="text"
-                                        placeholder="What are you looking for?"
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="bg-transparent outline-none text-sm xl:text-base text-gray-700 placeholder-gray-500 w-40 xl:w-56 2xl:w-72"
-                                        style={{ fontFamily: 'Poppins, sans-serif' }}
-                                    />
-                                    <button className="p-1 hover:text-red-500 transition-colors">
-                                        <svg className="w-4 h-4 xl:w-5 xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                        </svg>
-                                    </button>
-                                </div>
+  useEffect(() => {
+    const storedUser = localStorage.getItem("_u");
+    if (storedUser && !user) {
+      refreshUser();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-                                {/* Wishlist - Desktop */}
-                                <Link to="/wishlist" className="relative p-2 hover:bg-gray-100 rounded-full transition-colors">
-                                    <svg className="w-5 h-5 xl:w-6 xl:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                    </svg>
-                                </Link>
+  const handleAvatarClick = () => {
+    if (isAuthenticated) {
+      setShowUserMenu((prev) => !prev);
+    } else {
+      navigate("/signin");
+    }
+  };
 
-                                {/* Cart - Desktop */}
-                                <Link to="/cart" className="relative p-2 hover:bg-gray-100 rounded-full transition-colors">
-                                    <svg className="w-5 h-5 xl:w-6 xl:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6M12 17v4" />
-                                    </svg>
-                                    <span className="absolute -top-1 -right-1 w-4 h-4 xl:w-5 xl:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                                        0
-                                    </span>
-                                </Link>
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-                                {/* User Avatar - Desktop */}
-                                <div className="relative" ref={menuRef}>
-                                    <button
-                                        onClick={handleAvatarClick}
-                                        className="relative w-8 h-8 xl:w-9 xl:h-9 2xl:w-10 2xl:h-10 rounded-full overflow-hidden bg-gray-200 hover:ring-2 hover:ring-red-500 transition-all"
-                                        aria-label={isAuthenticated ? 'Open user menu' : 'Sign in'}
-                                    >
-                                        {avatarUrl ? (
-                                            <img
-                                                src={`${avatarUrl}?t=${Date.now()}`}
-                                                alt={`${user?.firstName ?? ''} avatar`}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        ) : (
-                                            <svg
-                                                className="w-5 h-5 xl:w-6 xl:h-6 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-gray-500"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                            </svg>
-                                        )}
+    e.target.value = "";
 
-                                        {uploadingAvatar && (
-                                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                            </div>
-                                        )}
-                                    </button>
+    if (!file.type.startsWith("image/")) {
+      alert("Please select an image file");
+      return;
+    }
 
-                                    {/* User Dropdown Menu */}
-                                    {showUserMenu && isAuthenticated && (
-                                        <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                                            <div className="px-4 py-3 border-b border-gray-100">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
-                                                        {avatarUrl ? (
-                                                            <img src={`${avatarUrl}?t=${Date.now()}`} alt="avatar" className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <svg className="w-6 h-6 m-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                            </svg>
-                                                        )}
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <p className="text-sm font-semibold text-gray-900 truncate">
-                                                            {user?.firstName} {user?.lastName}
-                                                        </p>
-                                                        <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image size should be less than 5MB");
+      return;
+    }
 
-                                            <div className="px-4 py-2 hover:bg-gray-50">
-                                                <input
-                                                    ref={fileInputRef}
-                                                    type="file"
-                                                    accept="image/jpeg,image/png,image/webp,image/gif"
-                                                    className="hidden"
-                                                    onChange={handleAvatarUpload}
-                                                />
-                                                <button
-                                                    onClick={() => fileInputRef.current?.click()}
-                                                    disabled={uploadingAvatar}
-                                                    className="flex items-center gap-3 w-full text-sm text-gray-700 disabled:opacity-50"
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                                    </svg>
-                                                    {uploadingAvatar ? 'Uploading...' : 'Upload Avatar'}
-                                                </button>
-                                            </div>
+    setUploadingAvatar(true);
+    try {
+      await updateAvatar(file);
+      setShowUserMenu(false);
+    } catch (error) {
+      console.error("Failed to upload avatar:", error);
+      alert("Failed to upload avatar. Please try again.");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
-                                            {avatarUrl && (
-                                                <div className="px-4 py-2 hover:bg-gray-50">
-                                                    <button
-                                                        onClick={handleRemoveAvatar}
-                                                        className="flex items-center gap-3 w-full text-sm text-red-600"
-                                                    >
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                        </svg>
-                                                        Remove Avatar
-                                                    </button>
-                                                </div>
-                                            )}
+  const handleRemoveAvatar = async () => {
+    if (!confirm("Are you sure you want to remove your avatar?")) return;
 
-                                            <div className="border-t border-gray-100 mt-2 pt-2">
-                                                <Link
-                                                    to="/profile"
-                                                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                                                    onClick={() => setShowUserMenu(false)}
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                    </svg>
-                                                    My Profile
-                                                </Link>
+    try {
+      await removeAvatar();
+      setShowUserMenu(false);
+    } catch (error) {
+      console.error("Failed to remove avatar:", error);
+      alert("Failed to remove avatar. Please try again.");
+    }
+  };
 
-                                                <Link
-                                                    to="/orders"
-                                                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                                                    onClick={() => setShowUserMenu(false)}
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                                    </svg>
-                                                    My Orders
-                                                </Link>
+  const handleLogout = async () => {
+    setShowUserMenu(false);
+    await logout();
+    navigate("/signin");
+  };
 
-                                                <button
-                                                    onClick={() => {
-                                                        navigate('/cancellations');
-                                                        setShowUserMenu(false);
-                                                    }}
-                                                    className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <circle cx="12" cy="12" r="9" strokeWidth={1.5} />
-                                                        <circle cx="12" cy="12" r="3" fill="currentColor" />
-                                                    </svg>
-                                                    My Cancellations
-                                                </button>
+  const navLinks = [
+    { name: "Home", path: "/" },
+    { name: "Shop", path: "/shop" },
+    { name: "Contact", path: "/contact-us" },
+    { name: "About", path: "/about-us" },
+  ];
 
-                                                <button
-                                                    onClick={() => {
-                                                        navigate('/reviews');
-                                                        setShowUserMenu(false);
-                                                    }}
-                                                    className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                    My Reviews
-                                                </button>
+  const avatarUrl = user?.avatar;
 
-                                                <button
-                                                    onClick={handleLogout}
-                                                    className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                                    </svg>
-                                                    Logout
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+  const iconButtonClass =
+    "relative inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-700 transition-colors duration-200 hover:bg-gray-100 hover:text-red-500";
 
-                        {/* Mobile Search Bar */}
-                        {showSearchBar && (
-                            <div className="lg:hidden pb-4 pt-2">
-                                <div className="flex items-center bg-gray-100 rounded-lg px-4 py-2 gap-2">
-                                    <input
-                                        ref={searchInputRef}
-                                        type="text"
-                                        placeholder="What are you looking for?"
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Escape') {
-                                                setShowSearchBar(false);
-                                            }
-                                        }}
-                                        className="bg-transparent outline-none text-sm text-gray-700 placeholder-gray-500 flex-1"
-                                        style={{ fontFamily: 'Poppins, sans-serif' }}
-                                    />
-                                    <button className="p-1 hover:text-red-500 transition-colors">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                        </svg>
-                                    </button>
-                                    <button
-                                        onClick={() => setShowSearchBar(false)}
-                                        className="p-1 hover:text-red-500 transition-colors"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </header>
+  const desktopNavClass = (path: string) =>
+    `relative text-sm xl:text-[15px] 2xl:text-base font-medium tracking-[0.2px] transition-colors duration-200 whitespace-nowrap ${
+      location.pathname === path ? "text-red-500" : "text-gray-800 hover:text-red-500"
+    }`;
 
-            {/* Mobile Menu Drawer */}
-            <div
-                className={`fixed inset-0 z-[60] lg:hidden transition-opacity duration-300 ${showMobileMenu ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
-            >
-                {/* Backdrop */}
-                <div
-                    className="absolute inset-0 bg-black/50"
-                    onClick={() => setShowMobileMenu(false)}
-                />
+  return (
+    <>
+      <header className="sticky top-0 z-50 w-full border-b border-gray-200/80 bg-white/95 backdrop-blur-md">
+        <div className="mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
+          <div className="mx-auto max-w-full lg:max-w-7xl xl:max-w-[1440px] 2xl:max-w-[1600px]">
+            <div className="flex h-16 items-center justify-between gap-4 lg:h-[74px] 2xl:h-20">
+              {/* Left */}
+              <div className="flex min-w-0 items-center gap-4 lg:gap-8 xl:gap-10">
+                <Link to="/" className="shrink-0">
+                  <span
+                    className="block text-xl font-extrabold tracking-[0.16em] text-black sm:text-2xl xl:text-[30px]"
+                    style={{ fontFamily: "Inter, sans-serif" }}
+                  >
+                    HAUSHOP
+                  </span>
+                </Link>
 
-                {/* Drawer Panel */}
-                <div
-                    ref={mobileMenuRef}
-                    className={`absolute top-0 right-0 h-full w-[280px] sm:w-[320px] bg-white shadow-2xl transform transition-transform duration-300 ease-out ${showMobileMenu ? 'translate-x-0' : 'translate-x-full'}`}
+                <nav className="hidden lg:flex items-center gap-5 xl:gap-7 2xl:gap-9">
+                  {navLinks.map((link) => (
+                    <Link
+                      key={link.path}
+                      to={link.path}
+                      className={desktopNavClass(link.path)}
+                      style={{ fontFamily: "Poppins, sans-serif" }}
+                    >
+                      {link.name}
+                      {location.pathname === link.path && (
+                        <span className="absolute -bottom-[23px] left-0 h-[2px] w-full rounded-full bg-red-500 lg:-bottom-[27px] 2xl:-bottom-[30px]" />
+                      )}
+                    </Link>
+                  ))}
+
+                  {!isAuthenticated && (
+                    <Link
+                      to="/signup"
+                      className="text-sm xl:text-[15px] 2xl:text-base font-medium text-gray-800 transition-colors duration-200 hover:text-red-500"
+                      style={{ fontFamily: "Poppins, sans-serif" }}
+                    >
+                      Sign Up
+                    </Link>
+                  )}
+                </nav>
+              </div>
+
+              {/* Mobile actions */}
+              <div className="flex items-center gap-1 lg:hidden">
+                <button
+                  onClick={() => setShowSearchBar(!showSearchBar)}
+                  className={iconButtonClass}
+                  aria-label="Toggle search"
                 >
-                    {/* Drawer Header */}
-                    <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                        <span className="text-lg font-bold text-black" style={{ fontFamily: 'Inter, sans-serif' }}>
-                            Menu
-                        </span>
-                        <button
-                            onClick={() => setShowMobileMenu(false)}
-                            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.8}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </button>
+
+                <button
+                  data-mobile-toggle
+                  onClick={() => setShowMobileMenu(!showMobileMenu)}
+                  className={iconButtonClass}
+                  aria-label="Toggle menu"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.8}
+                      d="M4 6h16M4 12h16M4 18h16"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Desktop right */}
+              <div className="hidden lg:flex items-center gap-2 xl:gap-3 2xl:gap-4">
+                            {/* Search */}
+                            <div
+              className="
+                flex items-center 
+                h-11
+                rounded-full 
+                bg-gray-100 
+                px-4
+                border border-transparent
+                transition-all duration-200
+                focus-within:bg-white
+                focus-within:border-red-400
+              "
+            >
+          <input
+            ref={searchInputRef}
+            type="text"
+            placeholder="What are you looking for?"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="
+              w-40 xl:w-56 2xl:w-72
+              bg-transparent
+              text-sm text-gray-700
+              placeholder-gray-400
+              outline-none
+              border-none
+              focus:outline-none
+              focus:ring-0
+              appearance-none
+            "
+            style={{ fontFamily: "Poppins, sans-serif" }}
+          />
+
+          <button
+            className="
+              ml-2 
+              flex items-center justify-center
+              w-8 h-8
+              rounded-full
+              text-gray-500
+              transition
+              hover:bg-gray-200
+              hover:text-red-500
+            "
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.8}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </button>
+        </div>
+
+                {/* Wishlist */}
+                <Link to="/wishlist" className={iconButtonClass}>
+                  <svg className="h-5 w-5 xl:h-[22px] xl:w-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.7}
+                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                    />
+                  </svg>
+                </Link>
+
+                {/* Cart */}
+                <Link to="/cart" className={iconButtonClass}>
+                  <svg className="h-5 w-5 xl:h-[22px] xl:w-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.7}
+                      d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6M12 17v4"
+                    />
+                  </svg>
+
+                  {totalQty > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-none text-white xl:h-5 xl:min-w-5">
+                      {totalQty > 99 ? "99+" : totalQty}
+                    </span>
+                  )}
+                </Link>
+
+                {/* User */}
+                <div className="relative" ref={menuRef}>
+                  <button
+                    onClick={handleAvatarClick}
+                    className="relative inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gray-200 ring-1 ring-transparent transition-colors duration-200 hover:ring-red-400 xl:h-11 xl:w-11"
+                    aria-label={isAuthenticated ? "Open user menu" : "Sign in"}
+                  >
+                    {avatarUrl ? (
+                      <img
+                        src={`${avatarUrl}?t=${Date.now()}`}
+                        alt={`${user?.firstName ?? ""} avatar`}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <svg
+                        className="h-5 w-5 text-gray-500 xl:h-6 xl:w-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.7}
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                        />
+                      </svg>
+                    )}
+
+                    {uploadingAvatar && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/45">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      </div>
+                    )}
+                  </button>
+
+                  <div
+                    className={`absolute right-0 top-[calc(100%+10px)] w-72 origin-top-right rounded-2xl border border-gray-200 bg-white p-2 shadow-[0_18px_50px_rgba(0,0,0,0.12)] transition-all duration-200 ${
+                      showUserMenu && isAuthenticated
+                        ? "pointer-events-auto translate-y-0 opacity-100"
+                        : "pointer-events-none translate-y-1 opacity-0"
+                    }`}
+                  >
+                    <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-gray-200">
+                          {avatarUrl ? (
+                            <img
+                              src={`${avatarUrl}?t=${Date.now()}`}
+                              alt="avatar"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <svg className="m-2.5 h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={1.6}
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                              />
                             </svg>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-gray-900">
+                            {user?.firstName} {user?.lastName}
+                          </p>
+                          <p className="truncate text-xs text-gray-500">{user?.email}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-2 space-y-1">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="hidden"
+                        onChange={handleAvatarUpload}
+                      />
+
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingAvatar}
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.9}
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                          />
+                        </svg>
+                        {uploadingAvatar ? "Uploading..." : "Upload Avatar"}
+                      </button>
+
+                      {avatarUrl && (
+                        <button
+                          onClick={handleRemoveAvatar}
+                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50"
+                        >
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1.9}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                          Remove Avatar
                         </button>
+                      )}
                     </div>
 
-                    {/* Drawer Content */}
-                    <div className="flex flex-col h-[calc(100%-65px)] overflow-y-auto">
-                        {/* User Section (if authenticated) */}
-                        {isAuthenticated && (
-                            <div className="p-4 border-b border-gray-100 bg-gray-50">
-                                <div className="flex items-center gap-3 mb-3">
-                                    <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
-                                        {avatarUrl ? (
-                                            <img src={`${avatarUrl}?t=${Date.now()}`} alt="avatar" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <svg className="w-7 h-7 m-2.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                            </svg>
-                                        )}
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-sm font-semibold text-gray-900 truncate">
-                                            {user?.firstName} {user?.lastName}
-                                        </p>
-                                        <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                    <div className="my-2 h-px bg-gray-100" />
 
-                        {/* Navigation Links */}
-                        <nav className="flex-1 py-2">
-                            <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Navigation
-                            </div>
-                            {navLinks.map((link) => (
-                                <Link
-                                    key={link.path}
-                                    to={link.path}
-                                    className={`flex items-center px-4 py-3 text-sm font-medium transition-colors ${location.pathname === link.path
-                                        ? 'text-red-500 bg-red-50'
-                                        : 'text-gray-700 hover:bg-gray-50'
-                                        }`}
-                                >
-                                    {link.name}
-                                </Link>
-                            ))}
-                            {!isAuthenticated && (
-                                <Link
-                                    to="/signup"
-                                    className="flex items-center px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                                >
-                                    Sign Up
-                                </Link>
-                            )}
+                    <div className="space-y-1">
+                      <Link
+                        to="/profile"
+                        className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.7}
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                          />
+                        </svg>
+                        My Profile
+                      </Link>
 
-                            {/* Divider */}
-                            <div className="my-2 border-t border-gray-200" />
+                      <Link
+                        to="/orders"
+                        className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.7}
+                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                          />
+                        </svg>
+                        My Orders
+                      </Link>
 
-                            {/* Quick Actions */}
-                            <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Quick Actions
-                            </div>
-                            <Link
-                                to="/wishlist"
-                                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                </svg>
-                                Wishlist
-                            </Link>
-                            <Link
-                                to="/cart"
-                                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                            >
-                                <div className="relative">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6M12 17v4" />
-                                    </svg>
-                                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">
-                                        0
-                                    </span>
-                                </div>
-                                Cart
-                            </Link>
+                      <button
+                        onClick={() => {
+                          navigate("/cancellations");
+                          setShowUserMenu(false);
+                        }}
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <circle cx="12" cy="12" r="9" strokeWidth={1.5} />
+                          <circle cx="12" cy="12" r="3" fill="currentColor" />
+                        </svg>
+                        My Cancellations
+                      </button>
 
-                            {/* User Menu Items (if authenticated) */}
-                            {isAuthenticated && (
-                                <>
-                                    <div className="my-2 border-t border-gray-200" />
-                                    <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Account
-                                    </div>
-                                    <Link
-                                        to="/profile"
-                                        className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                        </svg>
-                                        My Profile
-                                    </Link>
-                                    <Link
-                                        to="/orders"
-                                        className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                        </svg>
-                                        My Orders
-                                    </Link>
-                                    <Link
-                                        to="/cancellations"
-                                        className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <circle cx="12" cy="12" r="9" strokeWidth={1.5} />
-                                            <circle cx="12" cy="12" r="3" fill="currentColor" />
-                                        </svg>
-                                        My Cancellations
-                                    </Link>
-                                    <Link
-                                        to="/reviews"
-                                        className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        My Reviews
-                                    </Link>
-                                    <div className="my-2 border-t border-gray-200" />
-                                    <button
-                                        onClick={handleLogout}
-                                        className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                        </svg>
-                                        Logout
-                                    </button>
-                                </>
-                            )}
+                      <button
+                        onClick={() => {
+                          navigate("/reviews");
+                          setShowUserMenu(false);
+                        }}
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.7}
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        My Reviews
+                      </button>
 
-                            {/* Sign In button (if not authenticated) */}
-                            {!isAuthenticated && (
-                                <>
-                                    <div className="my-2 border-t border-gray-200" />
-                                    <div className="p-4">
-                                        <Link
-                                            to="/signin"
-                                            className="flex items-center justify-center w-full py-3 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors"
-                                        >
-                                            Sign In
-                                        </Link>
-                                    </div>
-                                </>
-                            )}
-                        </nav>
+                      <button
+                        onClick={handleLogout}
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.7}
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                          />
+                        </svg>
+                        Logout
+                      </button>
                     </div>
+                  </div>
                 </div>
+              </div>
             </div>
-        </>
-    );
+
+            {/* Mobile search */}
+            {showSearchBar && (
+              <div className="border-t border-gray-100 pb-4 pt-3 lg:hidden">
+                <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2.5">
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="What are you looking for?"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        setShowSearchBar(false);
+                      }
+                    }}
+                    className="flex-1 bg-transparent text-sm text-gray-700 outline-none placeholder:text-gray-400"
+                    style={{ fontFamily: "Poppins, sans-serif" }}
+                  />
+                  <button className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-red-500">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.8}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setShowSearchBar(false)}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-red-500"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.8}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile drawer */}
+      <div
+        className={`fixed inset-0 z-[60] lg:hidden transition-opacity duration-300 ${
+          showMobileMenu ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        <div className="absolute inset-0 bg-black/45" onClick={() => setShowMobileMenu(false)} />
+
+        <div
+          ref={mobileMenuRef}
+          className={`absolute right-0 top-0 h-full w-[300px] bg-white shadow-2xl transition-transform duration-300 ease-out sm:w-[340px] ${
+            showMobileMenu ? "translate-x-0" : "translate-x-full"
+          }`}
+        >
+          <div className="flex h-16 items-center justify-between border-b border-gray-200 px-4">
+            <span
+              className="text-lg font-bold tracking-[0.08em] text-black"
+              style={{ fontFamily: "Inter, sans-serif" }}
+            >
+              MENU
+            </span>
+
+            <button
+              onClick={() => setShowMobileMenu(false)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100 hover:text-red-500"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.8}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <div className="flex h-[calc(100%-64px)] flex-col overflow-y-auto">
+            {isAuthenticated && (
+              <div className="border-b border-gray-100 bg-gray-50 px-4 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-gray-200">
+                    {avatarUrl ? (
+                      <img
+                        src={`${avatarUrl}?t=${Date.now()}`}
+                        alt="avatar"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <svg className="m-2.5 h-7 w-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.6}
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                        />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-gray-900">
+                      {user?.firstName} {user?.lastName}
+                    </p>
+                    <p className="truncate text-xs text-gray-500">{user?.email}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <nav className="flex-1 py-2">
+              <div className="px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400">
+                Navigation
+              </div>
+
+              {navLinks.map((link) => (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  className={`flex items-center px-4 py-3 text-sm font-medium transition-colors ${
+                    location.pathname === link.path
+                      ? "bg-red-50 text-red-500"
+                      : "text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              ))}
+
+              {!isAuthenticated && (
+                <Link
+                  to="/signup"
+                  className="flex items-center px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  Sign Up
+                </Link>
+              )}
+
+              <div className="my-2 border-t border-gray-200" />
+
+              <div className="px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400">
+                Quick Actions
+              </div>
+
+              <Link
+                to="/wishlist"
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.7}
+                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                  />
+                </svg>
+                Wishlist
+              </Link>
+
+              <Link
+                to="/cart"
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              >
+                <div className="relative inline-flex h-5 w-5 items-center justify-center">
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.7}
+                      d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6M12 17v4"
+                    />
+                  </svg>
+                  {totalQty > 0 && (
+                    <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-none text-white">
+                      {totalQty > 99 ? "99+" : totalQty}
+                    </span>
+                  )}
+                </div>
+                Cart
+              </Link>
+
+              {isAuthenticated && (
+                <>
+                  <div className="my-2 border-t border-gray-200" />
+
+                  <div className="px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400">
+                    Account
+                  </div>
+
+                  <Link
+                    to="/profile"
+                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.7}
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                    My Profile
+                  </Link>
+
+                  <Link
+                    to="/orders"
+                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.7}
+                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                      />
+                    </svg>
+                    My Orders
+                  </Link>
+
+                  <Link
+                    to="/cancellations"
+                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="9" strokeWidth={1.5} />
+                      <circle cx="12" cy="12" r="3" fill="currentColor" />
+                    </svg>
+                    My Cancellations
+                  </Link>
+
+                  <Link
+                    to="/reviews"
+                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.7}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    My Reviews
+                  </Link>
+
+                  <div className="my-2 border-t border-gray-200" />
+
+                  <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.7}
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                      />
+                    </svg>
+                    Logout
+                  </button>
+                </>
+              )}
+
+              {!isAuthenticated && (
+                <>
+                  <div className="my-2 border-t border-gray-200" />
+                  <div className="p-4">
+                    <Link
+                      to="/signin"
+                      className="flex w-full items-center justify-center rounded-xl bg-red-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-600"
+                    >
+                      Sign In
+                    </Link>
+                  </div>
+                </>
+              )}
+            </nav>
+          </div>
+        </div>
+      </div>
+    </>
+  );
 };
 
 export default Header;

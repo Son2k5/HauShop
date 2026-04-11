@@ -22,6 +22,8 @@ using api.services.interfaces;
 using api.services.implementations.seed;
 using api.services.implementations.product;
 using api.services.interfaces.product;
+using api.services.interfaces.cart;
+using api.services.implementations.cart;
 
 
 // Load .env BEFORE creating builder
@@ -290,6 +292,9 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<SeedService>();
+builder.Services.AddScoped<ICartService, CartService>();
+builder.Services.AddScoped<ICartRepository, CartRepository>();
+builder.Services.AddScoped<IProductVariantRepository, ProductVariantRepository>();
 
 
 // ===========================
