@@ -49,6 +49,7 @@ export interface ProductSummaryDto {
   brandName: string | null;
   categories: CategorySummaryDto[];
   created: string;
+  defaultVariantId: string | null;
 
   // Tồn kho và Rating
   stock: number;
@@ -145,26 +146,48 @@ export interface UpdateProductDto {
 }
 // ── Cart ──────────────────────────────────────────────────────────────────────
  
-/** Một dòng trong giỏ hàng */
 export interface CartItem {
+  cartItemId?: string;
   product: ProductSummaryDto;
   qty: number;
-  /** Variant id đã chọn (nếu có) */
   variantId?: string;
   variantSku?: string;
-  /** Giá tại thời điểm thêm vào giỏ (snapshot) */
   unitPrice: number;
+  availableStock?: number;
+  variantSize?: string;
+  variantColor?: string;
 }
- 
+
 export interface CartState {
   items: CartItem[];
-  /** Tổng số lượng tất cả items */
   totalQty: number;
-  /** Tổng tiền chưa giảm giá */
   subtotal: number;
 }
- 
-/** Actions CartContext expose ra ngoài */
+
+export interface CartItemDto {
+  id: string;
+  productId: string;
+  productName: string;
+  productSlug: string;
+  imageUrl?: string | null;
+  unitPrice: number;
+  quantity: number;
+  availableStock: number;
+  variantId?: string;
+  variantSku?: string;
+  variantSize?: string;
+  variantColor?: string;
+  created: string;
+}
+
+export interface CartDto {
+  id: string;
+  userId: string;
+  items: CartItemDto[];
+  totalItems: number;
+  subtotal: number;
+  created: string;
+}
 export interface CartContextValue extends CartState {
   addItem: (
     product: ProductSummaryDto,

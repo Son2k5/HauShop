@@ -1,13 +1,17 @@
 import { createContext, useContext, useReducer, useCallback, type ReactNode } from "react";
-import type { CartItem, CartState, CartContextValue } from "../@types/product.type";
-import type { ProductSummaryDto } from "../@types/product.type";
+import type {
+  CartItem,
+  CartState,
+  CartContextValue,
+  ProductSummaryDto,
+} from "../@types/product.type";
 
 // ── Reducer ───────────────────────────────────────────────────────────────────
 
 type Action =
-  | { type: "ADD_ITEM";    payload: CartItem }
+  | { type: "ADD_ITEM"; payload: CartItem }
   | { type: "REMOVE_ITEM"; payload: { productId: string; variantId?: string } }
-  | { type: "UPDATE_QTY";  payload: { productId: string; qty: number; variantId?: string } }
+  | { type: "UPDATE_QTY"; payload: { productId: string; qty: number; variantId?: string } }
   | { type: "CLEAR_CART" };
 
 const INITIAL: CartState = { items: [], totalQty: 0, subtotal: 0 };
@@ -20,7 +24,7 @@ function recalc(items: CartItem[]): CartState {
   return {
     items,
     totalQty: items.reduce((s, i) => s + i.qty, 0),
-    subtotal:  items.reduce((s, i) => s + i.unitPrice * i.qty, 0),
+    subtotal: items.reduce((s, i) => s + i.unitPrice * i.qty, 0),
   };
 }
 
@@ -29,9 +33,11 @@ function reducer(state: CartState, action: Action): CartState {
     case "ADD_ITEM": {
       const pid = action.payload.product.id;
       const vid = action.payload.variantId;
+
       const existing = state.items.find(
         (i) => i.product.id === pid && i.variantId === vid
       );
+
       const items = existing
         ? state.items.map((i) =>
             i.product.id === pid && i.variantId === vid
@@ -39,14 +45,18 @@ function reducer(state: CartState, action: Action): CartState {
               : i
           )
         : [...state.items, action.payload];
+
       return recalc(items);
     }
+
     case "REMOVE_ITEM": {
       const key = itemKey(action.payload.productId, action.payload.variantId);
       return recalc(state.items.filter((i) => itemKey(i.product.id, i.variantId) !== key));
     }
+
     case "UPDATE_QTY": {
       const key = itemKey(action.payload.productId, action.payload.variantId);
+
       const items =
         action.payload.qty <= 0
           ? state.items.filter((i) => itemKey(i.product.id, i.variantId) !== key)
@@ -55,10 +65,13 @@ function reducer(state: CartState, action: Action): CartState {
                 ? { ...i, qty: action.payload.qty }
                 : i
             );
+
       return recalc(items);
     }
+
     case "CLEAR_CART":
       return INITIAL;
+
     default:
       return state;
   }
@@ -79,7 +92,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       variantSku?: string,
       unitPrice?: number
     ) => {
-      // Snapshot giá: variant price → minVariantPrice → price
       const price =
         unitPrice ??
         (product.minVariantPrice != null && product.minVariantPrice < product.price

@@ -7,6 +7,31 @@ type CartItemPayload = {
   variantId?: string;
   variantSku?: string;
   unitPrice?: number;
+  cartItemId?: string;
+};
+
+type ServerCartItemDto = {
+  id: string;
+  productId: string;
+  productName: string;
+  productSlug: string;
+  imageUrl?: string | null;
+  unitPrice: number;
+  quantity: number;
+  availableStock: number;
+  variantId?: string;
+  variantSku?: string;
+  variantSize?: string;
+  variantColor?: string;
+};
+
+type ServerCartDto = {
+  id: string;
+  userId: string;
+  items: ServerCartItemDto[];
+  totalItems: number;
+  subtotal: number;
+  created: string;
 };
 
 const STORAGE_KEY = "haushop_cart_rtk";
@@ -51,7 +76,7 @@ const cartSlice = createSlice({
   initialState,
   reducers: {
     addItem: (state, action: PayloadAction<CartItemPayload>) => {
-      const { product, qty = 1, variantId, variantSku, unitPrice } = action.payload;
+      const { product, qty = 1, variantId, variantSku, unitPrice, cartItemId } = action.payload;
       if (!product?.id || qty <= 0) return;
 
       const resolvedUnitPrice = unitPrice ?? getDisplayPrice(product);
@@ -68,6 +93,7 @@ const cartSlice = createSlice({
         existing.qty = Math.min(existing.qty + qty, stockLimit);
         existing.unitPrice = resolvedUnitPrice;
         existing.variantSku = variantSku;
+        (existing as any).cartItemId = cartItemId ?? (existing as any).cartItemId;
       } else {
         state.items.push({
           product,
@@ -75,7 +101,8 @@ const cartSlice = createSlice({
           variantId,
           variantSku,
           unitPrice: resolvedUnitPrice,
-        });
+          ...(cartItemId ? { cartItemId } : {}),
+        } as any);
       }
 
       const totals = calcTotals(state.items);
@@ -133,9 +160,50 @@ const cartSlice = createSlice({
       state.totalQty = 0;
       state.subtotal = 0;
     },
+
+    setCartFromServer: (state, action: PayloadAction<ServerCartDto>) => {
+      const serverCart = action.payload;
+
+      state.items = (serverCart.items ?? []).map((item) => ({
+        product: {
+          id: item.productId,
+          sku: item.variantSku ?? "",
+          name: item.productName,
+          slug: item.productSlug,
+          imageUrl: item.imageUrl ?? null,
+          price: item.unitPrice,
+          minVariantPrice: item.unitPrice,
+          totalStock: item.availableStock,
+          isActive: true,
+          brandId: null,
+          brandName: null,
+          categories: [],
+          created: "",
+          stock: item.availableStock,
+          averageRating: 0,
+          reviewCount: 0,
+        },
+        qty: item.quantity,
+        variantId: item.variantId,
+        variantSku: item.variantSku,
+        unitPrice: item.unitPrice,
+        cartItemId: item.id,
+      })) as any;
+
+      const totals = calcTotals(state.items);
+      state.totalQty = totals.totalQty;
+      state.subtotal = totals.subtotal;
+    },
   },
 });
 
-export const { addItem, removeItem, updateQty, clearCart } = cartSlice.actions;
+export const {
+  addItem,
+  removeItem,
+  updateQty,
+  clearCart,
+  setCartFromServer,
+} = cartSlice.actions;
+
 export { STORAGE_KEY };
 export default cartSlice.reducer;

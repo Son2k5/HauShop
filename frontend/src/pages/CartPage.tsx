@@ -1,53 +1,173 @@
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { removeItem, updateQty, clearCart } from "../store/cartSlice";
+import { clearCart, removeItem, setCartFromServer, updateQty } from "../store/cartSlice";
+import {
+  clearCartApi,
+  getMyCartApi,
+  removeCartItemApi,
+  updateCartItemApi,
+} from "../services/cartService";
 import { formatPrice } from "../utils/formatPrice";
+import { useToast } from "../context/toastContext";
 
 export default function CartPage() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const { showToast } = useToast();
+
   const { items, totalQty, subtotal } = useAppSelector((state) => state.cart);
 
-  const shipping = items.length > 0 ? 30000 : 0;
+  const [isLoading, setIsLoading] = useState(true);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [clearing, setClearing] = useState(false);
+
+  useEffect(() => {
+    const fetchCart = async () => {
+      try {
+        const data = await getMyCartApi();
+        dispatch(setCartFromServer(data));
+      } catch (error) {
+        console.error("Fetch cart failed:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCart();
+  }, [dispatch]);
+
+  const shipping = useMemo(() => (items.length > 0 ? 30000 : 0), [items.length]);
   const total = subtotal + shipping;
 
-  const handleDecrease = (productId: string, currentQty: number, variantId?: string) => {
-    dispatch(
-      updateQty({
-        productId,
-        qty: currentQty - 1,
-        variantId,
-      })
-    );
+  const handleDecrease = async (
+    cartItemId: string | undefined,
+    productId: string,
+    currentQty: number,
+    variantId?: string
+  ) => {
+    if (!cartItemId) return;
+
+    const nextQty = currentQty - 1;
+
+    try {
+      setSyncingId(cartItemId);
+
+      if (nextQty <= 0) {
+        await removeCartItemApi(cartItemId);
+        dispatch(removeItem({ productId, variantId }));
+      } else {
+        await updateCartItemApi(cartItemId, nextQty);
+        dispatch(updateQty({ productId, qty: nextQty, variantId }));
+      }
+    } catch (error) {
+      console.error("Decrease cart item failed:", error);
+      showToast("Không thể cập nhật giỏ hàng", "error");
+    } finally {
+      setSyncingId(null);
+    }
   };
 
-  const handleIncrease = (
+  const handleIncrease = async (
+    cartItemId: string | undefined,
     productId: string,
     currentQty: number,
     maxQty: number,
     variantId?: string
   ) => {
+    if (!cartItemId) return;
     if (currentQty >= maxQty) return;
 
-    dispatch(
-      updateQty({
-        productId,
-        qty: currentQty + 1,
-        variantId,
-      })
-    );
+    const nextQty = currentQty + 1;
+
+    try {
+      setSyncingId(cartItemId);
+      await updateCartItemApi(cartItemId, nextQty);
+      dispatch(updateQty({ productId, qty: nextQty, variantId }));
+    } catch (error) {
+      console.error("Increase cart item failed:", error);
+      showToast("Không thể cập nhật giỏ hàng", "error");
+    } finally {
+      setSyncingId(null);
+    }
   };
 
-  const handleRemove = (productId: string, variantId?: string) => {
-    dispatch(removeItem({ productId, variantId }));
+  const handleRemove = async (
+    cartItemId: string | undefined,
+    productId: string,
+    variantId?: string
+  ) => {
+    if (!cartItemId) return;
+
+    try {
+      setSyncingId(cartItemId);
+      await removeCartItemApi(cartItemId);
+      dispatch(removeItem({ productId, variantId }));
+      showToast("Đã xóa sản phẩm khỏi giỏ hàng", "success");
+    } catch (error) {
+      console.error("Remove cart item failed:", error);
+      showToast("Không thể xóa sản phẩm", "error");
+    } finally {
+      setSyncingId(null);
+    }
   };
 
-  const handleClearCart = () => {
+  const handleClearCart = async () => {
     if (!items.length) return;
+
     const confirmed = window.confirm("Bạn có chắc muốn xóa toàn bộ giỏ hàng?");
     if (!confirmed) return;
-    dispatch(clearCart());
+
+    try {
+      setClearing(true);
+      await clearCartApi();
+      dispatch(clearCart());
+      showToast("Đã xóa toàn bộ giỏ hàng", "success");
+    } catch (error) {
+      console.error("Clear cart failed:", error);
+      showToast("Không thể xóa toàn bộ giỏ hàng", "error");
+    } finally {
+      setClearing(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <section className="bg-[#fafafa] min-h-[calc(100vh-160px)]">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 xl:px-10">
+          <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm animate-pulse"
+                >
+                  <div className="flex gap-4">
+                    <div className="h-28 w-28 rounded-2xl bg-gray-100" />
+                    <div className="flex-1 space-y-3">
+                      <div className="h-4 w-24 rounded bg-gray-100" />
+                      <div className="h-6 w-2/3 rounded bg-gray-100" />
+                      <div className="h-4 w-32 rounded bg-gray-100" />
+                      <div className="h-10 w-36 rounded bg-gray-100" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm animate-pulse">
+              <div className="h-5 w-32 rounded bg-gray-100 mb-6" />
+              <div className="space-y-4">
+                <div className="h-4 w-full rounded bg-gray-100" />
+                <div className="h-4 w-full rounded bg-gray-100" />
+                <div className="h-10 w-full rounded bg-gray-100" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -90,7 +210,6 @@ export default function CartPage() {
   return (
     <section className="bg-[#fafafa] min-h-[calc(100vh-160px)]">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 xl:px-10">
-        {/* Breadcrumb / header */}
         <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
@@ -113,21 +232,23 @@ export default function CartPage() {
 
             <button
               onClick={handleClearCart}
-              className="inline-flex items-center justify-center rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+              disabled={clearing}
+              className="inline-flex items-center justify-center rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
             >
-              Xóa toàn bộ
+              {clearing ? "Đang xóa..." : "Xóa toàn bộ"}
             </button>
           </div>
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
-          {/* Left - items */}
           <div className="space-y-4">
-            {items.map((item) => {
+            {items.map((item: any) => {
               const stockLimit =
                 item.product.totalStock != null && item.product.totalStock >= 0
                   ? item.product.totalStock
                   : 999;
+
+              const isSyncing = syncingId === item.cartItemId;
 
               return (
                 <div
@@ -212,9 +333,15 @@ export default function CartPage() {
                           <div className="inline-flex h-11 items-center rounded-xl border border-gray-200 bg-white">
                             <button
                               onClick={() =>
-                                handleDecrease(item.product.id, item.qty, item.variantId)
+                                handleDecrease(
+                                  item.cartItemId,
+                                  item.product.id,
+                                  item.qty,
+                                  item.variantId
+                                )
                               }
-                              className="inline-flex h-11 w-11 items-center justify-center text-gray-600 transition-colors hover:bg-gray-50 hover:text-red-500"
+                              disabled={isSyncing}
+                              className="inline-flex h-11 w-11 items-center justify-center text-gray-600 transition-colors hover:bg-gray-50 hover:text-red-500 disabled:opacity-40"
                               aria-label="Decrease quantity"
                             >
                               <svg
@@ -239,13 +366,14 @@ export default function CartPage() {
                             <button
                               onClick={() =>
                                 handleIncrease(
+                                  item.cartItemId,
                                   item.product.id,
                                   item.qty,
                                   stockLimit,
                                   item.variantId
                                 )
                               }
-                              disabled={item.qty >= stockLimit}
+                              disabled={isSyncing || item.qty >= stockLimit}
                               className="inline-flex h-11 w-11 items-center justify-center text-gray-600 transition-colors hover:bg-gray-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40"
                               aria-label="Increase quantity"
                             >
@@ -279,8 +407,11 @@ export default function CartPage() {
                           </div>
 
                           <button
-                            onClick={() => handleRemove(item.product.id, item.variantId)}
-                            className="inline-flex items-center gap-2 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 sm:mt-3"
+                            onClick={() =>
+                              handleRemove(item.cartItemId, item.product.id, item.variantId)
+                            }
+                            disabled={isSyncing}
+                            className="inline-flex items-center gap-2 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-40 sm:mt-3"
                           >
                             <svg
                               className="h-4 w-4"
@@ -306,7 +437,6 @@ export default function CartPage() {
             })}
           </div>
 
-          {/* Right - summary */}
           <aside className="h-fit rounded-3xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6 xl:sticky xl:top-24">
             <div className="mb-6">
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">

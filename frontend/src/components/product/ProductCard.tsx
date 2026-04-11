@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "../../context/toastContext";
 import { formatPrice } from "../../utils/formatPrice";
 import { useAppDispatch } from "../../store/hooks";
-import { addItem } from "../../store/cartSlice";
+import { setCartFromServer } from "../../store/cartSlice";
 import type { ProductSummaryDto } from "../../@types/product.type";
+import { addToCartApi, getMyCartApi } from "../../services/cartService";
 
 interface Props {
   product: ProductSummaryDto;
@@ -31,27 +32,41 @@ export default function ProductCard({ product: p }: Props) {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
+
   const [added, setAdded] = useState(false);
   const [wished, setWished] = useState(false);
+  const [adding, setAdding] = useState(false);
 
   const price = displayPrice(p);
   const isOutOfStock = p.totalStock != null && p.totalStock <= 0;
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isOutOfStock) return;
 
-    dispatch(
-      addItem({
-        product: p,
-        qty: 1,
-        unitPrice: price,
-      })
-    );
+    if (isOutOfStock || adding) return;
 
-    setAdded(true);
-    showToast(`Đã thêm "${p.name}" vào giỏ!`, "success");
-    setTimeout(() => setAdded(false), 2000);
+    try {
+      setAdding(true);
+
+      if (!p.defaultVariantId) {
+  navigate(`/shop/${p.slug}`);
+  return;
+}
+
+      await addToCartApi(p.defaultVariantId, 1);
+
+      const cart = await getMyCartApi();
+      dispatch(setCartFromServer(cart));
+
+      setAdded(true);
+      showToast(`Đã thêm "${p.name}" vào giỏ!`, "success");
+      setTimeout(() => setAdded(false), 2000);
+    } catch (error) {
+      console.error("Add to cart failed:", error);
+      showToast("Không thể thêm vào giỏ hàng", "error");
+    } finally {
+      setAdding(false);
+    }
   };
 
   const handleBuyNow = (e: React.MouseEvent) => {
@@ -172,13 +187,15 @@ export default function ProductCard({ product: p }: Props) {
         <div className="grid grid-cols-2 gap-2.5">
           <button
             onClick={handleAddToCart}
-            disabled={isOutOfStock}
+            disabled={isOutOfStock || adding}
             className={`flex items-center justify-center gap-2 py-3 text-xs font-semibold
                         font-bodyFont tracking-[0.6px] text-white transition-all duration-250
                         disabled:opacity-50 disabled:cursor-not-allowed
                         ${added ? "bg-success" : "bg-primeColor hover:bg-gray-700"}`}
           >
-            {added ? (
+            {adding ? (
+              "Đang thêm..."
+            ) : added ? (
               <>
                 <svg
                   className="w-4 h-4"
