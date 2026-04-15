@@ -55,8 +55,6 @@ namespace api.mappings
 
             // Tồn kho và Rating
             Stock = p.Stock,
-            AverageRating = p.AverageRating,
-            ReviewCount = p.ReviewCount,
 
             Created = p.Created,
             Updated = p.Updated,

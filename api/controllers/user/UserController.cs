@@ -9,12 +9,8 @@ using api.DTOs.user;
 
 namespace api.controllers
 {
-    /// <summary>
-    /// UserController — quản lý thông tin cá nhân và avatar của user đã đăng nhập.
-    /// Tất cả endpoint đều yêu cầu [Authorize] (accessToken cookie).
-    /// </summary>
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/user")]
     [Authorize]
     public class UserController : ControllerBase
     {
@@ -36,10 +32,6 @@ namespace api.controllers
         }
 
         // ── GET /api/user/me ──────────────────────────────────────────────────
-        /// <summary>
-        /// Lấy thông tin user hiện tại từ DB.
-        /// Frontend gọi khi mount để đồng bộ data (avatar, tên, ...) với server.
-        /// </summary>
         [HttpGet("me")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -58,11 +50,6 @@ namespace api.controllers
         }
 
         // ── POST /api/user/avatar ─────────────────────────────────────────────
-        /// <summary>
-        /// Upload avatar mới lên Cloudinary.
-        /// Tự động xóa avatar cũ trước khi upload để tránh rác trên Cloudinary.
-        /// Trả về UserDto đã cập nhật để frontend sync state ngay lập tức.
-        /// </summary>
         [HttpPost("avatar")]
         [RequestSizeLimit(10 * 1024 * 1024)] // Giới hạn 10MB ở controller level
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
@@ -135,9 +122,6 @@ namespace api.controllers
         }
 
         // ── PUT /api/user/profile ─────────────────────────────────────────────
-        /// <summary>
-        /// Cập nhật thông tin profile của user.
-        /// </summary>
         [HttpPut("profile")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -184,10 +168,6 @@ namespace api.controllers
         }
 
         // ── DELETE /api/user/avatar ───────────────────────────────────────────
-        /// <summary>
-        /// Xóa avatar của user: xóa trên Cloudinary và set null trong DB.
-        /// Trả về UserDto đã cập nhật để frontend sync state.
-        /// </summary>
         [HttpDelete("avatar")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

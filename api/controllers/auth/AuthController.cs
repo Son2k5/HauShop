@@ -8,7 +8,7 @@ using FluentValidation;
 namespace api.controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/auth")]
     public partial class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;

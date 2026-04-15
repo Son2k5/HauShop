@@ -98,8 +98,11 @@ namespace api.repositories.implementations
 
                     // Tồn kho và Rating từ Product entity
                     Stock = p.Stock,
-                    AverageRating = p.AverageRating,
-                    ReviewCount = p.ReviewCount,
+                    DefaultVariantId = p.ProductVariants
+                            .Where(m => m.IsActive && m.Stock > 0)
+                            .OrderBy(e => e.CreateAt)
+                            .Select(v => v.Id)
+                            .FirstOrDefault(),
 
                     Created = p.Created,
                 })
@@ -109,7 +112,6 @@ namespace api.repositories.implementations
         }
 
         // AsSplitQuery: tránh Cartesian product khi Include nhiều collection cùng lúc
-        // VD: 1 product, 3 categories, 5 variants → JOIN thường = 15 dòng, SplitQuery = 9 dòng
         public async Task<Product?> GetByIdWithIncludesAsync(string id, CancellationToken ct = default) =>
             await _dbSet
                 .AsNoTracking()
@@ -199,8 +201,6 @@ namespace api.repositories.implementations
                 })
                 .FirstOrDefaultAsync(ct);
 
-            product.AverageRating = stats != null ? (decimal)stats.AverageRating : 0;
-            product.ReviewCount = stats?.ReviewCount ?? 0;
             product.Updated = DateTime.UtcNow;
 
             await _context.SaveChangesAsync(ct);

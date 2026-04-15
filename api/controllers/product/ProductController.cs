@@ -8,7 +8,7 @@ namespace api.controllers.product
 {
     [ApiController]
 
-    [Route("api/[controller]")]
+    [Route("api/product")]
     public class ProductController : ControllerBase
     {
         private readonly IProductService _service;

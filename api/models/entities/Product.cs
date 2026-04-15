@@ -23,9 +23,6 @@ namespace api.models.entities
         // Tổng tồn kho (tính từ variants hoặc nhập thủ công)
         public int Stock { get; set; } = 0;
 
-        // Điểm đánh giá trung bình (tính từ reviews)
-        public decimal AverageRating { get; set; } = 0;
-        public int ReviewCount { get; set; } = 0;
 
         public DateTime Created { get; set; }
         public DateTime? Updated { get; set; }

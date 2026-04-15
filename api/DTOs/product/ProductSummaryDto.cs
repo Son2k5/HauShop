@@ -1,7 +1,5 @@
 namespace api.DTOs.product
 {
-    // Dùng cho list page — đủ field để render card sản phẩm
-    // Thay thế cả ProductSummaryDto cũ lẫn ProductListItemDto
     public class ProductSummaryDto
     {
         public string Id { get; set; } = string.Empty;
@@ -11,14 +9,10 @@ namespace api.DTOs.product
         public string? ImageUrl { get; set; }
         public decimal Price { get; set; }
 
-        // Giá thấp nhất trong variant đang active
-        // null = chưa có variant nào → dùng Price làm fallback
         public decimal? MinVariantPrice { get; set; }
 
-        // Tổng tồn kho variant đang active
+        public string? DefaultVariantId { get; set; }
         public int? TotalStock { get; set; }
-
-        // Tồn kho và Rating
         public int Stock { get; set; }
         public decimal AverageRating { get; set; }
         public int ReviewCount { get; set; }
@@ -28,5 +22,7 @@ namespace api.DTOs.product
         public string? BrandName { get; set; }
         public List<CategorySummaryDto> Categories { get; set; } = [];
         public DateTime Created { get; set; }
+
+
     }
 }

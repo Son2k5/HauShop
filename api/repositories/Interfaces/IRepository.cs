@@ -1,48 +1,39 @@
-
 using System.Linq.Expressions;
-
 
 namespace api.repositories.interfaces
 {
     public interface IRepository<T> where T : class
     {
         // Get
-        public Task<T?> GetByIdAsync(string id);
-        public Task<IEnumerable<T>> GetAllAsync();
+        Task<T?> GetByIdAsync(string id, CancellationToken ct);
+        Task<IEnumerable<T>> GetAllAsync(CancellationToken ct);
 
         // Find
-        public Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
-        public Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate);
-
+        Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate, CancellationToken ct);
+        Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate, CancellationToken ct);
 
         // Count
-        public Task<int> CountAsync();
-        public Task<int> CountAsync(Expression<Func<T, bool>> predicate);
+        Task<int> CountAsync(CancellationToken ct);
+        Task<int> CountAsync(Expression<Func<T, bool>> predicate, CancellationToken ct);
 
-        public Task<bool> AnyAsync(Expression<Func<T, bool>> predicate);
+        Task<bool> AnyAsync(Expression<Func<T, bool>> predicate, CancellationToken ct);
 
-        //Add 
-        public T Add(T entity);
+        T Add(T entity);
         void AddRange(IEnumerable<T> entities);
 
-        //Update
-        public void Update(T entity);
-        public void UpdateRange(IEnumerable<T> entities);
+        void Update(T entity);
+        void UpdateRange(IEnumerable<T> entities);
 
-        // Delete
+        void Delete(T entity);
+        void DeleteRange(IEnumerable<T> entities);
 
-        public void Delete(T entity);
-        public void DeleteRange(IEnumerable<T> entities);
-
-        // Pagination
-        public Task<(IEnumerable<T> items, int totalCount)> GetPageAsync(
+        Task<(IEnumerable<T> items, int totalCount)> GetPageAsync(
             int page,
             int pageSize,
             Expression<Func<T, bool>>? filter = null,
             Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
-            string includeProperties = ""
-
+            string includeProperties = "",
+            CancellationToken ct = default
         );
-
     }
 }

@@ -327,8 +327,6 @@ namespace api.data
 
                 // Tồn kho và Rating
                 entity.Property(e => e.Stock).HasDefaultValue(0);
-                entity.Property(e => e.AverageRating).HasPrecision(3, 2).HasDefaultValue(0);
-                entity.Property(e => e.ReviewCount).HasDefaultValue(0);
 
                 entity.HasOne(e => e.Brand)
                     .WithMany(b => b.Products)
@@ -346,7 +344,6 @@ namespace api.data
                 entity.ToTable(t => t.HasCheckConstraint("CK_Product_AverageRating", "`AverageRating` >= 0 AND `AverageRating` <= 5"));
 
                 entity.HasIndex(e => e.Stock);
-                entity.HasIndex(e => e.AverageRating);
             });
             modelBuilder.Entity<ProductVariant>(entity =>
             {

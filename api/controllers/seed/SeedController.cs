@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace api.controllers.seed
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/seed")]
     [Tags("Seed")]
     public class SeedController : ControllerBase
     {

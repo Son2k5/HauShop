@@ -6,7 +6,7 @@ using api.services.interfaces.cloud;
 namespace api.controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/image")]
     public class ImageController : ControllerBase
     {
         private readonly ICloudinaryService _cloudinary;
