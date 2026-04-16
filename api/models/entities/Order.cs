@@ -11,16 +11,22 @@ namespace api.models.entities
     {
         public string Id { get; set; }
         public string UserId { get; set; }
-        public User User { get; set; }
+
+        public decimal Subtotal { get; set; }
+        public decimal ShippingFee { get; set; }
         public decimal Total { get; set; }
+
         public OrderStatus Status { get; set; }
-        public string? ShippingAddressId { get; set; }
-        public Address? ShippingAddress { get; set; }
+
+        public string ReceiverName { get; set; }
+        public string ReceiverPhone { get; set; }
+        public string AddressLine { get; set; }
+
         public DateTime Created { get; set; }
         public DateTime? Updated { get; set; }
-        public ICollection<Payment> Payments { get; set; }
+
         public ICollection<OrderItem> OrderItems { get; set; }
-        public ShippingDetail? ShippingDetail { get; set; }
+        public ICollection<Payment> Payments { get; set; }
     }
 
 }

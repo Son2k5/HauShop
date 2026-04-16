@@ -53,7 +53,7 @@ namespace api.repositories.implementations
         }
         public async Task<Cart?> GetTrackedByUserIdWithItemsAsync(string userId, CancellationToken ct = default)
         {
-            return await BuildCartQuery(tracked: true).FirstOrDefaultAsync(e => e.Id == userId, ct);
+            return await BuildCartQuery(tracked: true).FirstOrDefaultAsync(e => e.UserId == userId, ct);
         }
         public async Task<Cart?> GetTrackedByIdWithItemsAsync(string cartId, CancellationToken ct = default)
         {
@@ -79,7 +79,7 @@ namespace api.repositories.implementations
         }
         public async Task<List<CartItem>> GetItemsByCartIdAsync(string cartId, CancellationToken ct = default)
         {
-            return await BuildCartItemQuery(tracked: false).Where(i => i.Id == cartId).ToListAsync(ct);
+            return await BuildCartItemQuery(tracked: false).Where(i => i.CartId == cartId).ToListAsync(ct);
         }
         public async Task<List<CartItem>> GetTrackedItemsByCartIdAsync(string cartId, CancellationToken ct = default)
         {
