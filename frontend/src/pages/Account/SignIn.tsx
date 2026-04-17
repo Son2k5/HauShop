@@ -1,9 +1,7 @@
 // src/pages/Auth/SignIn.tsx
 
 import React, { useEffect, useState, useCallback } from "react";
-import { Icon } from "@iconify/react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { logoLight } from "../../assets/images";
 import { useAuthActions } from "../../hooks/useAuthActions";
 import { type ApiError } from "../../@types/auth.type";
 
@@ -13,6 +11,9 @@ const GOOGLE_ERRORS: Record<string, string> = {
   google_invalid:      "Invalid Google request",
   google_unauthorized: "Google account email is not verified",
   google_error:        "Google sign-in failed, please try again",
+  invalid_request:     "Invalid Google request",
+  session_expired:     "Google sign-in session expired, please try again",
+  auth_failed:         "Google sign-in failed, please try again",
 };
 
 // ── Slideshow images (thay bằng ảnh thật của bạn) ─────────────────

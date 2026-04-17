@@ -46,19 +46,27 @@ export default function CartPage() {
     currentQty: number,
     variantId?: string
   ) => {
-    if (!cartItemId) return;
-
     const nextQty = currentQty - 1;
+
+    // If no cartItemId, just update local cart (not synced yet)
+    if (!cartItemId) {
+      if (nextQty <= 0) {
+        dispatch(removeItem({ productId, variantId }));
+      } else {
+        dispatch(updateQty({ productId, qty: nextQty, variantId }));
+      }
+      return;
+    }
 
     try {
       setSyncingId(cartItemId);
 
       if (nextQty <= 0) {
-        await removeCartItemApi(cartItemId);
-        dispatch(removeItem({ productId, variantId }));
+        const updatedCart = await removeCartItemApi(cartItemId);
+        dispatch(setCartFromServer(updatedCart));
       } else {
-        await updateCartItemApi(cartItemId, nextQty);
-        dispatch(updateQty({ productId, qty: nextQty, variantId }));
+        const updatedCart = await updateCartItemApi(cartItemId, nextQty);
+        dispatch(setCartFromServer(updatedCart));
       }
     } catch (error) {
       console.error("Decrease cart item failed:", error);
@@ -75,15 +83,20 @@ export default function CartPage() {
     maxQty: number,
     variantId?: string
   ) => {
-    if (!cartItemId) return;
     if (currentQty >= maxQty) return;
 
     const nextQty = currentQty + 1;
 
+    // If no cartItemId, just update local cart (not synced yet)
+    if (!cartItemId) {
+      dispatch(updateQty({ productId, qty: nextQty, variantId }));
+      return;
+    }
+
     try {
       setSyncingId(cartItemId);
-      await updateCartItemApi(cartItemId, nextQty);
-      dispatch(updateQty({ productId, qty: nextQty, variantId }));
+      const updatedCart = await updateCartItemApi(cartItemId, nextQty);
+      dispatch(setCartFromServer(updatedCart));
     } catch (error) {
       console.error("Increase cart item failed:", error);
       showToast("Không thể cập nhật giỏ hàng", "error");
@@ -97,12 +110,17 @@ export default function CartPage() {
     productId: string,
     variantId?: string
   ) => {
-    if (!cartItemId) return;
+    // If no cartItemId, just remove from local cart (not synced yet)
+    if (!cartItemId) {
+      dispatch(removeItem({ productId, variantId }));
+      showToast("Đã xóa sản phẩm khỏi giỏ hàng", "success");
+      return;
+    }
 
     try {
       setSyncingId(cartItemId);
-      await removeCartItemApi(cartItemId);
-      dispatch(removeItem({ productId, variantId }));
+      const updatedCart = await removeCartItemApi(cartItemId);
+      dispatch(setCartFromServer(updatedCart));
       showToast("Đã xóa sản phẩm khỏi giỏ hàng", "success");
     } catch (error) {
       console.error("Remove cart item failed:", error);
@@ -242,9 +260,9 @@ export default function CartPage() {
 
         <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
           <div className="space-y-4">
-            {items.map((item: any) => {
+            {items.map((item: any, index: number) => {
               const stockLimit =
-                item.product.totalStock != null && item.product.totalStock >= 0
+                item.product?.totalStock != null && item.product.totalStock >= 0
                   ? item.product.totalStock
                   : 999;
 
@@ -252,7 +270,7 @@ export default function CartPage() {
 
               return (
                 <div
-                  key={`${item.product.id}-${item.variantId ?? "default"}`}
+                  key={item.cartItemId || `${item.product?.id}-${item.variantId ?? "default"}-${index}`}
                   className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5"
                 >
                   <div className="flex flex-col gap-4 sm:flex-row">
@@ -470,6 +488,13 @@ export default function CartPage() {
             >
               Tiến hành thanh toán
             </button>
+
+            <Link
+              to="/orders"
+              className="mt-3 inline-flex w-full items-center justify-center rounded-2xl border border-primeColor bg-white px-5 py-3.5 text-sm font-medium text-primeColor transition-colors hover:bg-primeColor hover:text-white"
+            >
+              Xem đơn hàng của tôi
+            </Link>
 
             <Link
               to="/shop"

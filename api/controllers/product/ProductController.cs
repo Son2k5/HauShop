@@ -29,18 +29,19 @@ namespace api.controllers.product
         }
 
         // ════════════════════════════════════════════════════════════════════════
-        // GET /api/product
-        // ?search=&brandId=&categoryId=&minPrice=&maxPrice=&isActive=
-        // &sortBy=created|price|name  &sortOrder=asc|desc
-        // &page=1  &pageSize=20
+        // POST /api/product/search
+        // Body: { search, brandId, categoryId, minPrice, maxPrice, isActive,
+        //         sortBy: "created|price|name", sortOrder: "asc|desc",
+        //         page: 1, pageSize: 20 }
         // ════════════════════════════════════════════════════════════════════════
-        [HttpGet]
+        [HttpPost("search")]
         [AllowAnonymous]
         [ProducesResponseType(typeof(PagedProductDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll(
-            [FromQuery] ProductQueryDto query,
+            [FromBody] ProductQueryDto? query,
             CancellationToken ct)
         {
+            query ??= new ProductQueryDto();
             var result = await _service.GetProductsAsync(query, ct);
             return Ok(result);
         }

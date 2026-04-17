@@ -98,6 +98,8 @@ namespace api.repositories.implementations
 
                     // Tồn kho và Rating từ Product entity
                     Stock = p.Stock,
+                    AverageRating = p.AverageRating,
+                    ReviewCount = p.ReviewCount,
                     DefaultVariantId = p.ProductVariants
                             .Where(m => m.IsActive && m.Stock > 0)
                             .OrderBy(e => e.CreateAt)
@@ -202,6 +204,8 @@ namespace api.repositories.implementations
                 .FirstOrDefaultAsync(ct);
 
             product.Updated = DateTime.UtcNow;
+            product.AverageRating = stats == null ? 0 : Math.Round((decimal)stats.AverageRating, 1);
+            product.ReviewCount = stats?.ReviewCount ?? 0;
 
             await _context.SaveChangesAsync(ct);
         }

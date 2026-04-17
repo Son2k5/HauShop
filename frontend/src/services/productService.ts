@@ -1,4 +1,3 @@
-import apiClient from "../api/apiClient";
 import type   {
   PagedProductDto,
   ProductDto,
@@ -13,7 +12,16 @@ export interface UploadResponse {
 }
 
 const BASE_API = "https://localhost:7288";
-const BASE_URL = "/product";
+
+class ApiError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
 
 export async function uploadImages(
   files: File[],
@@ -86,7 +94,7 @@ async function request<T>(
             .flat()
             .join("; ")
         : `HTTP ${res.status}`;
-    throw new Error(message);
+    throw new ApiError(message, res.status);
   }
  
   // 204 No Content
@@ -94,34 +102,43 @@ async function request<T>(
  
   return res.json() as Promise<T>;
 }
- 
-// ─── Build query string từ ProductQueryDto ────────────────────────────────────
- 
+
 function buildQuery(params: ProductQueryDto): string {
   const q = new URLSearchParams();
-  if (params.search)     q.set("search",     params.search);
-  if (params.brandId)    q.set("brandId",    params.brandId);
+  if (params.search) q.set("search", params.search);
+  if (params.brandId) q.set("brandId", params.brandId);
   if (params.categoryId) q.set("categoryId", params.categoryId);
   if (params.minPrice != null) q.set("minPrice", String(params.minPrice));
   if (params.maxPrice != null) q.set("maxPrice", String(params.maxPrice));
-  if (params.isActive  != null) q.set("isActive", String(params.isActive));
-  if (params.sortBy)     q.set("sortBy",     params.sortBy);
-  if (params.sortOrder)  q.set("sortOrder",  params.sortOrder);
-  if (params.page)       q.set("page",       String(params.page));
-  if (params.pageSize)   q.set("pageSize",   String(params.pageSize));
+  if (params.isActive != null) q.set("isActive", String(params.isActive));
+  if (params.sortBy) q.set("sortBy", params.sortBy);
+  if (params.sortOrder) q.set("sortOrder", params.sortOrder);
+  if (params.page) q.set("page", String(params.page));
+  if (params.pageSize) q.set("pageSize", String(params.pageSize));
+
   const str = q.toString();
   return str ? `?${str}` : "";
 }
+ 
  
 // ─── Public API ──────────────────────────────────────────────────────────────
  
 export const productService = {
   /**
-   * GET /api/product
+   * POST /api/product/search
    * Lấy danh sách sản phẩm có phân trang, filter, sort
    */
   getAll(query: ProductQueryDto = {}): Promise<PagedProductDto> {
-    return request<PagedProductDto>(`/product${buildQuery(query)}`);
+    return request<PagedProductDto>("/product/search", {
+      method: "POST",
+      body: JSON.stringify(query),
+    }).catch((error: unknown) => {
+      if (error instanceof ApiError && (error.status === 404 || error.status === 405)) {
+        return request<PagedProductDto>(`/product${buildQuery(query)}`);
+      }
+
+      throw error;
+    });
   },
  
   /**

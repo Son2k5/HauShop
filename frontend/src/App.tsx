@@ -17,6 +17,11 @@ import HomePage from "./pages/HomePage";
 import ShopPage from "./pages/ShopPage";
 import ProductDetailPage from "./pages/ShopPageDetail";
 import CartPage from "./pages/CartPage";
+import VnPayReturnPage from "./pages/VnPayReturn";
+import OrderDetailPage from "./pages/OrderDetailPage";
+import MyOrdersPage from "./pages/OrderPage";
+import CheckoutPage from "./pages/CheckoutPage";
+import WishlistPage from "./pages/WishlistPage";
 
 function App() {
   return (
@@ -30,6 +35,7 @@ function App() {
             <Route path="/shop" element={<ShopPage />} />
             <Route path="/shop/:slug" element={<ProductDetailPage />} />
             <Route path="/cart" element={<CartPage />} />
+            <Route path="/wishlist" element={<WishlistPage />} />
             <Route path="/signin" element={<SignIn />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -38,6 +44,10 @@ function App() {
             <Route path="/contact-us" element={<ContactUs />} />
             <Route path="/about-us" element={<AboutUs />} />
             <Route path="*" element={<NotFound />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/orders" element={<MyOrdersPage />} />
+            <Route path="/orders/:id" element={<OrderDetailPage />} />
+            <Route path="/payment/vnpay-return" element={<VnPayReturnPage />} />
           </Routes>
         </main>
         <Footer />

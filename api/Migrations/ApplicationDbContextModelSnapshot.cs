@@ -649,6 +649,12 @@ namespace api.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
 
+                    b.Property<decimal>("AverageRating")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(3, 2)
+                        .HasColumnType("decimal(3,2)")
+                        .HasDefaultValue(0m);
+
                     b.Property<string>("BrandId")
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
@@ -687,6 +693,11 @@ namespace api.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int>("ReviewCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("Sku")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -711,6 +722,8 @@ namespace api.Migrations
                         .HasColumnType("datetime");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AverageRating");
 
                     b.HasIndex("BrandId");
 
@@ -769,7 +782,7 @@ namespace api.Migrations
                     b.Property<DateTime?>("CreateAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime")
-                        .HasColumnName("createat")
+                        .HasColumnName("Created")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<string>("CreateBy")
@@ -814,7 +827,8 @@ namespace api.Migrations
                         .HasDefaultValue(0);
 
                     b.Property<DateTime?>("UpdateAt")
-                        .HasColumnType("datetime");
+                        .HasColumnType("datetime")
+                        .HasColumnName("Updated");
 
                     b.Property<string>("UpdateBy")
                         .HasMaxLength(100)
@@ -886,7 +900,6 @@ namespace api.Migrations
                         .HasColumnType("varchar(50)");
 
                     b.Property<string>("Content")
-                        .IsRequired()
                         .HasMaxLength(2000)
                         .HasColumnType("varchar(2000)");
 
@@ -944,8 +957,8 @@ namespace api.Migrations
 
                     b.Property<DateTime>("Created")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("DATETIME(6)")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+                        .HasColumnType("datetime")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<DateTime?>("EstimatedDelivery")
                         .HasColumnType("datetime");
@@ -1526,8 +1539,7 @@ namespace api.Migrations
                 {
                     b.Navigation("Messages");
 
-                    b.Navigation("SupportTicket")
-                        .IsRequired();
+                    b.Navigation("SupportTicket");
                 });
 
             modelBuilder.Entity("api.models.entities.Merchant", b =>

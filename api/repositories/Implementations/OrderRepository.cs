@@ -55,9 +55,5 @@ namespace api.repositories.implementations
                     ct);
         }
 
-        public async Task<int> SaveChangesAsync(CancellationToken ct = default)
-        {
-            return await _context.SaveChangesAsync(ct);
-        }
     }
 }

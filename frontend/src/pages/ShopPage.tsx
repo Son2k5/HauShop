@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState, useCallback } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useProducts } from "../hooks/useProducts";
 import ProductCard from "../components/product/ProductCard";
 import ProductCardSkeleton from "../components/product/Productcardskeleton";
@@ -37,8 +37,11 @@ const STATUS_OPTIONS = [
 const PAGE_SIZE = 15;
 
 export default function ShopPage() {
+  const [searchParams] = useSearchParams();
+  const searchFromUrl = searchParams.get("search") ?? "";
+
   // ── Filter state ──────────────────────────────────────────────────────────
-  const [searchInput, setSearchInput] = useState("");
+  const [searchInput, setSearchInput] = useState(() => searchFromUrl);
   const [sortIdx, setSortIdx] = useState(0);
   const [minPrice, setMinPrice] = useState<number | undefined>();
   const [maxPrice, setMaxPrice] = useState<number | undefined>();
@@ -47,6 +50,11 @@ export default function ShopPage() {
 
   const debouncedSearch = useDebounce(searchInput, 400);
   const sort = SORT_OPTIONS[sortIdx];
+
+  useEffect(() => {
+    setSearchInput(searchFromUrl);
+    setPage(1);
+  }, [searchFromUrl]);
 
   const query: ProductQueryDto = {
     search: debouncedSearch || undefined,

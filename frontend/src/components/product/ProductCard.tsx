@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../context/toastContext";
 import { formatPrice } from "../../utils/formatPrice";
@@ -6,12 +6,17 @@ import { useAppDispatch } from "../../store/hooks";
 import { setCartFromServer } from "../../store/cartSlice";
 import type { ProductSummaryDto } from "../../@types/product.type";
 import { addToCartApi, getMyCartApi } from "../../services/cartService";
+import {
+  addWishlistItemApi,
+  isWishlistProductApi,
+  removeWishlistProductApi,
+} from "../../services/wishlistService";
+import { useAuth } from "../../hooks/useAuth";
 
 interface Props {
   product: ProductSummaryDto;
 }
 
-/** Giá hiển thị: ưu tiên minVariantPrice nếu rẻ hơn */
 function displayPrice(p: ProductSummaryDto): number {
   return p.minVariantPrice != null && p.minVariantPrice < p.price
     ? p.minVariantPrice
@@ -32,13 +37,39 @@ export default function ProductCard({ product: p }: Props) {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
+  const { isAuthenticated } = useAuth();
 
   const [added, setAdded] = useState(false);
   const [wished, setWished] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
   const price = displayPrice(p);
   const isOutOfStock = p.totalStock != null && p.totalStock <= 0;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!isAuthenticated) {
+      setWished(false);
+      return;
+    }
+
+    isWishlistProductApi(p.id)
+      .then((exists) => {
+        if (!cancelled) setWished(exists);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          console.error("Check wishlist failed:", error);
+          setWished(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, p.id]);
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -49,9 +80,9 @@ export default function ProductCard({ product: p }: Props) {
       setAdding(true);
 
       if (!p.defaultVariantId) {
-  navigate(`/shop/${p.slug}`);
-  return;
-}
+        navigate(`/shop/${p.slug}`);
+        return;
+      }
 
       await addToCartApi(p.defaultVariantId, 1);
 
@@ -74,10 +105,35 @@ export default function ProductCard({ product: p }: Props) {
     navigate(`/shop/${p.slug}`);
   };
 
-  const handleWishlist = (e: React.MouseEvent) => {
+  const handleWishlist = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    setWished((w) => !w);
-    showToast(wished ? "Đã xóa khỏi yêu thích" : "Đã thêm vào yêu thích", "success");
+
+    if (!isAuthenticated) {
+      showToast("Vui lòng đăng nhập để dùng wishlist", "warning");
+      navigate("/signin");
+      return;
+    }
+
+    if (wishlistLoading) return;
+
+    try {
+      setWishlistLoading(true);
+
+      if (wished) {
+        await removeWishlistProductApi(p.id);
+        setWished(false);
+        showToast("Đã xóa khỏi yêu thích", "success");
+      } else {
+        await addWishlistItemApi(p.id);
+        setWished(true);
+        showToast("Đã thêm vào yêu thích", "success");
+      }
+    } catch (error) {
+      console.error("Wishlist failed:", error);
+      showToast("Không thể cập nhật wishlist", "error");
+    } finally {
+      setWishlistLoading(false);
+    }
   };
 
   return (
@@ -126,10 +182,13 @@ export default function ProductCard({ product: p }: Props) {
 
         <button
           onClick={handleWishlist}
+          disabled={wishlistLoading}
           className="absolute top-3.5 right-3.5 w-9 h-9 bg-white border border-gray-200 rounded-full
                      flex items-center justify-center z-10
                      opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0
-                     transition-all duration-300 hover:bg-red-500 hover:border-red-500"
+                     transition-all duration-300 hover:bg-red-500 hover:border-red-500
+                     disabled:cursor-not-allowed disabled:opacity-60"
+          aria-label={wished ? "Xóa khỏi wishlist" : "Thêm vào wishlist"}
         >
           <svg
             className={`w-4 h-4 transition-all ${
@@ -145,7 +204,7 @@ export default function ProductCard({ product: p }: Props) {
                         tracking-widest py-3 text-center font-medium z-10
                         opacity-0 translate-y-full group-hover:opacity-100 group-hover:translate-y-0
                         transition-all duration-300">
-          👁 XEM NHANH
+          XEM NHANH
         </div>
       </div>
 
@@ -160,9 +219,11 @@ export default function ProductCard({ product: p }: Props) {
 
         <div className="flex items-center gap-1 mb-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <StarIcon key={i} filled={i < 4} />
+            <StarIcon key={i} filled={i < Math.round(p.averageRating || 4)} />
           ))}
-          <span className="text-xs text-lightText font-bodyFont ml-1">(128)</span>
+          <span className="text-xs text-lightText font-bodyFont ml-1">
+            ({p.reviewCount || 128})
+          </span>
         </div>
 
         <div className="flex items-center justify-between mb-4">

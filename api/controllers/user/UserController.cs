@@ -7,6 +7,8 @@ using api.services.interfaces.cloud;
 using api.repositories.interfaces;
 using api.mappings;
 using api.DTOs.user;
+using Microsoft.EntityFrameworkCore;
+using api.models.entities;
 
 namespace api.controllers
 {
@@ -215,6 +217,240 @@ namespace api.controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error removing avatar for user");
+                return StatusCode(500, new { message = "Internal server error" });
+            }
+        }
+
+        // ── GET /api/user/addresses ───────────────────────────────────────────
+        [HttpGet("addresses")]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GetAddresses()
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrWhiteSpace(userId))
+                    return Unauthorized(new { message = "Unauthorized" });
+
+                var addresses = await _context.Addresses
+                    .AsNoTracking()
+                    .Where(a => a.UserId == userId)
+                    .OrderByDescending(a => a.IsDefault)
+                    .ThenByDescending(a => a.Created)
+                    .ToListAsync(CancellationToken.None);
+
+                var addressDtos = addresses.Select(a => new AddressDto
+                {
+                    Id = a.Id,
+                    AddressLine = a.AddressLine,
+                    City = a.City,
+                    State = a.State,
+                    Country = a.Country,
+                    ZipCode = a.ZipCode,
+                    IsDefault = a.IsDefault,
+                    DisplayText = $"{a.AddressLine}, {a.City}, {a.State}".Replace(", ,", ",").Trim(',', ' ')
+                }).ToList();
+
+                return Ok(new { addresses = addressDtos });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting addresses for user");
+                return StatusCode(500, new { message = "Internal server error" });
+            }
+        }
+
+        // ── POST /api/user/addresses ────────────────────────────────────────────
+        [HttpPost("addresses")]
+        [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> CreateAddress([FromBody] CreateAddressDto dto)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrWhiteSpace(userId))
+                    return Unauthorized(new { message = "Unauthorized" });
+
+                if (string.IsNullOrWhiteSpace(dto.AddressLine))
+                    return BadRequest(new { message = "Address line is required" });
+
+                if (string.IsNullOrWhiteSpace(dto.City))
+                    return BadRequest(new { message = "City is required" });
+
+                var isFirstAddress = !await _context.Addresses
+                    .AnyAsync(a => a.UserId == userId, CancellationToken.None);
+
+                // If this is default, unset other defaults
+                if (dto.IsDefault || isFirstAddress)
+                {
+                    var existingDefaults = await _context.Addresses
+                        .Where(a => a.UserId == userId && a.IsDefault)
+                        .ToListAsync(CancellationToken.None);
+
+                    foreach (var addr in existingDefaults)
+                    {
+                        addr.IsDefault = false;
+                        addr.Updated = DateTime.UtcNow;
+                    }
+                }
+
+                var address = new Address
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    UserId = userId,
+                    AddressLine = dto.AddressLine.Trim(),
+                    City = dto.City.Trim(),
+                    State = dto.State?.Trim() ?? string.Empty,
+                    Country = dto.Country?.Trim() ?? "Vietnam",
+                    ZipCode = dto.ZipCode?.Trim() ?? string.Empty,
+                    IsDefault = dto.IsDefault || isFirstAddress,
+                    Created = DateTime.UtcNow
+                };
+
+                _context.Addresses.Add(address);
+                await _context.SaveChangesAsync(CancellationToken.None);
+
+                return CreatedAtAction(nameof(GetAddresses), new { }, new
+                {
+                    message = "Address created successfully",
+                    address = new AddressDto
+                    {
+                        Id = address.Id,
+                        AddressLine = address.AddressLine,
+                        City = address.City,
+                        State = address.State,
+                        Country = address.Country,
+                        ZipCode = address.ZipCode,
+                        IsDefault = address.IsDefault,
+                        DisplayText = $"{address.AddressLine}, {address.City}, {address.State}".Replace(", ,", ",").Trim(',', ' ')
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating address for user");
+                return StatusCode(500, new { message = "Internal server error" });
+            }
+        }
+
+        // ── PUT /api/user/addresses/{id} ────────────────────────────────────────
+        [HttpPut("addresses/{id}")]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> UpdateAddress(string id, [FromBody] CreateAddressDto dto)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrWhiteSpace(userId))
+                    return Unauthorized(new { message = "Unauthorized" });
+
+                var address = await _context.Addresses
+                    .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId, CancellationToken.None);
+
+                if (address == null)
+                    return NotFound(new { message = "Address not found" });
+
+                if (string.IsNullOrWhiteSpace(dto.AddressLine))
+                    return BadRequest(new { message = "Address line is required" });
+
+                if (string.IsNullOrWhiteSpace(dto.City))
+                    return BadRequest(new { message = "City is required" });
+
+                // If setting as default, unset other defaults
+                if (dto.IsDefault && !address.IsDefault)
+                {
+                    var existingDefaults = await _context.Addresses
+                        .Where(a => a.UserId == userId && a.IsDefault && a.Id != id)
+                        .ToListAsync(CancellationToken.None);
+
+                    foreach (var addr in existingDefaults)
+                    {
+                        addr.IsDefault = false;
+                        addr.Updated = DateTime.UtcNow;
+                    }
+                }
+
+                address.AddressLine = dto.AddressLine.Trim();
+                address.City = dto.City.Trim();
+                address.State = dto.State?.Trim() ?? string.Empty;
+                address.Country = dto.Country?.Trim() ?? "Vietnam";
+                address.ZipCode = dto.ZipCode?.Trim() ?? string.Empty;
+                address.IsDefault = dto.IsDefault;
+                address.Updated = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync(CancellationToken.None);
+
+                return Ok(new
+                {
+                    message = "Address updated successfully",
+                    address = new AddressDto
+                    {
+                        Id = address.Id,
+                        AddressLine = address.AddressLine,
+                        City = address.City,
+                        State = address.State,
+                        Country = address.Country,
+                        ZipCode = address.ZipCode,
+                        IsDefault = address.IsDefault,
+                        DisplayText = $"{address.AddressLine}, {address.City}, {address.State}".Replace(", ,", ",").Trim(',', ' ')
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating address for user");
+                return StatusCode(500, new { message = "Internal server error" });
+            }
+        }
+
+        // ── DELETE /api/user/addresses/{id} ─────────────────────────────────────
+        [HttpDelete("addresses/{id}")]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> DeleteAddress(string id)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrWhiteSpace(userId))
+                    return Unauthorized(new { message = "Unauthorized" });
+
+                var address = await _context.Addresses
+                    .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId, CancellationToken.None);
+
+                if (address == null)
+                    return NotFound(new { message = "Address not found" });
+
+                _context.Addresses.Remove(address);
+                await _context.SaveChangesAsync(CancellationToken.None);
+
+                if (address.IsDefault)
+                {
+                    var nextDefault = await _context.Addresses
+                        .Where(a => a.UserId == userId)
+                        .OrderByDescending(a => a.Updated ?? a.Created)
+                        .FirstOrDefaultAsync(CancellationToken.None);
+
+                    if (nextDefault != null)
+                    {
+                        nextDefault.IsDefault = true;
+                        nextDefault.Updated = DateTime.UtcNow;
+                        await _context.SaveChangesAsync(CancellationToken.None);
+                    }
+                }
+
+                return Ok(new { message = "Address deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting address for user");
                 return StatusCode(500, new { message = "Internal server error" });
             }
         }

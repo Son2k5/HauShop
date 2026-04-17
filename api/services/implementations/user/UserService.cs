@@ -32,7 +32,7 @@ namespace api.services.implementations
             if (user == null)
                 throw new Exception("User not found");
 
-            return MapToDto(user);
+            return api.mappings.UserMapping.MapToDto(user);
         }
 
         public async Task<UserDto> UpdateAvatarAsync(string userId, IFormFile file)
@@ -67,7 +67,7 @@ namespace api.services.implementations
             _userRepository.Update(user);
             await _context.SaveChangesAsync();
 
-            return MapToDto(user);
+            return api.mappings.UserMapping.MapToDto(user);
         }
 
         public async Task<UserDto> RemoveAvatarAsync(string userId)
@@ -82,26 +82,9 @@ namespace api.services.implementations
             _userRepository.Update(user);
             await _context.SaveChangesAsync();
 
-            return MapToDto(user);
+            return api.mappings.UserMapping.MapToDto(user);
         }
 
-        // 🔥 helper để tránh lặp code
-        private UserDto MapToDto(dynamic user)
-        {
-            return new UserDto
-            {
-                Id = user.Id,
-                Email = user.Email,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                PhoneNumber = user.PhoneNumber,
-                Avatar = user.Avatar,
-                Role = user.Role.ToString(),
-                MerchantId = user.MerchantId,
-                Created = user.Created,
-                IsOnline = user.IsOnline,
-                LastSeen = user.LastSeen
-            };
-        }
+
     }
 }

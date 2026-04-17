@@ -5,10 +5,9 @@ import React, {
     useMemo,
     useReducer,
 } from 'react';
-import { authService } from '../services/Auth.service';
+import { authService } from '../services/authService';
 import { userService } from '../services/userService';
 import type {
-    AuthState,
     ChangePasswordDto,
     LoginDto,
     RegisterDto,
@@ -89,8 +88,8 @@ function getInitialState(): State {
     const user = storage.load();
     return {
         user,
-        status: user ? 'authenticated' : 'unauthenticated',
-        loading: false,
+        status: user ? 'authenticated' : 'idle',
+        loading: !user,
         error: null,
     };
 }
@@ -136,6 +135,31 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 // ── Provider ──────────────────────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [state, dispatch] = useReducer(reducer, undefined, getInitialState);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const bootstrapAuth = async () => {
+            try {
+                const freshUser = await authService.getCurrentUser();
+                if (cancelled) return;
+
+                storage.save(freshUser);
+                dispatch({ type: 'SET_USER', payload: freshUser });
+            } catch {
+                if (cancelled) return;
+
+                storage.clear();
+                dispatch({ type: 'SIGN_OUT' });
+            }
+        };
+
+        void bootstrapAuth();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     // Sync nhiều tab: nếu tab khác logout (xóa _u) thì tab này cũng sign out
     useEffect(() => {
@@ -253,7 +277,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
      */
     const refreshUser = useCallback(async (): Promise<void> => {
         try {
-            const freshUser = await userService.getCurrentUser();
+            const freshUser = await authService.getCurrentUser();
             const currentUser = storage.load();
 
             // Chỉ dispatch nếu user thực sự thay đổi

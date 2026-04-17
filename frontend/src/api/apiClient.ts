@@ -18,6 +18,18 @@ function toCamelCase(obj: any): any {
     return result;
 }
 
+function normalizeErrorPayload(data: any): any {
+    if (!data || typeof data !== 'object') return data;
+
+    const normalized = toCamelCase(data);
+    if (!normalized.message && normalized.title) {
+        normalized.message = normalized.detail
+            ? `${normalized.title}: ${normalized.detail}`
+            : normalized.title;
+    }
+    return normalized;
+}
+
 // ─────────────────────────────────────────────
 // Axios instance
 // ─────────────────────────────────────────────
@@ -68,7 +80,14 @@ api.interceptors.response.use(
         return response;
     },
     async (error) => {
-        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+        const originalRequest = error.config as InternalAxiosRequestConfig & {
+            _retry?: boolean;
+            skipAuthRedirect?: boolean;
+        };
+
+        if (error.response?.data) {
+            error.response.data = normalizeErrorPayload(error.response.data);
+        }
 
         const is401 = error.response?.status === 401;
 
@@ -103,7 +122,9 @@ api.interceptors.response.use(
                 console.error('Refresh token failed');
 
                 //  KHÔNG loop nữa → redirect luôn
-                window.location.href = '/signin';
+                if (!originalRequest.skipAuthRedirect) {
+                    window.location.href = '/signin';
+                }
 
                 return Promise.reject(refreshError);
             } finally {

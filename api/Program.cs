@@ -24,6 +24,16 @@ using api.services.implementations.product;
 using api.services.interfaces.product;
 using api.services.interfaces.cart;
 using api.services.implementations.cart;
+using api.middlewares;
+using api.middleware;
+using api.services.interfaces.order;
+using api.services.implementations.order;
+using api.services.interfaces.payment;
+using api.services.implementations.payment;
+using api.services.interfaces.wishlist;
+using api.services.implementations.wishlist;
+using api.services.interfaces.review;
+using api.services.implementations.review;
 
 
 // Load .env BEFORE creating builder
@@ -48,6 +58,8 @@ builder.Services.AddControllers()
     });
 
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 // ===========================
 // SWAGGER WITH JWT
@@ -289,6 +301,16 @@ builder.Services.AddScoped<SeedService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<ICartRepository, CartRepository>();
 builder.Services.AddScoped<IProductVariantRepository, ProductVariantRepository>();
+builder.Services.Configure<VnPayOptions>(
+    builder.Configuration.GetSection(VnPayOptions.SectionName));
+
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<IVnPayService, VnPayService>();
+builder.Services.AddScoped<IWishlistRepository, WishlistRepository>();
+builder.Services.AddScoped<IWishlistService, WishlistService>();
+builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
+builder.Services.AddScoped<IReviewService, ReviewService>();
 
 
 // ===========================
@@ -304,28 +326,7 @@ var app = builder.Build();
 // ===========================
 // MIDDLEWARE PIPELINE
 // ===========================
-app.UseExceptionHandler(errorApp =>
-{
-    errorApp.Run(async context =>
-    {
-        context.Response.StatusCode = 500;
-        context.Response.ContentType = "application/json";
-        var error = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
-        if (error != null)
-        {
-            var ex = error.Error;
-            var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-            logger.LogError(ex, "Unhandled exception occurred");
-
-            await context.Response.WriteAsJsonAsync(new
-            {
-                success = false,
-                message = "Internal server error",
-                details = app.Environment.IsDevelopment() ? ex.Message : null
-            });
-        }
-    });
-});
+app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {

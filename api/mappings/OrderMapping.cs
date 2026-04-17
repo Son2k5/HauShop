@@ -5,16 +5,22 @@ using api.models.entities;
 
 namespace api.mappings
 {
-    public class OrderMapper
+    public class OrderMapping
     {
-        public static OrderDto MapToOrderDto(Order o)
+        public static OrderDto MapToDto(Order o)
         {
             return new OrderDto
             {
                 Id = o.Id,
+                Subtotal = o.Subtotal,
+                ShippingFee = o.ShippingFee,
                 Total = o.Total,
                 Status = o.Status.ToString(),
+                ReceiverName = o.ReceiverName,
+                ReceiverPhone = o.ReceiverPhone,
+                AddressLine = o.AddressLine,
                 Created = o.Created,
+                Updated = o.Updated,
 
                 Items = o.OrderItems?.Select(i => new OrderItemDto
                 {

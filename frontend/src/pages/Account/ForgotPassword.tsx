@@ -1,10 +1,8 @@
 // src/pages/Auth/ForgotPassword.tsx
 
 import React, { useEffect, useState, useCallback } from "react";
-import { Icon } from "@iconify/react";
 import { Link, useNavigate } from "react-router-dom";
-import { logoLight } from "../../assets/images";
-import { authService } from "../../services/Auth.service";
+import { authService } from "../../services/authService";
 import { type ApiError } from "../../@types/auth.type";
 
 // ── Slideshow images ───────────────────────────────────────────────

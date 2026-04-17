@@ -1,12 +1,10 @@
-import PromoBar from "../components/layout/Promobar";
-import Header from "../components/layout/Header";
 import HeroBanner from "../components/home/HeroBanner";
 import MarqueeBar from "../components/layout/Marqueebar";
 import TrustBar from "../components/home/TrustBar";
 import BestSellers from "../components/home/BestSellers";
+import HomeProductSections from "../components/home/HomeProductSections";
 import DarkStrip from "../components/home/DarkStrip";
-import Newsletter from "../components/home/NewsLetter";
-import Footer from "../components/layout/Footer";
+import Newsletter from "../components/home/Newsletter";
 
 
 
@@ -18,10 +16,10 @@ export default function HomePage() {
         <MarqueeBar />
         <TrustBar />
         <BestSellers />
+        <HomeProductSections />
         <DarkStrip />
         <Newsletter />
       </main>
-      <Footer />
     </div>
   );
 }

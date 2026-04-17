@@ -93,7 +93,7 @@ export interface PagedProductDto {
   totalPages: number;
 }
  
-// ── Query params → GET /api/product?... ──────────────────────────────────────
+// Request body -> POST /api/product/search
 export interface ProductQueryDto {
   search?: string;
   brandId?: string;
@@ -169,11 +169,12 @@ export interface CartItemDto {
   productId: string;
   productName: string;
   productSlug: string;
-  imageUrl?: string | null;
+  productImageUrl?: string | null;
+  variantImageUrl?: string | null;
   unitPrice: number;
   quantity: number;
   availableStock: number;
-  variantId?: string;
+  productVariantId?: string;
   variantSku?: string;
   variantSize?: string;
   variantColor?: string;

@@ -1,10 +1,8 @@
 // src/pages/Auth/ResetPassword.tsx
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { Icon } from "@iconify/react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { logoLight } from "../../assets/images";
-import { authService } from "../../services/Auth.service";
+import { authService } from "../../services/authService";
 import { type ApiError } from "../../@types/auth.type";
 
 // ── OTP length ────────────────────────────────────────────────────

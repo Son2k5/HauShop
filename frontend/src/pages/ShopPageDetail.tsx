@@ -7,6 +7,12 @@ import { addToCartApi, getMyCartApi } from "../services/cartService";
 import { useToast } from "../context/toastContext";
 import { formatPrice } from "../utils/formatPrice";
 import type { ProductVariantSummaryDto } from "../@types/product.type";
+import { useAuth } from "../hooks/useAuth";
+import {
+  createReviewApi,
+  getProductReviewsApi,
+  type ReviewDto,
+} from "../services/reviewService";
 
 export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -14,6 +20,7 @@ export default function ProductDetailPage() {
   const dispatch = useAppDispatch();
   const { product, isLoading, isError, error } = useProductBySlug(slug);
   const { showToast } = useToast();
+  const { isAuthenticated } = useAuth();
 
   const [selectedVariant, setSelectedVariant] =
     useState<ProductVariantSummaryDto | null>(null);
@@ -349,7 +356,202 @@ export default function ProductDetailPage() {
             </div>
           </div>
         </div>
+
+        <ReviewSection
+          productId={product.id}
+          isAuthenticated={isAuthenticated}
+          onRequireLogin={() => {
+            showToast("Vui lòng đăng nhập để đánh giá sản phẩm", "warning");
+            navigate("/signin");
+          }}
+        />
       </div>
     </div>
+  );
+}
+
+function ReviewSection({
+  productId,
+  isAuthenticated,
+  onRequireLogin,
+}: {
+  productId: string;
+  isAuthenticated: boolean;
+  onRequireLogin: () => void;
+}) {
+  const { showToast } = useToast();
+  const [reviews, setReviews] = useState<ReviewDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [content, setContent] = useState("");
+
+  const loadReviews = async () => {
+    try {
+      setLoading(true);
+      const data = await getProductReviewsApi(productId, 1, 20);
+      setReviews(data.items);
+    } catch (error) {
+      console.error("Load reviews failed:", error);
+      showToast("Không thể tải đánh giá", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadReviews();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!isAuthenticated) {
+      onRequireLogin();
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await createReviewApi({
+        productId,
+        rating,
+        content: content.trim() || undefined,
+      });
+
+      setRating(5);
+      setContent("");
+      showToast("Đã gửi đánh giá của bạn", "success");
+      await loadReviews();
+    } catch (error: any) {
+      console.error("Create review failed:", error);
+      showToast(error?.response?.data?.message ?? "Không thể gửi đánh giá", "error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <section className="mt-14 border-t border-gray-100 pt-10">
+      <div className="grid gap-10 lg:grid-cols-[380px_1fr]">
+        <div>
+          <p className="text-xs tracking-[2px] uppercase font-semibold mb-3 font-titleFont">
+            Đánh giá sản phẩm
+          </p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                Số sao
+              </label>
+              <div className="flex gap-1">
+                {Array.from({ length: 5 }).map((_, index) => {
+                  const value = index + 1;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setRating(value)}
+                      className={`h-9 w-9 transition-colors ${
+                        value <= rating ? "text-warning" : "text-gray-300"
+                      }`}
+                      aria-label={`${value} sao`}
+                    >
+                      <svg fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                Nội dung
+              </label>
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                maxLength={2000}
+                rows={5}
+                className="w-full resize-none border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-red-400"
+                placeholder="Chia sẻ cảm nhận của bạn về sản phẩm..."
+              />
+              <p className="mt-1 text-xs text-gray-400">{content.length}/2000</p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full bg-primeColor px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {submitting ? "Đang gửi..." : "Gửi đánh giá"}
+            </button>
+          </form>
+        </div>
+
+        <div>
+          {loading ? (
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="h-28 animate-pulse border border-gray-100 bg-gray-50" />
+              ))}
+            </div>
+          ) : reviews.length === 0 ? (
+            <div className="border border-gray-100 bg-gray-50 px-5 py-8 text-center text-sm text-gray-500">
+              Chưa có đánh giá nào cho sản phẩm này.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {reviews.map((review) => (
+                <article key={review.id} className="border border-gray-100 bg-white p-5">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-sm font-semibold text-gray-600">
+                        {review.userAvatar ? (
+                          <img
+                            src={review.userAvatar}
+                            alt={review.userName}
+                            className="h-full w-full rounded-full object-cover"
+                          />
+                        ) : (
+                          review.userName.charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{review.userName}</p>
+                        <p className="text-xs text-gray-400">
+                          {new Date(review.created).toLocaleDateString("vi-VN")}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-0.5">
+                      {Array.from({ length: 5 }).map((_, index) => (
+                        <svg
+                          key={index}
+                          className={`h-4 w-4 ${
+                            index < review.rating ? "text-warning" : "text-gray-200"
+                          }`}
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                      ))}
+                    </div>
+                  </div>
+
+                  {review.content && (
+                    <p className="text-sm leading-6 text-gray-600">{review.content}</p>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }

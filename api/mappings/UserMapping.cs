@@ -4,9 +4,9 @@ using api.models.entities;
 
 namespace api.mappings
 {
-    public class UserMapper
+    public static class UserMapping
     {
-        public static UserDto MapToUserDto(User user)
+        public static UserDto MapToDto(User user)
         {
             if (user == null) return null;
             return new UserDto
@@ -21,6 +21,14 @@ namespace api.mappings
                 MerchantId = user.MerchantId,
                 Created = user.Created
             };
+        }
+    }
+
+    public static class UserMapper
+    {
+        public static UserDto MapToUserDto(User user)
+        {
+            return UserMapping.MapToDto(user);
         }
     }
 }

@@ -31,8 +31,9 @@ namespace api.repositories.implementations
         private IQueryable<CartItem> BuildCartItemQuery(bool tracked = false)
         {
             IQueryable<CartItem> query = _context.Set<CartItem>()
+                                                .Include(e => e.Cart)
                                                 .Include(e => e.Product)
-                                        .Include(i => i.ProductVariant);
+                                                .Include(i => i.ProductVariant);
             if (!tracked)
             {
                 query = query.AsNoTracking();

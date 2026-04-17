@@ -2,6 +2,9 @@ import React, { useState, useRef, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useAppSelector } from "../../store/hooks";
+import { productService } from "../../services/productService";
+import { formatPrice } from "../../utils/formatPrice";
+import type { ProductSummaryDto } from "../../@types/product.type";
 
 const Header: React.FC = () => {
   const {
@@ -21,11 +24,15 @@ const Header: React.FC = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showSearchBar, setShowSearchBar] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<ProductSummaryDto[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const searchBoxRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -33,6 +40,10 @@ const Header: React.FC = () => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setShowUserMenu(false);
+      }
+
+      if (searchBoxRef.current && !searchBoxRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
       }
 
       if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
@@ -68,6 +79,55 @@ const Header: React.FC = () => {
   useEffect(() => {
     setShowMobileMenu(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (location.pathname !== "/shop") return;
+
+    const params = new URLSearchParams(location.search);
+    setSearchQuery(params.get("search") ?? "");
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    const query = searchQuery.trim();
+
+    if (query.length < 2) {
+      setSuggestions([]);
+      setSuggestionsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        setSuggestionsLoading(true);
+        const data = await productService.getAll({
+          search: query,
+          isActive: true,
+          page: 1,
+          pageSize: 5,
+        });
+
+        if (!cancelled) {
+          setSuggestions(data.items ?? []);
+          setShowSuggestions(true);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Search suggestions failed:", error);
+          setSuggestions([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setSuggestionsLoading(false);
+        }
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [searchQuery]);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("_u");
@@ -129,6 +189,23 @@ const Header: React.FC = () => {
     setShowUserMenu(false);
     await logout();
     navigate("/signin");
+  };
+
+  const handleSearchSubmit = () => {
+    const query = searchQuery.trim();
+    const target = query ? `/shop?search=${encodeURIComponent(query)}` : "/shop";
+
+    navigate(target);
+    setShowSuggestions(false);
+    setShowSearchBar(false);
+    setShowMobileMenu(false);
+  };
+
+  const handleSuggestionClick = (slug: string) => {
+    setShowSuggestions(false);
+    setShowSearchBar(false);
+    setShowMobileMenu(false);
+    navigate(`/shop/${slug}`);
   };
 
   const navLinks = [
@@ -230,7 +307,9 @@ const Header: React.FC = () => {
               <div className="hidden lg:flex items-center gap-2 xl:gap-3 2xl:gap-4">
                             {/* Search */}
                             <div
+              ref={searchBoxRef}
               className="
+                relative
                 flex items-center 
                 h-11
                 rounded-full 
@@ -247,7 +326,20 @@ const Header: React.FC = () => {
             type="text"
             placeholder="What are you looking for?"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setShowSuggestions(true);
+            }}
+            onFocus={() => {
+              if (searchQuery.trim().length >= 2) {
+                setShowSuggestions(true);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleSearchSubmit();
+              }
+            }}
             className="
               w-40 xl:w-56 2xl:w-72
               bg-transparent
@@ -263,6 +355,8 @@ const Header: React.FC = () => {
           />
 
           <button
+            type="button"
+            onClick={handleSearchSubmit}
             className="
               ml-2 
               flex items-center justify-center
@@ -288,6 +382,52 @@ const Header: React.FC = () => {
               />
             </svg>
           </button>
+
+          {showSuggestions && searchQuery.trim().length >= 2 && (
+            <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_18px_45px_rgba(0,0,0,0.12)]">
+              {suggestionsLoading ? (
+                <div className="px-4 py-3 text-sm text-gray-500">Searching...</div>
+              ) : suggestions.length > 0 ? (
+                <div className="py-2">
+                  {suggestions.map((product) => (
+                    <button
+                      key={product.id}
+                      type="button"
+                      onClick={() => handleSuggestionClick(product.slug)}
+                      className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-50"
+                    >
+                      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                        {product.imageUrl ? (
+                          <img
+                            src={product.imageUrl}
+                            alt={product.name}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
+                            No img
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-gray-900">{product.name}</p>
+                        <p className="mt-0.5 text-xs text-gray-500">{formatPrice(product.minVariantPrice ?? product.price)}</p>
+                      </div>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={handleSearchSubmit}
+                    className="w-full border-t border-gray-100 px-4 py-2.5 text-left text-sm font-semibold text-red-500 hover:bg-red-50"
+                  >
+                    View all results for "{searchQuery.trim()}"
+                  </button>
+                </div>
+              ) : (
+                <div className="px-4 py-3 text-sm text-gray-500">No products found</div>
+              )}
+            </div>
+          )}
         </div>
 
                 {/* Wishlist */}
@@ -531,8 +671,21 @@ const Header: React.FC = () => {
                     type="text"
                     placeholder="What are you looking for?"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setShowSuggestions(true);
+                    }}
+                    onFocus={() => {
+                      if (searchQuery.trim().length >= 2) {
+                        setShowSuggestions(true);
+                      }
+                    }}
                     onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleSearchSubmit();
+                        return;
+                      }
+
                       if (e.key === "Escape") {
                         setShowSearchBar(false);
                       }
@@ -540,7 +693,11 @@ const Header: React.FC = () => {
                     className="flex-1 bg-transparent text-sm text-gray-700 outline-none placeholder:text-gray-400"
                     style={{ fontFamily: "Poppins, sans-serif" }}
                   />
-                  <button className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-red-500">
+                  <button
+                    type="button"
+                    onClick={handleSearchSubmit}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-red-500"
+                  >
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
                         strokeLinecap="round"
@@ -564,6 +721,51 @@ const Header: React.FC = () => {
                     </svg>
                   </button>
                 </div>
+                {showSuggestions && searchQuery.trim().length >= 2 && (
+                  <div className="mt-2 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg">
+                    {suggestionsLoading ? (
+                      <div className="px-4 py-3 text-sm text-gray-500">Searching...</div>
+                    ) : suggestions.length > 0 ? (
+                      <div className="py-2">
+                        {suggestions.map((product) => (
+                          <button
+                            key={product.id}
+                            type="button"
+                            onClick={() => handleSuggestionClick(product.slug)}
+                            className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-50"
+                          >
+                            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                              {product.imageUrl ? (
+                                <img
+                                  src={product.imageUrl}
+                                  alt={product.name}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
+                                  No img
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold text-gray-900">{product.name}</p>
+                              <p className="mt-0.5 text-xs text-gray-500">{formatPrice(product.minVariantPrice ?? product.price)}</p>
+                            </div>
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={handleSearchSubmit}
+                          className="w-full border-t border-gray-100 px-4 py-2.5 text-left text-sm font-semibold text-red-500 hover:bg-red-50"
+                        >
+                          View all results for "{searchQuery.trim()}"
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="px-4 py-3 text-sm text-gray-500">No products found</div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

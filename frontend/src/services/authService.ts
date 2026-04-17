@@ -55,6 +55,13 @@ export const authService = {
     revokeToken: () => 
         api.post("/auth/revoke-token").then(res => res.data),
 
+    getCurrentUser: async () => {
+        const res = await api.get("/auth/me", { skipAuthRedirect: true } as any);
+        if (res.data?.user) return res.data.user;
+        if (res.data?.id || res.data?.email) return res.data;
+        throw new Error("Invalid response structure from /auth/me");
+    },
+
     loginWithGoogle: () => {
         window.location.href = "https://localhost:7288/api/auth/google";
     }

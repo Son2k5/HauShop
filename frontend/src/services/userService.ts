@@ -1,4 +1,5 @@
 import type { UpdateProfileDto, UserDto } from '../@types/auth.type';
+import type { AddressDto, CreateAddressDto, UpdateAddressDto } from '../@types/address.type';
 import api from '../api/apiClient';
 
 export const userService = {
@@ -60,5 +61,24 @@ export const userService = {
             const message = error.response?.data?.message || error.message || 'Remove avatar failed';
             throw new Error(message);
         }
+    },
+
+    async getAddresses(): Promise<AddressDto[]> {
+        const response = await api.get('/user/addresses');
+        return response.data.addresses || [];
+    },
+
+    async createAddress(data: CreateAddressDto): Promise<AddressDto> {
+        const response = await api.post('/user/addresses', data);
+        return response.data.address;
+    },
+
+    async updateAddress(id: string, data: UpdateAddressDto): Promise<AddressDto> {
+        const response = await api.put(`/user/addresses/${id}`, data);
+        return response.data.address;
+    },
+
+    async deleteAddress(id: string): Promise<void> {
+        await api.delete(`/user/addresses/${id}`);
     },
 };

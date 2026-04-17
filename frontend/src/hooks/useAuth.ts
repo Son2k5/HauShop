@@ -16,6 +16,7 @@ export function useAuth() {
     // Actions
     login:           actions.login,
     register:        actions.register,
+    loginWithGoogle: actions.loginWithGoogle,
     logout:          actions.logout,
     changePassword:  actions.changePassword,
     updateAvatar:    actions.updateAvatar,

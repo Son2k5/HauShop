@@ -67,6 +67,7 @@ namespace api.middleware
                 Instance = context.Request.Path,
                 Extensions =
                 {
+                    ["message"] = detail ?? title,
                     ["traceId"] = traceId
                 }
             }, ct);

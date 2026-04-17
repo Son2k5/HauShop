@@ -1,9 +1,7 @@
 // src/pages/Auth/SignUp.tsx
 
 import React, { useEffect, useState, useCallback } from "react";
-import { Icon } from "@iconify/react";
 import { Link, useNavigate } from "react-router-dom";
-import { test } from "../../assets/images";
 import { useAuthActions } from "../../hooks/useAuthActions";
 import type { ApiError } from "../../@types/auth.type";
 

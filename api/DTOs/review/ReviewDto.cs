@@ -1,18 +1,14 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using api.models.enums;
 
 namespace api.DTOs.review
 {
     public class ReviewDto
     {
-        public string Id { get; set; }
-        public string ProductId { get; set; }
-        public string ProductName { get; set; }
-        public string UserId { get; set; }
-        public string UserName { get; set; }
+        public string Id { get; set; } = default!;
+        public string ProductId { get; set; } = default!;
+        public string ProductName { get; set; } = default!;
+        public string UserId { get; set; } = default!;
+        public string UserName { get; set; } = default!;
         public string? UserAvatar { get; set; }
         public int Rating { get; set; }
         public string? Content { get; set; }

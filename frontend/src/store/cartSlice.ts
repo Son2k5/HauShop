@@ -15,11 +15,12 @@ type ServerCartItemDto = {
   productId: string;
   productName: string;
   productSlug: string;
-  imageUrl?: string | null;
+  productImageUrl?: string | null;
+  variantImageUrl?: string | null;
   unitPrice: number;
   quantity: number;
   availableStock: number;
-  variantId?: string;
+  productVariantId?: string;
   variantSku?: string;
   variantSize?: string;
   variantColor?: string;
@@ -170,7 +171,7 @@ const cartSlice = createSlice({
           sku: item.variantSku ?? "",
           name: item.productName,
           slug: item.productSlug,
-          imageUrl: item.imageUrl ?? null,
+          imageUrl: item.variantImageUrl ?? item.productImageUrl ?? null,
           price: item.unitPrice,
           minVariantPrice: item.unitPrice,
           totalStock: item.availableStock,
@@ -182,10 +183,14 @@ const cartSlice = createSlice({
           stock: item.availableStock,
           averageRating: 0,
           reviewCount: 0,
+          defaultVariantId: item.productVariantId ?? null,
         },
         qty: item.quantity,
-        variantId: item.variantId,
+        variantId: item.productVariantId,
         variantSku: item.variantSku,
+        variantSize: item.variantSize,
+        variantColor: item.variantColor,
+        availableStock: item.availableStock,
         unitPrice: item.unitPrice,
         cartItemId: item.id,
       })) as any;

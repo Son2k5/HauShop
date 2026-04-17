@@ -1,5 +1,4 @@
 import React, { useCallback, useState } from "react";
-import { type ApiErrorResponse } from "../@types/auth.type";
 
 type Rules<T> = {
     [K in keyof T]?: (val: string, all: T) => string | undefined;

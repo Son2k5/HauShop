@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { userService } from '../../services/userService';
 import type { UpdateProfileDto } from '../../@types/auth.type';
+import type { AddressDto, CreateAddressDto } from '../../@types/address.type';
 
 // Profile Page Component
 const Profile: React.FC = () => {
@@ -20,6 +21,19 @@ const Profile: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [uploadingAvatar, setUploadingAvatar] = useState(false);
+    const emptyAddressForm: CreateAddressDto = {
+        addressLine: '',
+        city: '',
+        state: '',
+        country: 'Vietnam',
+        zipCode: '',
+        isDefault: false,
+    };
+    const [addresses, setAddresses] = useState<AddressDto[]>([]);
+    const [addressForm, setAddressForm] = useState<CreateAddressDto>(emptyAddressForm);
+    const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+    const [addressesLoading, setAddressesLoading] = useState(false);
+    const [savingAddress, setSavingAddress] = useState(false);
 
     // Redirect if not authenticated
     useEffect(() => {
@@ -40,6 +54,25 @@ const Profile: React.FC = () => {
             setOriginalData(data);
         }
     }, [user]);
+
+    const loadAddresses = async () => {
+        try {
+            setAddressesLoading(true);
+            const data = await userService.getAddresses();
+            setAddresses(data);
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Failed to load addresses';
+            setMessage({ type: 'error', text: msg });
+        } finally {
+            setAddressesLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            void loadAddresses();
+        }
+    }, [isAuthenticated]);
 
     // Check if form has changes
     const hasChanges = () => {
@@ -137,6 +170,90 @@ const Profile: React.FC = () => {
     const handleCancel = () => {
         setFormData(originalData);
         setMessage(null);
+    };
+
+    const resetAddressForm = () => {
+        setAddressForm(emptyAddressForm);
+        setEditingAddressId(null);
+    };
+
+    const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value, type, checked } = e.target;
+        setAddressForm(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value,
+        }));
+        setMessage(null);
+    };
+
+    const handleEditAddress = (address: AddressDto) => {
+        setEditingAddressId(address.id);
+        setAddressForm({
+            addressLine: address.addressLine,
+            city: address.city,
+            state: address.state || '',
+            country: address.country || 'Vietnam',
+            zipCode: address.zipCode || '',
+            isDefault: address.isDefault,
+        });
+        setMessage(null);
+    };
+
+    const handleSaveAddress = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!addressForm.addressLine.trim() || !addressForm.city.trim()) {
+            setMessage({ type: 'error', text: 'Address line and city are required' });
+            return;
+        }
+
+        try {
+            setSavingAddress(true);
+            const payload = {
+                ...addressForm,
+                addressLine: addressForm.addressLine.trim(),
+                city: addressForm.city.trim(),
+                state: addressForm.state?.trim(),
+                country: addressForm.country?.trim() || 'Vietnam',
+                zipCode: addressForm.zipCode?.trim(),
+                isDefault: addressForm.isDefault || addresses.length === 0,
+            };
+
+            if (editingAddressId) {
+                await userService.updateAddress(editingAddressId, payload);
+                setMessage({ type: 'success', text: 'Address updated successfully!' });
+            } else {
+                await userService.createAddress(payload);
+                setMessage({ type: 'success', text: 'Address added successfully!' });
+            }
+
+            resetAddressForm();
+            await loadAddresses();
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Failed to save address';
+            setMessage({ type: 'error', text: msg });
+        } finally {
+            setSavingAddress(false);
+        }
+    };
+
+    const handleDeleteAddress = async (addressId: string) => {
+        if (!confirm('Are you sure you want to delete this address?')) return;
+
+        try {
+            setSavingAddress(true);
+            await userService.deleteAddress(addressId);
+            if (editingAddressId === addressId) {
+                resetAddressForm();
+            }
+            setMessage({ type: 'success', text: 'Address deleted successfully!' });
+            await loadAddresses();
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Failed to delete address';
+            setMessage({ type: 'error', text: msg });
+        } finally {
+            setSavingAddress(false);
+        }
     };
 
     if (!user) {
@@ -475,6 +592,194 @@ const Profile: React.FC = () => {
                                         </button>
                                     </div>
                                 </form>
+                            </div>
+                        </div>
+
+                        {/* Address Section */}
+                        <div className="rounded-3xl border border-white/70 bg-white/90 backdrop-blur shadow-lg overflow-hidden">
+                            <div className="px-6 py-5 border-b border-gray-100 bg-white/70">
+                                <h2 className="text-xl font-semibold text-gray-900">Shipping Addresses</h2>
+                                <p className="mt-1 text-sm text-gray-500">
+                                    Add or update the addresses used by checkout.
+                                </p>
+                            </div>
+
+                            <div className="p-6 space-y-6">
+                                <form onSubmit={handleSaveAddress} className="space-y-5">
+                                    <div>
+                                        <label htmlFor="addressLine" className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Address Line <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="addressLine"
+                                            name="addressLine"
+                                            value={addressForm.addressLine}
+                                            onChange={handleAddressChange}
+                                            required
+                                            className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all"
+                                            placeholder="Street, ward, building..."
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                        <div>
+                                            <label htmlFor="city" className="block text-sm font-semibold text-gray-700 mb-2">
+                                                City <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                id="city"
+                                                name="city"
+                                                value={addressForm.city}
+                                                onChange={handleAddressChange}
+                                                required
+                                                className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all"
+                                                placeholder="City"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label htmlFor="state" className="block text-sm font-semibold text-gray-700 mb-2">
+                                                State / Province
+                                            </label>
+                                            <input
+                                                type="text"
+                                                id="state"
+                                                name="state"
+                                                value={addressForm.state}
+                                                onChange={handleAddressChange}
+                                                className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all"
+                                                placeholder="State or province"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                        <div>
+                                            <label htmlFor="country" className="block text-sm font-semibold text-gray-700 mb-2">
+                                                Country
+                                            </label>
+                                            <input
+                                                type="text"
+                                                id="country"
+                                                name="country"
+                                                value={addressForm.country}
+                                                onChange={handleAddressChange}
+                                                className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all"
+                                                placeholder="Vietnam"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label htmlFor="zipCode" className="block text-sm font-semibold text-gray-700 mb-2">
+                                                Zip Code
+                                            </label>
+                                            <input
+                                                type="text"
+                                                id="zipCode"
+                                                name="zipCode"
+                                                value={addressForm.zipCode}
+                                                onChange={handleAddressChange}
+                                                className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all"
+                                                placeholder="Zip code"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <label className="flex items-center gap-3 text-sm font-medium text-gray-700">
+                                        <input
+                                            type="checkbox"
+                                            name="isDefault"
+                                            checked={addressForm.isDefault}
+                                            onChange={handleAddressChange}
+                                            className="h-4 w-4 rounded border-gray-300 text-red-500 focus:ring-red-500"
+                                        />
+                                        Use as default shipping address
+                                    </label>
+
+                                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                                        <button
+                                            type="submit"
+                                            disabled={savingAddress}
+                                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-red-500 to-orange-400 px-6 py-3 text-white font-semibold shadow-md hover:shadow-lg hover:scale-[1.01] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {savingAddress && (
+                                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                            )}
+                                            {editingAddressId ? 'Update Address' : 'Add Address'}
+                                        </button>
+
+                                        {editingAddressId && (
+                                            <button
+                                                type="button"
+                                                onClick={resetAddressForm}
+                                                disabled={savingAddress}
+                                                className="rounded-2xl border border-gray-300 bg-white px-6 py-3 text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                                            >
+                                                Cancel Edit
+                                            </button>
+                                        )}
+                                    </div>
+                                </form>
+
+                                <div className="border-t border-gray-100 pt-6">
+                                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-4">
+                                        Saved Addresses
+                                    </h3>
+
+                                    {addressesLoading ? (
+                                        <div className="h-20 rounded-2xl bg-gray-100 animate-pulse" />
+                                    ) : addresses.length === 0 ? (
+                                        <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-5 text-sm text-gray-500">
+                                            No shipping addresses yet. Add one before checking out.
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {addresses.map(address => (
+                                                <div
+                                                    key={address.id}
+                                                    className="rounded-2xl border border-gray-200 bg-gray-50 p-4"
+                                                >
+                                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                                        <div>
+                                                            <p className="font-semibold text-gray-900">{address.displayText}</p>
+                                                            <p className="text-sm text-gray-500 mt-1">
+                                                                {[address.city, address.state, address.country, address.zipCode]
+                                                                    .filter(Boolean)
+                                                                    .join(', ')}
+                                                            </p>
+                                                            {address.isDefault && (
+                                                                <span className="inline-flex mt-3 rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+                                                                    Default
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleEditAddress(address)}
+                                                                disabled={savingAddress}
+                                                                className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleDeleteAddress(address.id)}
+                                                                disabled={savingAddress}
+                                                                className="rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
