@@ -5,6 +5,7 @@ using api.repositories.interfaces;
 using api.services.interfaces.cloud;
 using api.services.interfaces.product;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace api.services.implementations.product
 {
@@ -110,7 +111,7 @@ namespace api.services.implementations.product
             CancellationToken ct = default)
         {
             // GetByIdAsync (generic, không include) đủ để update scalar fields
-            var product = await _repo.GetByIdAsync(id)
+            var product = await _repo.GetByIdAsync(id, ct)
                 ?? throw new KeyNotFoundException($"Không tìm thấy sản phẩm: {id}");
 
             if (dto.Sku != null && dto.Sku != product.Sku)
@@ -192,7 +193,7 @@ namespace api.services.implementations.product
 
         public async Task DeleteAsync(string id, CancellationToken ct = default)
         {
-            var product = await _repo.GetByIdAsync(id)
+            var product = await _repo.GetByIdAsync(id, ct)
                 ?? throw new KeyNotFoundException($"Không tìm thấy sản phẩm: {id}");
 
             var imageKey = product.ImageKey;
@@ -222,7 +223,7 @@ namespace api.services.implementations.product
 
         public async Task<ProductDto> ToggleActiveAsync(string id, CancellationToken ct = default)
         {
-            var product = await _repo.GetByIdAsync(id)
+            var product = await _repo.GetByIdAsync(id, ct)
                 ?? throw new KeyNotFoundException($"Không tìm thấy sản phẩm: {id}");
 
             product.IsActive = !product.IsActive;

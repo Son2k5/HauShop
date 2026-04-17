@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using api.data;
 using api.models.entities;
 using api.repositories.interfaces;
@@ -11,24 +7,57 @@ namespace api.repositories.implementations
 {
     public class OrderRepository : Repository<Order>, IOrderRepository
     {
-        public OrderRepository(ApplicationDbContext context) : base(context) { }
-        public async Task<Order?> GetByIdWithItemsAsync(string id, CancellationToken ct = default)
+        public OrderRepository(ApplicationDbContext context) : base(context)
         {
-            return await _context.Set<Order>()
+        }
+
+        private IQueryable<Order> BuildQuery(bool tracked = false)
+        {
+            IQueryable<Order> query = _context.Orders
                 .Include(o => o.OrderItems)
                 .Include(o => o.Payments)
                 .Include(o => o.ShippingDetail)
+                .Include(o => o.ShippingAddress);
+
+            if (!tracked)
+            {
+                query = query.AsNoTracking();
+            }
+
+            return query;
+        }
+
+        public async Task<Order?> GetByIdWithIncludesAsync(string id, CancellationToken ct = default)
+        {
+            return await BuildQuery(tracked: false)
                 .FirstOrDefaultAsync(o => o.Id == id, ct);
         }
-        public async Task<List<Order>> GetByUserIdAsync(string userId, CancellationToken ct)
+
+        public async Task<Order?> GetTrackedByIdWithIncludesAsync(string id, CancellationToken ct = default)
         {
-            return await _context.Set<Order>()
-                            .Where(e => e.UserId == userId)
-                            .Include(o => o.OrderItems)
-                            .Include(o => o.Payments)
-                            .Include(o => o.ShippingDetail)
-                            .OrderByDescending(o => o.Created)
-                            .ToListAsync(ct);
+            return await BuildQuery(tracked: true)
+                .FirstOrDefaultAsync(o => o.Id == id, ct);
+        }
+
+        public async Task<List<Order>> GetByUserIdAsync(string userId, CancellationToken ct = default)
+        {
+            return await BuildQuery(tracked: false)
+                .Where(o => o.UserId == userId)
+                .OrderByDescending(o => o.Created)
+                .ToListAsync(ct);
+        }
+
+        public async Task<Order?> GetTrackedByTransactionNoAsync(string transactionNo, CancellationToken ct = default)
+        {
+            return await BuildQuery(tracked: true)
+                .FirstOrDefaultAsync(
+                    o => o.Payments.Any(p => p.TransactionNo == transactionNo),
+                    ct);
+        }
+
+        public async Task<int> SaveChangesAsync(CancellationToken ct = default)
+        {
+            return await _context.SaveChangesAsync(ct);
         }
     }
 }

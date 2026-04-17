@@ -8,6 +8,7 @@ using api.models.entities;
 using api.mappings;
 using api.repositories.interfaces;
 using api.services.interfaces.auth;
+using System.Threading;
 
 namespace api.services.implementations.auth
 {
@@ -106,12 +107,12 @@ namespace api.services.implementations.auth
                 throw new ArgumentException("Refresh Token is required");
             }
             var hashToken = HashRefreshToken.Hash(refreshToken);
-            var storedToken = await _refreshTokenRepository.FirstOrDefaultAsync(e => e.Token == hashToken);
+            var storedToken = await _refreshTokenRepository.FirstOrDefaultAsync(e => e.Token == hashToken, CancellationToken.None);
             if (storedToken == null)
             {
                 throw new UnauthorizedAccessException("Invalid refresh token");
             }
-            var user = await _userRepository.GetByIdAsync(storedToken.UserId);
+            var user = await _userRepository.GetByIdAsync(storedToken.UserId, CancellationToken.None);
             if (user == null)
             {
                 throw new UnauthorizedAccessException("User not found");
@@ -205,7 +206,7 @@ namespace api.services.implementations.auth
             {
                 throw new ArgumentException("User ID is required");
             }
-            var user = await _userRepository.GetByIdAsync(userId);
+            var user = await _userRepository.GetByIdAsync(userId, CancellationToken.None);
             if (user != null)
             {
                 user.IsOnline = false;
@@ -231,7 +232,7 @@ namespace api.services.implementations.auth
             }
             var hashedToken = HashRefreshToken.Hash(refreshToken);
             var storedToken = await _refreshTokenRepository
-                        .FirstOrDefaultAsync(e => e.UserId == userId && e.Token == hashedToken);
+                        .FirstOrDefaultAsync(e => e.UserId == userId && e.Token == hashedToken, CancellationToken.None);
             if (storedToken != null)
             {
                 storedToken.IsRevoked = true;
@@ -249,7 +250,7 @@ namespace api.services.implementations.auth
                 string.IsNullOrWhiteSpace(dto.NewPassword))
                 throw new ArgumentException("Password is required");
 
-            var user = await _userRepository.GetByIdAsync(userId);
+            var user = await _userRepository.GetByIdAsync(userId, CancellationToken.None);
             if (user == null)
                 throw new UnauthorizedAccessException("User not found");
 
@@ -327,7 +328,7 @@ namespace api.services.implementations.auth
                 throw new ArgumentException("User ID is required");
             }
 
-            var user = await _userRepository.GetByIdAsync(userId);
+            var user = await _userRepository.GetByIdAsync(userId, CancellationToken.None);
 
             if (user == null)
             {

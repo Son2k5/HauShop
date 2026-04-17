@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using api.data;
 
@@ -11,9 +12,11 @@ using api.data;
 namespace api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260416064118_updateorder")]
+    partial class updateorder
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -485,8 +488,7 @@ namespace api.Migrations
                         .HasColumnType("varchar(300)");
 
                     b.Property<string>("ProductVariantId")
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
+                        .HasColumnType("longtext");
 
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
@@ -496,16 +498,13 @@ namespace api.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("VariantColor")
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("VariantSize")
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("VariantSku")
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
+                        .HasColumnType("longtext");
 
                     b.HasKey("Id");
 
@@ -773,16 +772,13 @@ namespace api.Migrations
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<string>("CreateBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("ImageKey")
-                        .HasMaxLength(200)
-                        .HasColumnType("varchar(200)");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("ImageUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)");
+                        .HasColumnType("longtext");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
@@ -817,8 +813,7 @@ namespace api.Migrations
                         .HasColumnType("datetime");
 
                     b.Property<string>("UpdateBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
+                        .HasColumnType("longtext");
 
                     b.HasKey("Id");
 

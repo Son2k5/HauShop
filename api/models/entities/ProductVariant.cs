@@ -8,7 +8,6 @@ namespace api.models.entities
         public string Id { get; set; }
 
         public string ProductId { get; set; }
-        public Product Product { get; set; }
 
         public string Size { get; set; }
         public string Color { get; set; }
@@ -25,6 +24,9 @@ namespace api.models.entities
         public string? UpdateBy { get; set; }
 
         public bool IsActive { get; set; }
+
+        // Navigation properties
+        public Product Product { get; set; } = null!;
         public ICollection<CartItem> CartItems { get; set; } = new List<CartItem>();
     }
 }

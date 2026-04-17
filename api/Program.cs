@@ -31,11 +31,6 @@ DotNetEnv.Env.Load();
 
 
 var builder = WebApplication.CreateBuilder(args);
-Console.WriteLine("=== DEBUG ===");
-Console.WriteLine("Working dir: " + Directory.GetCurrentDirectory());
-Console.WriteLine("ENV file exists: " + File.Exists(Path.Combine(Directory.GetCurrentDirectory(), ".env")));
-Console.WriteLine("Connection string: " + builder.Configuration.GetConnectionString("DefaultConnection"));
-Console.WriteLine("=============");
 // ===========================
 // SET UP ENV
 // ===========================
@@ -101,7 +96,6 @@ builder.Services.AddSingleton(sp =>
     var apiKey = config["CloudinarySettings:ApiKey"];
     var apiSecret = config["CloudinarySettings:ApiSecret"];
 
-    Console.WriteLine($"Cloudinary Key: {apiKey}");
 
     var account = new Account(cloudName, apiKey, apiSecret);
     var cloudinary = new Cloudinary(account);

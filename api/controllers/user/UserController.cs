@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using System.Threading;
 using api.data;
 using api.services.interfaces.cloud;
 using api.repositories.interfaces;
@@ -42,7 +43,7 @@ namespace api.controllers
             if (string.IsNullOrWhiteSpace(userId))
                 return Unauthorized(new { message = "Unauthorized" });
 
-            var user = await _userRepository.GetByIdAsync(userId);
+            var user = await _userRepository.GetByIdAsync(userId, CancellationToken.None);
             if (user == null)
                 return NotFound(new { message = "User not found" });
 
@@ -72,7 +73,7 @@ namespace api.controllers
                 if (file == null || file.Length == 0)
                     return BadRequest(new { message = "No file provided" });
 
-                var user = await _userRepository.GetByIdAsync(userId);
+                var user = await _userRepository.GetByIdAsync(userId, CancellationToken.None);
                 if (user == null)
                     return NotFound(new { message = "User not found" });
 
@@ -135,7 +136,7 @@ namespace api.controllers
                 if (string.IsNullOrWhiteSpace(userId))
                     return Unauthorized(new { message = "Unauthorized" });
 
-                var user = await _userRepository.GetByIdAsync(userId);
+                var user = await _userRepository.GetByIdAsync(userId, CancellationToken.None);
                 if (user == null)
                     return NotFound(new { message = "User not found" });
 
@@ -180,7 +181,7 @@ namespace api.controllers
                 if (string.IsNullOrWhiteSpace(userId))
                     return Unauthorized(new { message = "Unauthorized" });
 
-                var user = await _userRepository.GetByIdAsync(userId);
+                var user = await _userRepository.GetByIdAsync(userId, CancellationToken.None);
                 if (user == null)
                     return NotFound(new { message = "User not found" });
 

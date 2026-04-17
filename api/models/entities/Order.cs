@@ -18,6 +18,9 @@ namespace api.models.entities
 
         public OrderStatus Status { get; set; }
 
+        public string? ShippingAddressId { get; set; }
+        public Address? ShippingAddress { get; set; }
+
         public string ReceiverName { get; set; }
         public string ReceiverPhone { get; set; }
         public string AddressLine { get; set; }
@@ -25,6 +28,8 @@ namespace api.models.entities
         public DateTime Created { get; set; }
         public DateTime? Updated { get; set; }
 
+        public User User { get; set; }
+        public ShippingDetail? ShippingDetail { get; set; }
         public ICollection<OrderItem> OrderItems { get; set; }
         public ICollection<Payment> Payments { get; set; }
     }

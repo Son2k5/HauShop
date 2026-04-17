@@ -252,7 +252,11 @@ namespace api.data
                 entity.Property(e => e.Id).HasMaxLength(50);
                 entity.Property(e => e.OrderId).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.ProductId).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.ProductVariantId).HasMaxLength(50);
                 entity.Property(e => e.ProductName).IsRequired().HasMaxLength(300);
+                entity.Property(e => e.VariantSku).HasMaxLength(100);
+                entity.Property(e => e.VariantSize).HasMaxLength(20);
+                entity.Property(e => e.VariantColor).HasMaxLength(50);
                 entity.Property(e => e.Quantity).IsRequired();
                 entity.Property(e => e.Price).HasPrecision(18, 2).IsRequired();
                 entity.Property(e => e.Total).HasPrecision(18, 2).IsRequired();
@@ -287,10 +291,6 @@ namespace api.data
                 entity.Property(e => e.OrderId).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.Method).IsRequired().HasDefaultValue(PaymentMethod.COD);
                 entity.Property(e => e.TransactionNo).HasMaxLength(200);
-                entity.Property(e => e.VnpTransactionId).HasMaxLength(200);
-                entity.Property(e => e.VnpResponseCode).HasMaxLength(50);
-                entity.Property(e => e.VnpBankCode).HasMaxLength(50);
-                entity.Property(e => e.VnpOrderInfo).HasMaxLength(500);
                 entity.Property(e => e.Amount).HasPrecision(18, 2).IsRequired();
                 entity.Property(e => e.Status).IsRequired().HasDefaultValue(PaymentStatus.Pending);
                 entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
@@ -302,7 +302,6 @@ namespace api.data
 
                 entity.HasIndex(e => e.OrderId);
                 entity.HasIndex(e => e.TransactionNo);
-                entity.HasIndex(e => e.VnpTransactionId);
                 entity.HasIndex(e => e.Status);
 
                 entity.ToTable(t => t.HasCheckConstraint("CK_Payment_Amount", "`Amount` > 0"));
@@ -357,7 +356,12 @@ namespace api.data
                 entity.Property(e => e.Price).HasPrecision(18, 2).IsRequired();
                 entity.Property(e => e.Stock).IsRequired().HasDefaultValue(0);
                 entity.Property(e => e.IsActive).HasDefaultValue(true);
-                entity.Property(e => e.CreateAt).HasColumnName("createat").HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.ImageUrl).HasMaxLength(500);
+                entity.Property(e => e.ImageKey).HasMaxLength(200);
+                entity.Property(e => e.CreateAt).HasColumnName("Created").HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.CreateBy).HasMaxLength(100);
+                entity.Property(e => e.UpdateAt).HasColumnName("Updated");
+                entity.Property(e => e.UpdateBy).HasMaxLength(100);
 
                 entity.HasOne(e => e.Product)
                     .WithMany(p => p.ProductVariants)
@@ -580,7 +584,7 @@ namespace api.data
                 entity.Property(e => e.Fee).HasPrecision(18, 2);
                 entity.Property(e => e.TrackingNumber).HasMaxLength(100);
                 entity.Property(e => e.Carrier).HasMaxLength(100);
-                entity.Property(e => e.Created).HasColumnType("DATETIME(6)").HasDefaultValueSql("CURRENT_TIMESTAMP(6)").ValueGeneratedOnAdd();
+                entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                 entity.HasOne(e => e.Order)
                     .WithOne(o => o.ShippingDetail) // Thêm navigation ngược trong Order

@@ -5,6 +5,7 @@ using api.services.interfaces;
 using api.services.interfaces.cloud;
 using Microsoft.AspNetCore.Http;
 using api.services.interfaces.user;
+using System.Threading;
 
 namespace api.services.implementations
 {
@@ -27,7 +28,7 @@ namespace api.services.implementations
 
         public async Task<UserDto> GetCurrentUserAsync(string userId)
         {
-            var user = await _userRepository.GetByIdAsync(userId);
+            var user = await _userRepository.GetByIdAsync(userId, CancellationToken.None);
             if (user == null)
                 throw new Exception("User not found");
 
@@ -36,7 +37,7 @@ namespace api.services.implementations
 
         public async Task<UserDto> UpdateAvatarAsync(string userId, IFormFile file)
         {
-            var user = await _userRepository.GetByIdAsync(userId);
+            var user = await _userRepository.GetByIdAsync(userId, CancellationToken.None);
             if (user == null)
                 throw new Exception("User not found");
 
@@ -71,7 +72,7 @@ namespace api.services.implementations
 
         public async Task<UserDto> RemoveAvatarAsync(string userId)
         {
-            var user = await _userRepository.GetByIdAsync(userId);
+            var user = await _userRepository.GetByIdAsync(userId, CancellationToken.None);
             if (user == null)
                 throw new Exception("User not found");
 

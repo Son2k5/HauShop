@@ -132,13 +132,13 @@ namespace api.repositories.implementations
 
         public async Task<bool> ExistsSkuAsync(string sku, string? excludeId = null, CancellationToken ct = default) =>
             excludeId == null
-                ? await AnyAsync(p => p.Sku == sku)
-                : await AnyAsync(p => p.Sku == sku && p.Id != excludeId);
+                ? await AnyAsync(p => p.Sku == sku, ct)
+                : await AnyAsync(p => p.Sku == sku && p.Id != excludeId, ct);
 
         public async Task<bool> ExistsSlugAsync(string slug, string? excludeId = null, CancellationToken ct = default) =>
             excludeId == null
-                ? await AnyAsync(p => p.Slug == slug)
-                : await AnyAsync(p => p.Slug == slug && p.Id != excludeId);
+                ? await AnyAsync(p => p.Slug == slug, ct)
+                : await AnyAsync(p => p.Slug == slug && p.Id != excludeId, ct);
 
         public async Task SyncCategoriesAsync(
             string productId,

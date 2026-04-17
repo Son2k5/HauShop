@@ -4,6 +4,7 @@ using api.models.entities;
 using api.repositories.interfaces;
 using api.services.interfaces.cart;
 using Microsoft.EntityFrameworkCore;
+using System.Threading;
 
 namespace api.services.implementations.cart
 {
@@ -186,7 +187,7 @@ namespace api.services.implementations.cart
 
         private async Task<Cart> EnsureCartExistsAsync(string userId, CancellationToken ct)
         {
-            var cart = await _cartRepository.FirstOrDefaultAsync(c => c.UserId == userId);
+            var cart = await _cartRepository.FirstOrDefaultAsync(c => c.UserId == userId, ct);
             if (cart != null)
                 return cart;
 

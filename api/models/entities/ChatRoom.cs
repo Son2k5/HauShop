@@ -13,7 +13,9 @@ namespace api.models.entities
         public bool IsPrivate { get; set; }
         public ChatRoomType Type { get; set; }
         public DateTime Created { get; set; }
-        public ICollection<ChatMessage> Messages { get; set; }
-        public SupportTicket SupportTicket { get; set; }
+
+        // Navigation properties
+        public ICollection<ChatMessage> Messages { get; set; } = new List<ChatMessage>();
+        public SupportTicket? SupportTicket { get; set; }
     }
 }
