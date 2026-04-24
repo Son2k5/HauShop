@@ -3,20 +3,18 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuthActions } from "../../hooks/useAuthActions";
-import { type ApiError } from "../../@types/auth.type";
+import { type ApiError, type UserDto } from "../../@types/auth.type";
 
-// ── Helpers ───────────────────────────────────────────────────────
 const GOOGLE_ERRORS: Record<string, string> = {
-  google_denied:       "You denied Google sign-in",
-  google_invalid:      "Invalid Google request",
+  google_denied: "You denied Google sign-in",
+  google_invalid: "Invalid Google request",
   google_unauthorized: "Google account email is not verified",
-  google_error:        "Google sign-in failed, please try again",
-  invalid_request:     "Invalid Google request",
-  session_expired:     "Google sign-in session expired, please try again",
-  auth_failed:         "Google sign-in failed, please try again",
+  google_error: "Google sign-in failed, please try again",
+  invalid_request: "Invalid Google request",
+  session_expired: "Google sign-in session expired, please try again",
+  auth_failed: "Google sign-in failed, please try again",
 };
 
-// ── Slideshow images (thay bằng ảnh thật của bạn) ─────────────────
 const SLIDES = [
   {
     src: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=800&q=80",
@@ -31,23 +29,21 @@ const SLIDES = [
 ];
 
 const SignIn = () => {
-  // ── Original logic state ──────────────────────────────────────
-  const [email,       setEmail]       = useState("");
-  const [password,    setPassword]    = useState("");
-  const [errEmail,    setErrEmail]    = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [errEmail, setErrEmail] = useState("");
   const [errPassword, setErrPassword] = useState("");
-  const [successMsg,  setSuccessMsg]  = useState("");
-  const [serverErrMsg,setServerErrMsg]= useState("");
-  const [loading,     setLoading]     = useState(false);
-  const [showPassword,setShowPassword]= useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
+  const [serverErrMsg, setServerErrMsg] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const navigate       = useNavigate();
-  const location       = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { login, loginWithGoogle } = useAuthActions();
   const from = (location.state as { from?: string })?.from ?? "/";
 
-  // ── Slideshow state ───────────────────────────────────────────
   const [activeSlide, setActiveSlide] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -60,30 +56,36 @@ const SignIn = () => {
     }, 400);
   }, [activeSlide, isAnimating]);
 
-  // Auto-advance every 5s
   useEffect(() => {
     const timer = setInterval(() => {
       setIsAnimating(true);
       setTimeout(() => {
-        setActiveSlide(prev => (prev + 1) % SLIDES.length);
+        setActiveSlide((prev) => (prev + 1) % SLIDES.length);
         setIsAnimating(false);
       }, 400);
     }, 5000);
     return () => clearInterval(timer);
   }, []);
 
-  // Google error from redirect
   useEffect(() => {
     const e = searchParams.get("error");
     if (e) setServerErrMsg(GOOGLE_ERRORS[e] ?? "Google sign-in failed");
   }, [searchParams]);
 
-  // ── Event Handlers (original) ─────────────────────────────────
+  useEffect(() => {
+    const state = location.state as { passwordChanged?: boolean } | null;
+    if (state?.passwordChanged) {
+      setSuccessMsg("Password changed successfully. Please sign in again with your new password.");
+      setServerErrMsg("");
+    }
+  }, [location.state]);
+
   const handleEmail = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value);
     setErrEmail("");
     setServerErrMsg("");
   };
+
   const handlePassword = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPassword(e.target.value);
     setErrPassword("");
@@ -93,20 +95,20 @@ const SignIn = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email)    setErrEmail("Enter your email");
+    if (!email) setErrEmail("Enter your email");
     if (!password) setErrPassword("Create a password");
 
     if (email && password) {
       setLoading(true);
       setServerErrMsg("");
       try {
-        await login({ email, password });
+        const user: UserDto = await login({ email, password });
         setSuccessMsg(
           `Hello dear, Thank you for your attempt. We are processing to validate your access. Till then stay connected and additional assistance will be sent to you by your mail at ${email}`
         );
         setEmail("");
         setPassword("");
-        navigate(from, { replace: true });
+        navigate(user.role === "Admin" ? "/admin" : from, { replace: true });
       } catch (err) {
         const e = err as ApiError;
         if (e.errors && Object.keys(e.errors).length > 0) {
@@ -114,12 +116,12 @@ const SignIn = () => {
           for (const key in e.errors) {
             errs[key.toLowerCase()] = e.errors[key];
           }
-          if (errs["email"]?.length)    setErrEmail(errs["email"].join(" • "));
+          if (errs["email"]?.length) setErrEmail(errs["email"].join(" • "));
           if (errs["password"]?.length) setErrPassword(errs["password"].join(" • "));
           const knownKeys = ["email", "password"];
-          const unknownErrors = Object.keys(errs).filter(k => !knownKeys.includes(k));
+          const unknownErrors = Object.keys(errs).filter((k) => !knownKeys.includes(k));
           if (unknownErrors.length > 0) {
-            setServerErrMsg(unknownErrors.map(k => errs[k].join(", ")).join(" | "));
+            setServerErrMsg(unknownErrors.map((k) => errs[k].join(", ")).join(" | "));
           }
         } else if (e.statusCode === 401) {
           setServerErrMsg("Invalid email or password.");
@@ -134,11 +136,8 @@ const SignIn = () => {
     }
   };
 
-  // ── Render ────────────────────────────────────────────────────
   return (
     <div className="w-full min-h-screen flex items-center justify-center p-4 lg:p-10 relative overflow-hidden">
-
-      {/* ── Background image with blur overlay ── */}
       <div
         className="absolute inset-0 z-0"
         style={{
@@ -150,10 +149,8 @@ const SignIn = () => {
           transform: "scale(1.05)",
         }}
       />
-      {/* Tint overlay */}
       <div className="absolute inset-0 z-0 bg-black/30" />
 
-      {/* Card */}
       <div
         className="relative z-10 w-full max-w-[1024px] bg-white rounded-[48px] overflow-hidden flex flex-col lg:flex-row"
         style={{
@@ -161,28 +158,19 @@ const SignIn = () => {
             "0px 32px 80px -8px rgba(0,0,0,0.55), 0px 8px 24px -4px rgba(0,0,0,0.35)",
         }}
       >
-        {/* ── LEFT: Slideshow panel ─────────────────────────── */}
         <div className="hidden lg:block relative w-[497px] flex-shrink-0 h-[700px]">
-          {/* Images */}
           {SLIDES.map((slide, idx) => (
             <div
               key={idx}
               className="absolute inset-4 rounded-[40px] overflow-hidden transition-opacity duration-500"
               style={{ opacity: activeSlide === idx && !isAnimating ? 1 : 0 }}
             >
-              <img
-                src={slide.src}
-                alt={slide.caption}
-                className="w-full h-full object-cover"
-              />
-              {/* Overlay */}
+              <img src={slide.src} alt={slide.caption} className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-black/30" />
             </div>
           ))}
 
-          {/* Top nav overlay */}
           <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-8 pt-8">
-            {/* Badge */}
             <div
               className="px-3 py-1 rounded-full text-white text-[10px] font-bold uppercase tracking-[0.5px]"
               style={{
@@ -193,7 +181,6 @@ const SignIn = () => {
             >
               {SLIDES[activeSlide].caption}
             </div>
-            {/* Sign Up / Join Us */}
             <div className="flex items-center gap-3">
               <Link to="/signup" className="text-white text-[10px] font-bold hover:opacity-80 transition-opacity">
                 Sign Up
@@ -207,12 +194,10 @@ const SignIn = () => {
             </div>
           </div>
 
-          {/* Slide caption */}
           <div className="absolute bottom-16 left-0 right-0 z-10 px-10">
             <p className="text-white/70 text-sm">{SLIDES[activeSlide].sub}</p>
           </div>
 
-          {/* Dot navigation */}
           <div className="absolute bottom-8 left-0 right-0 z-10 flex items-center justify-center gap-2">
             {SLIDES.map((_, idx) => (
               <button
@@ -230,9 +215,7 @@ const SignIn = () => {
           </div>
         </div>
 
-        {/* ── RIGHT: Form panel ─────────────────────────────── */}
         <div className="flex-1 flex flex-col justify-between px-10 lg:px-16 py-10 bg-white">
-          {/* Logo */}
           <div>
             <Link to="/home">
               <span className="text-2xl font-extrabold tracking-tight text-black" style={{ fontFamily: "Roboto, sans-serif" }}>
@@ -241,10 +224,8 @@ const SignIn = () => {
             </Link>
           </div>
 
-          {/* Main form area */}
           <div className="w-full max-w-[360px] mx-auto">
             {successMsg ? (
-              /* ── Success state ── */
               <div className="flex flex-col gap-6">
                 <p className="text-green-600 font-medium text-sm leading-relaxed">{successMsg}</p>
                 <Link to="/signup">
@@ -254,14 +235,9 @@ const SignIn = () => {
                 </Link>
               </div>
             ) : (
-              /* ── Sign-in form ── */
               <form onSubmit={handleSignUp} className="flex flex-col gap-4">
-                {/* Heading */}
                 <div className="text-center mb-2">
-                  <h1
-                    className="text-5xl font-extrabold text-black leading-none"
-                    style={{ fontFamily: "Roboto, sans-serif" }}
-                  >
+                  <h1 className="text-5xl font-extrabold text-black leading-none" style={{ fontFamily: "Roboto, sans-serif" }}>
                     Sign In
                   </h1>
                   <p className="text-[#666666] text-base mt-2" style={{ fontFamily: "Inter, sans-serif" }}>
@@ -269,7 +245,6 @@ const SignIn = () => {
                   </p>
                 </div>
 
-                {/* Server / Google error */}
                 {serverErrMsg && (
                   <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
                     <p className="text-sm text-red-600 font-medium">
@@ -279,7 +254,6 @@ const SignIn = () => {
                   </div>
                 )}
 
-                {/* Email */}
                 <div className="flex flex-col gap-1">
                   <input
                     onChange={handleEmail}
@@ -299,7 +273,6 @@ const SignIn = () => {
                   )}
                 </div>
 
-                {/* Password */}
                 <div className="flex flex-col gap-1">
                   <div className="relative">
                     <input
@@ -315,7 +288,7 @@ const SignIn = () => {
                     />
                     <button
                       type="button"
-                      onClick={() => setShowPassword(p => !p)}
+                      onClick={() => setShowPassword((p) => !p)}
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                       tabIndex={-1}
                     >
@@ -336,7 +309,6 @@ const SignIn = () => {
                       <span className="italic mr-1">!</span>{errPassword}
                     </p>
                   )}
-                  {/* Forgot password */}
                   <div className="flex justify-end mt-1">
                     <Link
                       to="/forgot-password"
@@ -348,7 +320,6 @@ const SignIn = () => {
                   </div>
                 </div>
 
-                {/* Divider */}
                 <div className="flex items-center gap-4">
                   <div className="flex-1 h-px bg-[#F3F4F6]" />
                   <span className="text-[10px] uppercase tracking-widest text-[#9CA3AF]" style={{ fontFamily: "Inter, sans-serif" }}>
@@ -357,7 +328,6 @@ const SignIn = () => {
                   <div className="flex-1 h-px bg-[#F3F4F6]" />
                 </div>
 
-                {/* Google */}
                 <button
                   type="button"
                   onClick={loginWithGoogle}
@@ -373,7 +343,6 @@ const SignIn = () => {
                   Login with Google
                 </button>
 
-                {/* Submit */}
                 <button
                   type="submit"
                   disabled={loading}
@@ -391,7 +360,6 @@ const SignIn = () => {
                   ) : "Login"}
                 </button>
 
-                {/* Sign up link */}
                 <p
                   className="text-center text-[11px] text-[#6B7280] mt-1"
                   style={{ fontFamily: "Inter, sans-serif" }}
@@ -405,21 +373,17 @@ const SignIn = () => {
             )}
           </div>
 
-          {/* Footer social icons */}
           <div className="flex items-center justify-center gap-6">
-            {/* Facebook */}
             <a href="#" className="text-[#9CA3AF] hover:text-gray-600 transition-colors" aria-label="Facebook">
               <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/>
               </svg>
             </a>
-            {/* Twitter/X */}
             <a href="#" className="text-[#9CA3AF] hover:text-gray-600 transition-colors" aria-label="Twitter">
               <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/>
               </svg>
             </a>
-            {/* Instagram */}
             <a href="#" className="text-[#9CA3AF] hover:text-gray-600 transition-colors" aria-label="Instagram">
               <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                 <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
@@ -427,7 +391,6 @@ const SignIn = () => {
                 <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
               </svg>
             </a>
-            {/* Pinterest */}
             <a href="#" className="text-[#9CA3AF] hover:text-gray-600 transition-colors" aria-label="Pinterest">
               <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 0C5.373 0 0 5.373 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738a.36.36 0 01.083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.632-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/>
@@ -436,7 +399,6 @@ const SignIn = () => {
           </div>
         </div>
       </div>
-      {/* end card */}
     </div>
   );
 };

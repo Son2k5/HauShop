@@ -3,9 +3,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthActions } from "../../hooks/useAuthActions";
-import type { ApiError } from "../../@types/auth.type";
+import type { ApiError, UserDto } from "../../@types/auth.type";
 
-// ── Slideshow images ───────────────────────────────────────────────
 const SLIDES = [
   {
     src: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=800&q=80",
@@ -20,32 +19,29 @@ const SLIDES = [
 ];
 
 const SignUp = () => {
-  // ── Form state ────────────────────────────────────────────────────
-  const [firstName,       setFirstName]       = useState("");
-  const [lastName,        setLastName]         = useState("");
-  const [email,           setEmail]            = useState("");
-  const [phone,           setPhone]            = useState("");
-  const [password,        setPassword]         = useState("");
-  const [confirmPassword, setConfirmPassword]  = useState("");
-  const [showPassword,    setShowPassword]     = useState(false);
-  const [showConfirm,     setShowConfirm]      = useState(false);
-  const [checked,         setChecked]          = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [checked, setChecked] = useState(false);
 
-  // ── Error state ───────────────────────────────────────────────────
-  const [errFirstName,       setErrFirstName]       = useState("");
-  const [errLastName,        setErrLastName]         = useState("");
-  const [errEmail,           setErrEmail]            = useState("");
-  const [errPhone,           setErrPhone]            = useState("");
-  const [errPassword,        setErrPassword]         = useState("");
-  const [errConfirmPassword, setErrConfirmPassword]  = useState("");
-  const [successMsg,         setSuccessMsg]          = useState("");
-  const [serverErrMsg,       setServerErrMsg]        = useState("");
-  const [loading,            setLoading]             = useState(false);
+  const [errFirstName, setErrFirstName] = useState("");
+  const [errLastName, setErrLastName] = useState("");
+  const [errEmail, setErrEmail] = useState("");
+  const [errPhone, setErrPhone] = useState("");
+  const [errPassword, setErrPassword] = useState("");
+  const [errConfirmPassword, setErrConfirmPassword] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+  const [serverErrMsg, setServerErrMsg] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
   const { register, loginWithGoogle } = useAuthActions();
 
-  // ── Slideshow state ───────────────────────────────────────────────
   const [activeSlide, setActiveSlide] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -62,14 +58,13 @@ const SignUp = () => {
     const timer = setInterval(() => {
       setIsAnimating(true);
       setTimeout(() => {
-        setActiveSlide(prev => (prev + 1) % SLIDES.length);
+        setActiveSlide((prev) => (prev + 1) % SLIDES.length);
         setIsAnimating(false);
       }, 400);
     }, 5000);
     return () => clearInterval(timer);
   }, []);
 
-  // ── Handlers (original logic) ─────────────────────────────────────
   const handleFirstName = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFirstName(e.target.value); setErrFirstName(""); setServerErrMsg("");
   };
@@ -89,16 +84,15 @@ const SignUp = () => {
     setConfirmPassword(e.target.value); setErrConfirmPassword("");
   };
 
-  // ── Submit (original logic) ───────────────────────────────────────
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!checked) return;
 
     let hasClientError = false;
-    if (!firstName)       { setErrFirstName("Enter your first name");          hasClientError = true; }
-    if (!email)           { setErrEmail("Enter your email");                   hasClientError = true; }
-    if (!phone)           { setErrPhone("Enter your phone number");            hasClientError = true; }
-    if (!password)        { setErrPassword("Enter your password");             hasClientError = true; }
+    if (!firstName) { setErrFirstName("Enter your first name"); hasClientError = true; }
+    if (!email) { setErrEmail("Enter your email"); hasClientError = true; }
+    if (!phone) { setErrPhone("Enter your phone number"); hasClientError = true; }
+    if (!password) { setErrPassword("Enter your password"); hasClientError = true; }
     if (!confirmPassword) { setErrConfirmPassword("Please confirm your password"); hasClientError = true; }
     if (password && confirmPassword && password !== confirmPassword) {
       setErrConfirmPassword("Passwords do not match");
@@ -109,24 +103,24 @@ const SignUp = () => {
     setLoading(true);
     setServerErrMsg("");
     try {
-      await register({ firstName, lastName, email, phoneNumber: phone, password });
+      const user: UserDto = await register({ firstName, lastName, email, phoneNumber: phone, password });
       setSuccessMsg(`Hello dear ${firstName}, Welcome you to HAUSHOP! Your account has been created successfully.`);
       setFirstName(""); setLastName(""); setEmail(""); setPhone(""); setPassword("");
-      navigate("/", { replace: true });
+      navigate(user.role === "Admin" ? "/admin" : "/", { replace: true });
     } catch (err) {
       const e = err as ApiError;
       if (e.errors && Object.keys(e.errors).length > 0) {
         const errs: Record<string, string[]> = {};
         for (const key in e.errors) errs[key.toLowerCase()] = e.errors[key];
-        if (errs["firstname"]?.length)   setErrFirstName(errs["firstname"].join(" • "));
-        if (errs["lastname"]?.length)    setErrLastName(errs["lastname"].join(" • "));
-        if (errs["email"]?.length)       setErrEmail(errs["email"].join(" • "));
+        if (errs["firstname"]?.length) setErrFirstName(errs["firstname"].join(" • "));
+        if (errs["lastname"]?.length) setErrLastName(errs["lastname"].join(" • "));
+        if (errs["email"]?.length) setErrEmail(errs["email"].join(" • "));
         if (errs["phonenumber"]?.length) setErrPhone(errs["phonenumber"].join(" • "));
-        if (errs["password"]?.length)    setErrPassword(errs["password"].join(" • "));
+        if (errs["password"]?.length) setErrPassword(errs["password"].join(" • "));
         const knownKeys = ["firstname", "lastname", "email", "phonenumber", "password"];
-        const unknownErrors = Object.keys(errs).filter(k => !knownKeys.includes(k));
+        const unknownErrors = Object.keys(errs).filter((k) => !knownKeys.includes(k));
         if (unknownErrors.length > 0) {
-          setServerErrMsg(unknownErrors.map(k => errs[k].join(", ")).join(" | "));
+          setServerErrMsg(unknownErrors.map((k) => errs[k].join(", ")).join(" | "));
         }
       } else if (e.statusCode && e.statusCode >= 500) {
         setServerErrMsg("Server error. Please try again later.");
@@ -138,7 +132,6 @@ const SignUp = () => {
     }
   };
 
-  // ── Eye toggle icon ───────────────────────────────────────────────
   const EyeIcon = ({ show }: { show: boolean }) =>
     show ? (
       <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -151,7 +144,6 @@ const SignUp = () => {
       </svg>
     );
 
-  // ── Field error helper ────────────────────────────────────────────
   const FieldError = ({ msg }: { msg: string }) =>
     msg ? (
       <p className="text-xs text-red-500 font-medium px-1 mt-0.5">
@@ -159,17 +151,13 @@ const SignUp = () => {
       </p>
     ) : null;
 
-  // ── Input class helper ────────────────────────────────────────────
   const inputCls = (hasErr: boolean) =>
     `w-full h-[46px] px-4 bg-white rounded-xl border text-sm text-gray-800 placeholder-[#9CA3AF] outline-none transition-colors duration-200 focus:border-[#E14D3D] focus:ring-1 focus:ring-[#E14D3D] ${
       hasErr ? "border-red-400" : "border-[#E5E7EB]"
     }`;
 
-  // ── Render ────────────────────────────────────────────────────────
   return (
     <div className="w-full min-h-screen flex items-center justify-center p-4 lg:p-10 relative overflow-hidden">
-
-      {/* Background blurred image */}
       <div
         className="absolute inset-0 z-0"
         style={{
@@ -180,17 +168,14 @@ const SignUp = () => {
           transform: "scale(1.05)",
         }}
       />
-      {/* Tint overlay */}
       <div className="absolute inset-0 z-0 bg-black/30" />
 
-      {/* Card */}
       <div
         className="relative z-10 w-full max-w-[1024px] bg-white rounded-[48px] overflow-hidden flex flex-col lg:flex-row"
         style={{
           boxShadow: "0px 32px 80px -8px rgba(0,0,0,0.55), 0px 8px 24px -4px rgba(0,0,0,0.35)",
         }}
       >
-        {/* ── LEFT: Slideshow ─────────────────────────────────── */}
         <div className="hidden lg:block relative w-[420px] flex-shrink-0" style={{ minHeight: 680 }}>
           {SLIDES.map((slide, idx) => (
             <div
@@ -203,7 +188,6 @@ const SignUp = () => {
             </div>
           ))}
 
-          {/* Top nav */}
           <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-8 pt-8">
             <div
               className="px-3 py-1 rounded-full text-white text-[10px] font-bold uppercase tracking-[0.5px]"
@@ -224,12 +208,10 @@ const SignUp = () => {
             </div>
           </div>
 
-          {/* Caption */}
           <div className="absolute bottom-16 left-0 right-0 z-10 px-10">
             <p className="text-white/70 text-sm">{SLIDES[activeSlide].sub}</p>
           </div>
 
-          {/* Dots */}
           <div className="absolute bottom-8 left-0 right-0 z-10 flex items-center justify-center gap-2">
             {SLIDES.map((_, idx) => (
               <button
@@ -247,10 +229,7 @@ const SignUp = () => {
           </div>
         </div>
 
-        {/* ── RIGHT: Form ──────────────────────────────────────── */}
         <div className="flex-1 flex flex-col justify-between px-10 lg:px-14 py-10 bg-white overflow-y-auto" style={{ maxHeight: 680 }}>
-
-          {/* Logo */}
           <div className="mb-2">
             <Link to="/">
               <span className="text-2xl font-extrabold tracking-tight text-black" style={{ fontFamily: "Roboto, sans-serif" }}>
@@ -260,7 +239,6 @@ const SignUp = () => {
           </div>
 
           {successMsg ? (
-            /* ── Success ── */
             <div className="flex flex-col gap-4 my-auto">
               <div className="flex items-start gap-3 bg-green-50 border border-green-200 rounded-2xl px-5 py-4">
                 <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -276,8 +254,6 @@ const SignUp = () => {
             </div>
           ) : (
             <form onSubmit={handleSignUp} className="flex flex-col gap-3">
-
-              {/* Heading */}
               <div className="text-center mb-1">
                 <h1 className="text-4xl font-extrabold text-black leading-none" style={{ fontFamily: "Roboto, sans-serif" }}>
                   Create Account
@@ -287,7 +263,6 @@ const SignUp = () => {
                 </p>
               </div>
 
-              {/* Server error */}
               {serverErrMsg && (
                 <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
                   <svg className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -297,7 +272,6 @@ const SignUp = () => {
                 </div>
               )}
 
-              {/* Last Name + First Name — 2 cột */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-0.5">
                   <input
@@ -325,7 +299,6 @@ const SignUp = () => {
                 </div>
               </div>
 
-              {/* Email */}
               <div className="flex flex-col gap-0.5">
                 <input
                   onChange={handleEmail}
@@ -339,7 +312,6 @@ const SignUp = () => {
                 <FieldError msg={errEmail} />
               </div>
 
-              {/* Phone */}
               <div className="flex flex-col gap-0.5">
                 <input
                   onChange={handlePhone}
@@ -353,7 +325,6 @@ const SignUp = () => {
                 <FieldError msg={errPhone} />
               </div>
 
-              {/* Password + Confirm — 2 cột */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-0.5">
                   <div className="relative">
@@ -366,7 +337,7 @@ const SignUp = () => {
                       className={inputCls(!!errPassword) + " pr-10"}
                       style={{ fontFamily: "Inter, sans-serif" }}
                     />
-                    <button type="button" onClick={() => setShowPassword(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors" tabIndex={-1}>
+                    <button type="button" onClick={() => setShowPassword((p) => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors" tabIndex={-1}>
                       <EyeIcon show={showPassword} />
                     </button>
                   </div>
@@ -387,7 +358,7 @@ const SignUp = () => {
                       className={inputCls(!!errConfirmPassword) + " pr-10"}
                       style={{ fontFamily: "Inter, sans-serif" }}
                     />
-                    <button type="button" onClick={() => setShowConfirm(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors" tabIndex={-1}>
+                    <button type="button" onClick={() => setShowConfirm((p) => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors" tabIndex={-1}>
                       <EyeIcon show={showConfirm} />
                     </button>
                   </div>
@@ -395,7 +366,6 @@ const SignUp = () => {
                 </div>
               </div>
 
-              {/* Checkbox */}
               <div className="flex items-start gap-2 mt-1">
                 <input
                   type="checkbox"
@@ -411,7 +381,6 @@ const SignUp = () => {
                 </p>
               </div>
 
-              {/* Submit */}
               <button
                 type="submit"
                 disabled={loading || !checked}
@@ -430,14 +399,12 @@ const SignUp = () => {
                 ) : "Create Account"}
               </button>
 
-              {/* Divider */}
               <div className="flex items-center gap-4">
                 <div className="flex-1 h-px bg-[#F3F4F6]" />
                 <span className="text-[10px] uppercase tracking-widest text-[#9CA3AF]" style={{ fontFamily: "Inter, sans-serif" }}>or</span>
                 <div className="flex-1 h-px bg-[#F3F4F6]" />
               </div>
 
-              {/* Google */}
               <button
                 type="button"
                 onClick={loginWithGoogle}
@@ -453,7 +420,6 @@ const SignUp = () => {
                 Sign up with Google
               </button>
 
-              {/* Sign in link */}
               <p className="text-center text-[11px] text-[#6B7280]" style={{ fontFamily: "Inter, sans-serif" }}>
                 Already have an account?{" "}
                 <Link to="/signin" className="text-[#E14D3D] font-semibold hover:underline">
@@ -463,7 +429,6 @@ const SignUp = () => {
             </form>
           )}
 
-          {/* Footer social */}
           <div className="flex items-center justify-center gap-6 mt-4">
             <a href="#" className="text-[#9CA3AF] hover:text-gray-600 transition-colors" aria-label="Facebook">
               <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>

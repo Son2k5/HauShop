@@ -29,6 +29,15 @@ namespace api.controllers.wishlist
             return Ok(await _wishlistService.GetMyWishlistAsync(userId, ct));
         }
 
+        [HttpGet("me/product-ids")]
+        public async Task<IActionResult> GetMyWishlistProductIds(CancellationToken ct)
+        {
+            var userId = TryGetUserId();
+            if (userId == null) return Unauthorized();
+
+            return Ok(await _wishlistService.GetMyWishlistProductIdsAsync(userId, ct));
+        }
+
         [HttpPost("items")]
         public async Task<IActionResult> AddItem([FromBody] AddWishlistItemDto dto, CancellationToken ct)
         {

@@ -32,6 +32,7 @@ namespace api.data
         public DbSet<ShippingDetail> ShippingDetails { get; set; }
         public DbSet<PasswordResetOtp> PasswordResetOtps { get; set; }
         public DbSet<ProductVariant> ProductVariants { get; set; }
+        public DbSet<AdminSetting> AdminSettings { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -530,6 +531,22 @@ namespace api.data
                 entity.HasIndex(e => e.UserId);
                 entity.HasIndex(e => e.ConnectionId).IsUnique();
                 entity.HasIndex(e => e.LastActivity);
+            });
+
+            // ============ ADMIN SETTINGS ============
+            modelBuilder.Entity<AdminSetting>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasMaxLength(50);
+                entity.Property(e => e.StoreName).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.SupportEmail).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.SupportPhone).HasMaxLength(50);
+                entity.Property(e => e.LowStockThreshold).HasDefaultValue(5);
+                entity.Property(e => e.RecentOrdersLimit).HasDefaultValue(6);
+                entity.Property(e => e.EnableOrderNotifications).HasDefaultValue(true);
+                entity.Property(e => e.EnableInventoryAlerts).HasDefaultValue(true);
+                entity.Property(e => e.EnableWeeklySummary).HasDefaultValue(false);
+                entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
             });
 
             // ============ WISHLIST ============

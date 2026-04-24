@@ -1,9 +1,7 @@
 import axios from 'axios';
 import type { InternalAxiosRequestConfig } from 'axios';
 
-// ─────────────────────────────────────────────
-// PascalCase → camelCase
-// ─────────────────────────────────────────────
+
 function toCamelCase(obj: any): any {
     if (obj === null || typeof obj !== 'object') return obj;
     if (Array.isArray(obj)) return obj.map(toCamelCase);
@@ -30,17 +28,13 @@ function normalizeErrorPayload(data: any): any {
     return normalized;
 }
 
-// ─────────────────────────────────────────────
-// Axios instance
-// ─────────────────────────────────────────────
+
 const api = axios.create({
     baseURL: 'https://localhost:7288/api',
     withCredentials: true,
 });
 
-// ─────────────────────────────────────────────
-// Request interceptor
-// ─────────────────────────────────────────────
+
 api.interceptors.request.use(
     (config) => {
         if (config.data instanceof FormData) {
@@ -51,9 +45,7 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// ─────────────────────────────────────────────
-// Refresh control
-// ─────────────────────────────────────────────
+
 let isRefreshing = false;
 
 let failedQueue: Array<{
@@ -69,9 +61,7 @@ const processQueue = (error: any) => {
     failedQueue = [];
 };
 
-// ─────────────────────────────────────────────
-// Response interceptor
-// ─────────────────────────────────────────────
+
 api.interceptors.response.use(
     (response) => {
         if (response.data) {
@@ -84,6 +74,16 @@ api.interceptors.response.use(
             _retry?: boolean;
             skipAuthRedirect?: boolean;
         };
+
+        if (error.code === 'ECONNABORTED') {
+            error.message = 'Yêu cầu tới máy chủ bị quá thời gian chờ.';
+            return Promise.reject(error);
+        }
+
+        if (error.message === 'Network Error') {
+            error.message = 'Không thể kết nối tới API.';
+            return Promise.reject(error);
+        }
 
         if (error.response?.data) {
             error.response.data = normalizeErrorPayload(error.response.data);
@@ -132,7 +132,6 @@ api.interceptors.response.use(
             }
         }
 
-        // ───────── Optional xử lý lỗi 500 ─────────
         if (error.response?.status === 500 && error.response?.data?.message) {
             error.message = error.response.data.message;
         }

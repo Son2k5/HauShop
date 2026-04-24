@@ -32,6 +32,15 @@ namespace api.repositories.implementations
                 .ToListAsync(ct);
         }
 
+        public Task<List<string>> GetProductIdsByUserIdAsync(string userId, CancellationToken ct = default)
+        {
+            return _context.Set<Wishlist>()
+                .AsNoTracking()
+                .Where(w => w.UserId == userId)
+                .Select(w => w.ProductId)
+                .ToListAsync(ct);
+        }
+
         public async Task<Wishlist?> GetByUserAndProductAsync(string userId, string productId, CancellationToken ct = default)
         {
             return await BuildQuery()

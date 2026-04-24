@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useProductBySlug } from "../hooks/useProduct";
 import { useAppDispatch } from "../store/hooks";
@@ -13,6 +14,7 @@ import {
   getProductReviewsApi,
   type ReviewDto,
 } from "../services/reviewService";
+import { queryKeys } from "../lib/queryKeys";
 
 export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -380,29 +382,29 @@ function ReviewSection({
   onRequireLogin: () => void;
 }) {
   const { showToast } = useToast();
-  const [reviews, setReviews] = useState<ReviewDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const queryClient = useQueryClient();
   const [rating, setRating] = useState(5);
   const [content, setContent] = useState("");
 
-  const loadReviews = async () => {
-    try {
-      setLoading(true);
-      const data = await getProductReviewsApi(productId, 1, 20);
-      setReviews(data.items);
-    } catch (error) {
-      console.error("Load reviews failed:", error);
-      showToast("Không thể tải đánh giá", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const reviewsQuery = useQuery({
+    queryKey: queryKeys.reviews.product(productId, 1, 20),
+    queryFn: () => getProductReviewsApi(productId, 1, 20),
+    staleTime: 60 * 1000,
+  });
 
-  useEffect(() => {
-    loadReviews();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productId]);
+  const reviews = reviewsQuery.data?.items ?? [];
+
+  const reviewMutation = useMutation({
+    mutationFn: createReviewApi,
+    onSuccess: async () => {
+      setRating(5);
+      setContent("");
+      showToast("Đã gửi đánh giá của bạn", "success");
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.reviews.product(productId, 1, 20),
+      });
+    },
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -413,22 +415,14 @@ function ReviewSection({
     }
 
     try {
-      setSubmitting(true);
-      await createReviewApi({
+      await reviewMutation.mutateAsync({
         productId,
         rating,
         content: content.trim() || undefined,
       });
-
-      setRating(5);
-      setContent("");
-      showToast("Đã gửi đánh giá của bạn", "success");
-      await loadReviews();
     } catch (error: any) {
       console.error("Create review failed:", error);
       showToast(error?.response?.data?.message ?? "Không thể gửi đánh giá", "error");
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -483,20 +477,24 @@ function ReviewSection({
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={reviewMutation.isPending}
               className="w-full bg-primeColor px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {submitting ? "Đang gửi..." : "Gửi đánh giá"}
+              {reviewMutation.isPending ? "Đang gửi..." : "Gửi đánh giá"}
             </button>
           </form>
         </div>
 
         <div>
-          {loading ? (
+          {reviewsQuery.isLoading ? (
             <div className="space-y-4">
               {Array.from({ length: 3 }).map((_, index) => (
                 <div key={index} className="h-28 animate-pulse border border-gray-100 bg-gray-50" />
               ))}
+            </div>
+          ) : reviewsQuery.isError ? (
+            <div className="border border-red-100 bg-red-50 px-5 py-8 text-center text-sm text-red-500">
+              Không thể tải đánh giá.
             </div>
           ) : reviews.length === 0 ? (
             <div className="border border-gray-100 bg-gray-50 px-5 py-8 text-center text-sm text-gray-500">
@@ -504,7 +502,7 @@ function ReviewSection({
             </div>
           ) : (
             <div className="space-y-4">
-              {reviews.map((review) => (
+              {reviews.map((review: ReviewDto) => (
                 <article key={review.id} className="border border-gray-100 bg-white p-5">
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3">

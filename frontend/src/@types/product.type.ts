@@ -138,6 +138,7 @@ export interface UpdateProductDto {
   brandId?: string;        // truyền "null" string để xóa brand
   categoryIds?: string[];
   imageUrl?: string;
+  imageKey?: string;
 
   // Tồn kho và Rating (optional)
   stock?: number;

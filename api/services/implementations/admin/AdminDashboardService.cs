@@ -78,9 +78,11 @@ namespace api.services.implementations.admin
                     p.Sku,
                     p.Name,
                     p.IsActive,
-                    Stock = p.ProductVariants
-                        .Where(v => v.IsActive)
-                        .Sum(v => (int?)v.Stock) ?? 0
+                    Stock = p.ProductVariants.Any(v => v.IsActive)
+                        ? p.ProductVariants
+                            .Where(v => v.IsActive)
+                            .Sum(v => (int?)v.Stock) ?? 0
+                        : p.Stock
                 })
                 .Where(p => p.Stock <= lowStockThreshold)
                 .OrderBy(p => p.Stock)

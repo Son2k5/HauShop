@@ -1,70 +1,36 @@
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { productService } from "../services/productService";
 import type { ProductDto } from "../@types/product.type";
-
-interface UseProductState {
-  product: ProductDto | null;
-  isLoading: boolean;
-  isError: boolean;
-  error: string | null;
-}
+import { queryKeys } from "../lib/queryKeys";
 
 export function useProductBySlug(slug: string | undefined) {
-  const [state, setState] = useState<UseProductState>({
-    product: null,
-    isLoading: false,
-    isError: false,
-    error: null,
+  const result = useQuery<ProductDto, Error>({
+    queryKey: slug ? queryKeys.products.detailBySlug(slug) : ["products", "detail", "slug", "empty"],
+    queryFn: () => productService.getBySlug(slug!),
+    enabled: !!slug,
+    staleTime: 2 * 60 * 1000,
   });
 
-  useEffect(() => {
-    if (!slug) return;
-
-    let cancelled = false;
-    setState({ product: null, isLoading: true, isError: false, error: null });
-
-    productService
-      .getBySlug(slug)
-      .then((data) => {
-        if (!cancelled) setState({ product: data, isLoading: false, isError: false, error: null });
-      })
-      .catch((err: Error) => {
-        if (!cancelled)
-          setState({ product: null, isLoading: false, isError: true, error: err.message });
-      });
-
-    return () => { cancelled = true; };
-  }, [slug]);
-
-  return state;
+  return {
+    product: result.data ?? null,
+    isLoading: result.isLoading,
+    isError: result.isError,
+    error: result.error?.message ?? null,
+  };
 }
 
 export function useProductById(id: string | undefined) {
-  const [state, setState] = useState<UseProductState>({
-    product: null,
-    isLoading: false,
-    isError: false,
-    error: null,
+  const result = useQuery<ProductDto, Error>({
+    queryKey: id ? queryKeys.products.detailById(id) : ["products", "detail", "id", "empty"],
+    queryFn: () => productService.getById(id!),
+    enabled: !!id,
+    staleTime: 2 * 60 * 1000,
   });
 
-  useEffect(() => {
-    if (!id) return;
-
-    let cancelled = false;
-    setState({ product: null, isLoading: true, isError: false, error: null });
-
-    productService
-      .getById(id)
-      .then((data) => {
-        if (!cancelled) setState({ product: data, isLoading: false, isError: false, error: null });
-      })
-      .catch((err: Error) => {
-        if (!cancelled)
-          setState({ product: null, isLoading: false, isError: true, error: err.message });
-      });
-
-    return () => { cancelled = true; };
-  }, [id]);
-
-  return state;
+  return {
+    product: result.data ?? null,
+    isLoading: result.isLoading,
+    isError: result.isError,
+    error: result.error?.message ?? null,
+  };
 }

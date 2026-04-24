@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useAppSelector } from "../../store/hooks";
 import { productService } from "../../services/productService";
 import { formatPrice } from "../../utils/formatPrice";
 import type { ProductSummaryDto } from "../../@types/product.type";
+import { useDebounce } from "../../hooks/useDebounce";
+import { queryKeys } from "../../lib/queryKeys";
 
 const Header: React.FC = () => {
   const {
@@ -13,7 +16,6 @@ const Header: React.FC = () => {
     logout,
     updateAvatar,
     removeAvatar,
-    refreshUser,
   } = useAuth();
 
   const totalQty = useAppSelector((state) => state.cart.totalQty);
@@ -24,17 +26,17 @@ const Header: React.FC = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showSearchBar, setShowSearchBar] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<ProductSummaryDto[]>([]);
-  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [avatarVersion, setAvatarVersion] = useState(1);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const searchBoxRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const debouncedSearch = useDebounce(searchQuery.trim(), 300);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -87,55 +89,23 @@ const Header: React.FC = () => {
     setSearchQuery(params.get("search") ?? "");
   }, [location.pathname, location.search]);
 
-  useEffect(() => {
-    const query = searchQuery.trim();
+  const suggestionsQuery = useQuery({
+    queryKey: queryKeys.products.suggestions(debouncedSearch),
+    queryFn: async () => {
+      const data = await productService.getAll({
+        search: debouncedSearch,
+        isActive: true,
+        page: 1,
+        pageSize: 5,
+      });
+      return (data.items ?? []) as ProductSummaryDto[];
+    },
+    enabled: debouncedSearch.length >= 2,
+    staleTime: 60 * 1000,
+  });
 
-    if (query.length < 2) {
-      setSuggestions([]);
-      setSuggestionsLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    const timer = window.setTimeout(async () => {
-      try {
-        setSuggestionsLoading(true);
-        const data = await productService.getAll({
-          search: query,
-          isActive: true,
-          page: 1,
-          pageSize: 5,
-        });
-
-        if (!cancelled) {
-          setSuggestions(data.items ?? []);
-          setShowSuggestions(true);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          console.error("Search suggestions failed:", error);
-          setSuggestions([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setSuggestionsLoading(false);
-        }
-      }
-    }, 300);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [searchQuery]);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem("_u");
-    if (storedUser && !user) {
-      refreshUser();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const suggestions = suggestionsQuery.data ?? [];
+  const suggestionsLoading = suggestionsQuery.isFetching;
 
   const handleAvatarClick = () => {
     if (isAuthenticated) {
@@ -164,6 +134,7 @@ const Header: React.FC = () => {
     setUploadingAvatar(true);
     try {
       await updateAvatar(file);
+      setAvatarVersion((prev) => prev + 1);
       setShowUserMenu(false);
     } catch (error) {
       console.error("Failed to upload avatar:", error);
@@ -178,6 +149,7 @@ const Header: React.FC = () => {
 
     try {
       await removeAvatar();
+      setAvatarVersion((prev) => prev + 1);
       setShowUserMenu(false);
     } catch (error) {
       console.error("Failed to remove avatar:", error);
@@ -216,6 +188,12 @@ const Header: React.FC = () => {
   ];
 
   const avatarUrl = user?.avatar;
+  const resolvedAvatarUrl = avatarUrl ? `${avatarUrl}?v=${avatarVersion}` : null;
+  const isAdmin = user?.role === "Admin";
+  const adminToggleTarget = location.pathname.startsWith("/admin") ? "/" : "/admin";
+  const adminToggleLabel = location.pathname.startsWith("/admin")
+    ? "Back to Store"
+    : "Admin Panel";
 
   const iconButtonClass =
     "relative inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-700 transition-colors duration-200 hover:bg-gray-100 hover:text-red-500";
@@ -264,6 +242,16 @@ const Header: React.FC = () => {
                       style={{ fontFamily: "Poppins, sans-serif" }}
                     >
                       Sign Up
+                    </Link>
+                  )}
+
+                  {isAdmin && (
+                    <Link
+                      to={adminToggleTarget}
+                      className="rounded-full border border-gray-300 px-4 py-2 text-sm xl:text-[15px] 2xl:text-base font-medium text-gray-800 transition-colors duration-200 hover:border-red-500 hover:text-red-500"
+                      style={{ fontFamily: "Poppins, sans-serif" }}
+                    >
+                      {adminToggleLabel}
                     </Link>
                   )}
                 </nav>
@@ -460,6 +448,8 @@ const Header: React.FC = () => {
                   )}
                 </Link>
 
+
+
                 {/* User */}
                 <div className="relative" ref={menuRef}>
                   <button
@@ -469,7 +459,7 @@ const Header: React.FC = () => {
                   >
                     {avatarUrl ? (
                       <img
-                        src={`${avatarUrl}?t=${Date.now()}`}
+                        src={resolvedAvatarUrl ?? undefined}
                         alt={`${user?.firstName ?? ""} avatar`}
                         className="h-full w-full object-cover"
                       />
@@ -508,7 +498,7 @@ const Header: React.FC = () => {
                         <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-gray-200">
                           {avatarUrl ? (
                             <img
-                              src={`${avatarUrl}?t=${Date.now()}`}
+                              src={resolvedAvatarUrl ?? undefined}
                               alt="avatar"
                               className="h-full w-full object-cover"
                             />
@@ -578,6 +568,24 @@ const Header: React.FC = () => {
                     <div className="my-2 h-px bg-gray-100" />
 
                     <div className="space-y-1">
+                      {isAdmin && (
+                        <Link
+                          to={adminToggleTarget}
+                          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                          onClick={() => setShowUserMenu(false)}
+                        >
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1.7}
+                              d="M4 7h16M4 12h16M4 17h16"
+                            />
+                          </svg>
+                          {adminToggleLabel}
+                        </Link>
+                      )}
+
                       <Link
                         to="/profile"
                         className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50"
@@ -816,7 +824,7 @@ const Header: React.FC = () => {
                   <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-gray-200">
                     {avatarUrl ? (
                       <img
-                        src={`${avatarUrl}?t=${Date.now()}`}
+                        src={resolvedAvatarUrl ?? undefined}
                         alt="avatar"
                         className="h-full w-full object-cover"
                       />
@@ -866,6 +874,15 @@ const Header: React.FC = () => {
                   className="flex items-center px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
                 >
                   Sign Up
+                </Link>
+              )}
+
+              {isAdmin && (
+                <Link
+                  to={adminToggleTarget}
+                  className="flex items-center px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  {adminToggleLabel}
                 </Link>
               )}
 

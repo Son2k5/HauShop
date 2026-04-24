@@ -273,7 +273,7 @@ export default function ShopPage() {
           {isError && (
             <div className="text-center py-20">
               <p className="text-red-500 font-bodyFont text-sm mb-4">{error}</p>
-              <button onClick={refetch} className="btn-outline text-sm px-6 py-2.5">
+              <button onClick={() => void refetch()} className="btn-outline text-sm px-6 py-2.5">
                 Thử lại
               </button>
             </div>

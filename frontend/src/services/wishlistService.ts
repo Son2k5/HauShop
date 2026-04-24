@@ -21,8 +21,8 @@ export async function addWishlistItemApi(productId: string): Promise<WishlistIte
 export async function removeWishlistProductApi(productId: string): Promise<void> {
   await api.delete(`/wishlist/products/${productId}`);
 }
-
-export async function isWishlistProductApi(productId: string): Promise<boolean> {
-  const res = await api.get(`/wishlist/products/${productId}/exists`);
-  return Boolean(res.data.exists);
+export async function getMyWishlistProductIdsApi(): Promise<string[]> {
+  const res = await api.get("/wishlist/me/product-ids");
+  return Array.isArray(res.data) ? res.data : [];
 }
+

@@ -1,48 +1,21 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import ProductCard from "../components/product/ProductCard";
-import {
-  getMyWishlistApi,
-  removeWishlistProductApi,
-  type WishlistItemDto,
-} from "../services/wishlistService";
 import { useToast } from "../context/toastContext";
+import { useToggleWishlist, useWishlistItems } from "../hooks/useWishlist";
 
 export default function WishlistPage() {
   const { showToast } = useToast();
-  const [items, setItems] = useState<WishlistItemDto[]>([]);
-  const [loading, setLoading] = useState(true);
   const [removingProductId, setRemovingProductId] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    getMyWishlistApi()
-      .then((data) => {
-        if (!cancelled) setItems(data);
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          console.error("Fetch wishlist failed:", error);
-          showToast("Không thể tải wishlist", "error");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [showToast]);
+  const { data: items = [], isLoading: loading } = useWishlistItems();
+  const toggleWishlist = useToggleWishlist();
 
   const handleRemove = async (productId: string) => {
     if (removingProductId) return;
 
     try {
       setRemovingProductId(productId);
-      await removeWishlistProductApi(productId);
-      setItems((prev) => prev.filter((item) => item.productId !== productId));
+      await toggleWishlist.mutateAsync({ productId, wished: true });
       showToast("Đã xóa khỏi wishlist", "success");
     } catch (error) {
       console.error("Remove wishlist item failed:", error);

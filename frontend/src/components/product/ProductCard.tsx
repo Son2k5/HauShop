@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../context/toastContext";
 import { formatPrice } from "../../utils/formatPrice";
@@ -6,12 +6,8 @@ import { useAppDispatch } from "../../store/hooks";
 import { setCartFromServer } from "../../store/cartSlice";
 import type { ProductSummaryDto } from "../../@types/product.type";
 import { addToCartApi, getMyCartApi } from "../../services/cartService";
-import {
-  addWishlistItemApi,
-  isWishlistProductApi,
-  removeWishlistProductApi,
-} from "../../services/wishlistService";
 import { useAuth } from "../../hooks/useAuth";
+import { useToggleWishlist, useWishlistProduct } from "../../hooks/useWishlist";
 
 interface Props {
   product: ProductSummaryDto;
@@ -38,38 +34,14 @@ export default function ProductCard({ product: p }: Props) {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
   const { isAuthenticated } = useAuth();
+  const { wished } = useWishlistProduct(p.id);
+  const toggleWishlist = useToggleWishlist();
 
   const [added, setAdded] = useState(false);
-  const [wished, setWished] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [wishlistLoading, setWishlistLoading] = useState(false);
 
   const price = displayPrice(p);
   const isOutOfStock = p.totalStock != null && p.totalStock <= 0;
-
-  useEffect(() => {
-    let cancelled = false;
-
-    if (!isAuthenticated) {
-      setWished(false);
-      return;
-    }
-
-    isWishlistProductApi(p.id)
-      .then((exists) => {
-        if (!cancelled) setWished(exists);
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          console.error("Check wishlist failed:", error);
-          setWished(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated]);
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -114,25 +86,14 @@ export default function ProductCard({ product: p }: Props) {
       return;
     }
 
-    if (wishlistLoading) return;
+    if (toggleWishlist.isPending) return;
 
     try {
-      setWishlistLoading(true);
-
-      if (wished) {
-        await removeWishlistProductApi(p.id);
-        setWished(false);
-        showToast("Đã xóa khỏi yêu thích", "success");
-      } else {
-        await addWishlistItemApi(p.id);
-        setWished(true);
-        showToast("Đã thêm vào yêu thích", "success");
-      }
+      const nextWished = await toggleWishlist.mutateAsync({ productId: p.id, wished });
+      showToast(nextWished ? "Đã thêm vào yêu thích" : "Đã xóa khỏi yêu thích", "success");
     } catch (error) {
       console.error("Wishlist failed:", error);
       showToast("Không thể cập nhật wishlist", "error");
-    } finally {
-      setWishlistLoading(false);
     }
   };
 
@@ -182,7 +143,7 @@ export default function ProductCard({ product: p }: Props) {
 
         <button
           onClick={handleWishlist}
-          disabled={wishlistLoading}
+          disabled={toggleWishlist.isPending}
           className="absolute top-3.5 right-3.5 w-9 h-9 bg-white border border-gray-200 rounded-full
                      flex items-center justify-center z-10
                      opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0

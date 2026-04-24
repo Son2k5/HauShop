@@ -5,6 +5,7 @@ import React, {
     useMemo,
     useReducer,
 } from 'react';
+import { queryClient } from '../lib/queryClient';
 import { authService } from '../services/authService';
 import { userService } from '../services/userService';
 import type {
@@ -227,6 +228,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Dù API fail vẫn clear local state
         }
         storage.clear();
+        queryClient.removeQueries({
+            predicate: (query) => {
+                const [scope] = query.queryKey as string[];
+                return scope === 'wishlist' || scope === 'auth' || scope === 'admin';
+            },
+        });
         dispatch({ type: 'SIGN_OUT' });
     }, []);
 
@@ -234,6 +241,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await authService.changePassword(dto);
         // Đổi mật khẩu → revoke tất cả token → bắt login lại
         storage.clear();
+        queryClient.removeQueries({
+            predicate: (query) => {
+                const [scope] = query.queryKey as string[];
+                return scope === 'wishlist' || scope === 'auth' || scope === 'admin';
+            },
+        });
         dispatch({ type: 'SIGN_OUT' });
     }, []);
 

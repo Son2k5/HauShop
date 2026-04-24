@@ -30,12 +30,17 @@ namespace api.services.implementations.wishlist
         {
             var items = await _wishlistRepository.GetByUserIdAsync(userId, ct);
 
-            _logger.LogInformation(
-                "Loaded wishlist. UserId={UserId}, Count={Count}",
-                userId,
-                items.Count);
-
             return items.Select(WishlistMapping.MapToDto).ToList();
+        }
+
+        public async Task<List<string>> GetMyWishlistProductIdsAsync(
+            string userId,
+            CancellationToken ct = default)
+        {
+            var productIds = await _wishlistRepository.GetProductIdsByUserIdAsync(userId, ct);
+
+
+            return productIds;
         }
 
         public async Task<WishlistItemDto> AddItemAsync(
@@ -49,10 +54,6 @@ namespace api.services.implementations.wishlist
             var existing = await _wishlistRepository.GetByUserAndProductAsync(userId, dto.ProductId, ct);
             if (existing != null)
             {
-                _logger.LogInformation(
-                    "Wishlist item already exists. UserId={UserId}, ProductId={ProductId}",
-                    userId,
-                    dto.ProductId);
 
                 return WishlistMapping.MapToDto(existing);
             }
@@ -75,11 +76,6 @@ namespace api.services.implementations.wishlist
             _wishlistRepository.Add(item);
             await _context.SaveChangesAsync(ct);
 
-            _logger.LogInformation(
-                "Wishlist item added. UserId={UserId}, ProductId={ProductId}, WishlistItemId={WishlistItemId}",
-                userId,
-                dto.ProductId,
-                item.Id);
 
             var created = await _wishlistRepository.GetByUserAndProductAsync(userId, dto.ProductId, ct)
                 ?? throw new InvalidOperationException("Failed to retrieve created wishlist item");
@@ -104,11 +100,6 @@ namespace api.services.implementations.wishlist
             _wishlistRepository.Delete(item);
             await _context.SaveChangesAsync(ct);
 
-            _logger.LogInformation(
-                "Wishlist item removed. UserId={UserId}, WishlistItemId={WishlistItemId}, ProductId={ProductId}",
-                userId,
-                wishlistItemId,
-                item.ProductId);
         }
 
         public async Task RemoveProductAsync(
@@ -125,11 +116,7 @@ namespace api.services.implementations.wishlist
             _wishlistRepository.Delete(item);
             await _context.SaveChangesAsync(ct);
 
-            _logger.LogInformation(
-                "Wishlist product removed. UserId={UserId}, ProductId={ProductId}, WishlistItemId={WishlistItemId}",
-                userId,
-                productId,
-                item.Id);
+
         }
 
         public Task<bool> ExistsAsync(
