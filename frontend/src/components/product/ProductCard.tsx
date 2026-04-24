@@ -69,7 +69,7 @@ export default function ProductCard({ product: p }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, p.id]);
+  }, [isAuthenticated]);
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation();

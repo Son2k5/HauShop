@@ -34,6 +34,8 @@ using api.services.interfaces.wishlist;
 using api.services.implementations.wishlist;
 using api.services.interfaces.review;
 using api.services.implementations.review;
+using api.services.interfaces.admin;
+using api.services.implementations.admin;
 
 
 // Load .env BEFORE creating builder
@@ -311,6 +313,7 @@ builder.Services.AddScoped<IWishlistRepository, WishlistRepository>();
 builder.Services.AddScoped<IWishlistService, WishlistService>();
 builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 
 
 // ===========================

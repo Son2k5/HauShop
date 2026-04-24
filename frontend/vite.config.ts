@@ -12,11 +12,6 @@ export default defineConfig({
     strictPort: true,
     host: true,
     https: {} as import('vite').ServerOptions['https'],
-    hmr: {
-      protocol: 'wss',
-      host: 'localhost',
-      port: 3000,
-    },
   }
 })
  
