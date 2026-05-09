@@ -62,6 +62,14 @@ export interface AdminUpdateUserRoleDto {
   merchantId?: string | null;
 }
 
+export interface AdminUpdateUserDto {
+  email?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  phoneNumber?: string | null;
+  merchantId?: string | null;
+}
+
 export interface AdminOrderListItemDto {
   id: string;
   userId: string;
@@ -119,4 +127,38 @@ export interface AdminInventoryOverviewDto {
   lowStockCount: number;
   outOfStockCount: number;
   lowStockProducts: LowStockProductDto[];
+}
+
+export interface AdminUpdateVariantInventoryDto {
+  variantId: string;
+  stock: number;
+  isActive?: boolean | null;
+}
+
+export interface AdminUpdateInventoryDto {
+  stock?: number | null;
+  variants: AdminUpdateVariantInventoryDto[];
+}
+
+export interface AdminSettingsDto {
+  storeName: string;
+  supportEmail: string;
+  supportPhone: string;
+  lowStockThreshold: number;
+  recentOrdersLimit: number;
+  enableOrderNotifications: boolean;
+  enableInventoryAlerts: boolean;
+  enableWeeklySummary: boolean;
+  updated?: string | null;
+}
+
+export interface UpdateAdminSettingsDto {
+  storeName: string;
+  supportEmail: string;
+  supportPhone: string;
+  lowStockThreshold: number;
+  recentOrdersLimit: number;
+  enableOrderNotifications: boolean;
+  enableInventoryAlerts: boolean;
+  enableWeeklySummary: boolean;
 }

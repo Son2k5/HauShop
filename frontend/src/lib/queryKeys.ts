@@ -12,8 +12,12 @@ export const queryKeys = {
     orders: (params: { search?: string; status?: string; page: number; pageSize: number }) =>
       ["admin", "orders", params] as const,
     order: (orderId: string) => ["admin", "order", orderId] as const,
+    products: (params: { search?: string; isActive?: boolean; page: number; pageSize: number }) =>
+      ["admin", "products", params] as const,
+    product: (productId: string) => ["admin", "product", productId] as const,
     inventory: (lowStockThreshold: number) =>
       ["admin", "inventory", lowStockThreshold] as const,
+    settings: () => ["admin", "settings"] as const,
   },
   products: {
     all: ["products"] as const,

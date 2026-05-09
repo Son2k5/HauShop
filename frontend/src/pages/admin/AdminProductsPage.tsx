@@ -1,9 +1,12 @@
+import { Icon } from "@iconify/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { memo, startTransition, useEffect, useMemo, useState } from "react";
 import type { CreateProductDto, ProductDto, ProductSummaryDto, UpdateProductDto } from "../../@types/product.type";
+import { useDebounce } from "../../hooks/useDebounce";
 import { queryKeys } from "../../lib/queryKeys";
 import { categoryService } from "../../services/categoryService";
-import { productService, uploadImages } from "../../services/productService";
+import { adminService } from "../../services/adminService";
+import { uploadImages } from "../../services/productService";
 import { formatPrice } from "../../utils/formatPrice";
 import {
   AdminBadge,
@@ -59,16 +62,15 @@ export default function AdminProductsPage() {
   const [form, setForm] = useState<ProductFormState>(emptyForm);
   const [formError, setFormError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const debouncedSearch = useDebounce(search, 350);
 
   const productsQuery = useQuery({
-    queryKey: queryKeys.products.list({ search, page, pageSize: 12, sortBy: "created", sortOrder: "desc" }),
+    queryKey: queryKeys.admin.products({ search: debouncedSearch, page, pageSize: 12 }),
     queryFn: () =>
-      productService.getAll({
-        search,
+      adminService.getProducts({
+        search: debouncedSearch,
         page,
         pageSize: 12,
-        sortBy: "created",
-        sortOrder: "desc",
       }),
     placeholderData: (prev) => prev,
   });
@@ -80,32 +82,42 @@ export default function AdminProductsPage() {
   });
 
   const selectedProductQuery = useQuery({
-    queryKey: queryKeys.products.detailById(selectedProductId ?? ""),
-    queryFn: () => productService.getById(selectedProductId!),
+    queryKey: queryKeys.admin.product(selectedProductId ?? ""),
+    queryFn: () => adminService.getProductById(selectedProductId!),
     enabled: !!selectedProductId,
   });
+  const isLoadingSelectedProduct = formMode === "edit" && selectedProductQuery.isLoading;
 
   const createMutation = useMutation({
-    mutationFn: (dto: CreateProductDto) => productService.create(dto),
+    mutationFn: (dto: CreateProductDto) => adminService.createProduct(dto),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
       queryClient.invalidateQueries({ queryKey: ["products", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
       resetForm();
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, dto }: { id: string; dto: UpdateProductDto }) => productService.update(id, dto),
+    mutationFn: ({ id, dto }: { id: string; dto: UpdateProductDto }) => adminService.updateProduct(id, dto),
     onSuccess: (product) => {
-      queryClient.setQueryData(queryKeys.products.detailById(product.id), product);
+      queryClient.setQueryData(queryKeys.admin.product(product.id), product);
+      queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
       queryClient.invalidateQueries({ queryKey: ["products", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["products", "detail"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "inventory"] });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => productService.delete(id),
+    mutationFn: (id: string) => adminService.deleteProduct(id),
     onSuccess: (_, deletedId) => {
-      queryClient.removeQueries({ queryKey: queryKeys.products.detailById(deletedId) });
+      queryClient.removeQueries({ queryKey: queryKeys.admin.product(deletedId) });
+      queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
       queryClient.invalidateQueries({ queryKey: ["products", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "inventory"] });
       if (selectedProductId === deletedId) {
         resetForm();
       }
@@ -113,10 +125,13 @@ export default function AdminProductsPage() {
   });
 
   const toggleMutation = useMutation({
-    mutationFn: (id: string) => productService.toggleActive(id),
+    mutationFn: (id: string) => adminService.toggleProductActive(id),
     onSuccess: (product) => {
-      queryClient.setQueryData(queryKeys.products.detailById(product.id), product);
+      queryClient.setQueryData(queryKeys.admin.product(product.id), product);
+      queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
       queryClient.invalidateQueries({ queryKey: ["products", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["products", "detail"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
     },
   });
 
@@ -150,6 +165,11 @@ export default function AdminProductsPage() {
     });
     setFormError(null);
   };
+
+  useEffect(() => {
+    if (!selectedProductQuery.data) return;
+    fillForm(selectedProductQuery.data);
+  }, [selectedProductQuery.data]);
 
   const resetForm = () => {
     setFormMode("create");
@@ -243,28 +263,49 @@ export default function AdminProductsPage() {
 
   return (
     <div className="space-y-6">
-      
-
-      <div className="grid gap-4 md:grid-cols-4">
-        <AdminStatCard label="Tổng sản phẩm" value={String(productsQuery.data?.total ?? 0)} />
-        <AdminStatCard label="Đang bán" value={String(stats.active)} />
-        <AdminStatCard label="Tạm ẩn" value={String(stats.inactive)} />
-        <AdminStatCard label="Tồn kho trạng hiện tại" value={String(stats.totalStock)} />
+      <div className="grid gap-3 md:grid-cols-4">
+        <AdminStatCard
+          icon="mdi:package-variant-closed"
+          label="Tổng sản phẩm"
+          value={String(productsQuery.data?.total ?? 0)}
+        />
+        <AdminStatCard
+          icon="mdi:store-outline"
+          label="Đang bán"
+          value={String(stats.active)}
+        />
+        <AdminStatCard
+          icon="mdi:eye-off-outline"
+          label="Tạm ẩn"
+          value={String(stats.inactive)}
+        />
+        <AdminStatCard
+          icon="mdi:archive-outline"
+          label="Tồn kho hiện tại"
+          value={String(stats.totalStock)}
+        />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_420px]">
         <AdminPanel>
           <AdminPanelHeader title="Danh sách sản phẩm" />
           <div className="flex flex-col gap-3 border-b border-gray-200 px-5 py-4 sm:flex-row sm:px-6">
-            <input
-              value={search}
-              onChange={(event) => {
-                setPage(1);
-                setSearch(event.target.value);
-              }}
-              placeholder="Tìm theo tên, SKU, slug"
-              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none"
-            />
+            <div className="relative w-full">
+              <Icon
+                icon="mdi:magnify"
+                width={18}
+                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+              />
+              <input
+                value={search}
+                onChange={(event) => {
+                  setPage(1);
+                  startTransition(() => setSearch(event.target.value));
+                }}
+                placeholder="Tìm theo tên, SKU, slug"
+                className="w-full rounded-xl border border-gray-300 px-11 py-3 text-sm outline-none"
+              />
+            </div>
           </div>
 
           <div className="overflow-x-auto px-2 pb-4 pt-2 sm:px-4">
@@ -274,7 +315,7 @@ export default function AdminProductsPage() {
                   <th className="px-4 py-3 font-semibold">Sản phẩm</th>
                   <th className="px-4 py-3 font-semibold">Giá</th>
                   <th className="px-4 py-3 font-semibold">Kho</th>
-                  <th className="px-4 py-3 font-semibold">Trạng thái</th>
+                  <th className="px-5 py-3 font-semibold">Trạng thái</th>
                   <th className="px-4 py-3 font-semibold">Thao tác</th>
                 </tr>
               </thead>
@@ -284,9 +325,10 @@ export default function AdminProductsPage() {
                     key={product.id}
                     product={product}
                     selected={selectedProductId === product.id}
-                    onSelect={async () => {
-                      const detail = await productService.getById(product.id);
-                      fillForm(detail);
+                    onSelect={() => {
+                      setFormMode("edit");
+                      setSelectedProductId(product.id);
+                      setFormError(null);
                     }}
                     onToggle={() => void toggleMutation.mutateAsync(product.id)}
                     onDelete={() => void deleteMutation.mutateAsync(product.id)}
@@ -298,6 +340,7 @@ export default function AdminProductsPage() {
             {!productsQuery.data?.items.length ? (
               <div className="px-2 py-4">
                 <AdminEmptyState
+                  icon="mdi:package-variant-closed"
                   title="Không có sản phẩm phù hợp"
                   description="Thử thay đổi từ khóa tìm kiếm hoặc tạo mới sản phẩm."
                 />
@@ -333,6 +376,12 @@ export default function AdminProductsPage() {
 
         <AdminPanel>
           <AdminPanelHeader title={formMode === "create" ? "Thêm sản phẩm mới" : "Chỉnh sửa sản phẩm"} />
+          {isLoadingSelectedProduct ? (
+            <div className="flex min-h-[420px] flex-col items-center justify-center gap-3 px-5 py-5 text-sm text-gray-500 sm:px-6">
+              <Icon icon="mdi:loading" width={28} className="animate-spin text-sky-600" />
+              <span>Đang tải thông tin sản phẩm...</span>
+            </div>
+          ) : (
           <div className="space-y-4 px-5 py-5 sm:px-6">
             <Field label="SKU">
               <input
@@ -513,6 +562,11 @@ export default function AdminProductsPage() {
                 className="flex-1"
                 disabled={createMutation.isPending || updateMutation.isPending}
               >
+                <Icon
+                  icon={formMode === "create" ? "mdi:plus-circle-outline" : "mdi:content-save-outline"}
+                  width={18}
+                  className="mr-2"
+                />
                 {formMode === "create"
                   ? createMutation.isPending
                     ? "Đang tạo..."
@@ -522,17 +576,19 @@ export default function AdminProductsPage() {
                     : "Lưu thay đổi"}
               </AdminPrimaryButton>
               <AdminSecondaryButton type="button" onClick={resetForm}>
+                <Icon icon="mdi:refresh" width={18} className="mr-2" />
                 Làm mới
               </AdminSecondaryButton>
             </div>
           </div>
+          )}
         </AdminPanel>
       </div>
     </div>
   );
 }
 
-function ProductRow({
+const ProductRow = memo(function ProductRow({
   product,
   selected,
   onSelect,
@@ -559,7 +615,7 @@ function ProductRow({
       <td className="px-4 py-4 font-medium text-black">{formatPrice(product.minVariantPrice ?? product.price)}</td>
       <td className="px-4 py-4 text-gray-700">{product.totalStock ?? product.stock}</td>
       <td className="px-4 py-4">
-        <AdminBadge className={product.isActive ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-700"}>
+        <AdminBadge className={product.isActive ? "min-w-[96px] items-center justify-center text-center leading-5 bg-emerald-100 text-emerald-700" : "min-w-[96px] items-center justify-center text-center leading-5 bg-gray-100 text-gray-700"}>
           {product.isActive ? "Đang bán" : "Tạm ẩn"}
         </AdminBadge>
       </td>
@@ -568,8 +624,9 @@ function ProductRow({
           <button
             type="button"
             onClick={onToggle}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700"
+            className="inline-flex items-center rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700"
           >
+            <Icon icon="mdi:eye-outline" width={16} className="mr-1.5" />
             Ẩn/Hiện
           </button>
           <button
@@ -579,15 +636,16 @@ function ProductRow({
                 onDelete();
               }
             }}
-            className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700"
+            className="inline-flex items-center rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700"
           >
+            <Icon icon="mdi:delete-outline" width={16} className="mr-1.5" />
             Xóa
           </button>
         </div>
       </td>
     </tr>
   );
-}
+}, (previous, next) => previous.product === next.product && previous.selected === next.selected);
 
 function Field({
   label,

@@ -1,7 +1,8 @@
 import { Icon } from "@iconify/react";
-import { startTransition, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 import type { Role } from "../../@types/auth.type";
 import { useAdminUser, useAdminUsers, useUpdateAdminUserRole } from "../../hooks/useAdmin";
+import { useDebounce } from "../../hooks/useDebounce";
 import { formatPrice } from "../../utils/formatPrice";
 import {
   AdminBadge,
@@ -29,15 +30,15 @@ export default function AdminUsersPage() {
   const [merchantId, setMerchantId] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
-  const deferredSearch = useDeferredValue(search);
+  const debouncedSearch = useDebounce(search, 350);
   const filters = useMemo(
     () => ({
-      search: deferredSearch,
+      search: debouncedSearch,
       role: role || undefined,
       page,
       pageSize: 10,
     }),
-    [deferredSearch, page, role]
+    [debouncedSearch, page, role]
   );
 
   const usersQuery = useAdminUsers(filters);
@@ -91,21 +92,21 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <AdminStatCard
-          icon="solar:shield-user-bold-duotone"
+          icon="mdi:shield-account-outline"
           label="Admin"
           value={String(roleSummary.admin)}
           meta="Quyền hệ thống"
           accentClass="bg-blue-50 text-blue-700"
         />
         <AdminStatCard
-          icon="solar:shop-bold-duotone"
+          icon="mdi:store-outline"
           label="Nhân viên bán hàng"
           value={String(roleSummary.merchant)}
           meta="Có Merchant ID"
           accentClass="bg-cyan-50 text-cyan-700"
         />
         <AdminStatCard
-          icon="solar:user-bold-duotone"
+          icon="mdi:account-outline"
           label="Người dùng"
           value={String(roleSummary.member)}
           meta={`Tổng ${usersQuery.data?.total ?? 0}`}
@@ -120,7 +121,7 @@ export default function AdminUsersPage() {
           <div className="flex flex-col gap-3 border-b border-slate-200/80 px-5 py-5 sm:flex-row sm:px-6">
             <div className="relative flex-1">
               <Icon
-                icon="solar:magnifer-bold-duotone"
+                icon="mdi:magnify"
                 width={18}
                 className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
               />
@@ -208,7 +209,7 @@ export default function AdminUsersPage() {
             {!usersQuery.data?.items.length ? (
               <div className="px-2 py-4">
                 <AdminEmptyState
-                  icon="solar:user-speak-bold-duotone"
+                  icon="mdi:account-search-outline"
                   title="Không có tài khoản phù hợp"
                   description="Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc hiện tại."
                 />
@@ -248,7 +249,7 @@ export default function AdminUsersPage() {
           <div className="px-5 pb-6 pt-5 sm:px-6">
             {!selectedUserId ? (
               <AdminEmptyState
-                icon="solar:user-id-bold-duotone"
+                icon="mdi:card-account-details-outline"
                 title="Chọn một tài khoản"
                 description="Thông tin chi tiết sẽ hiển thị tại đây."
               />
@@ -367,7 +368,7 @@ export default function AdminUsersPage() {
               </div>
             ) : (
               <AdminEmptyState
-                icon="solar:danger-circle-bold-duotone"
+                icon="mdi:alert-circle-outline"
                 title="Không tìm thấy hồ sơ"
                 description="Tài khoản này có thể đã bị xóa hoặc không còn tồn tại."
               />

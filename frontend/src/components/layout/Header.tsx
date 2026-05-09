@@ -245,6 +245,16 @@ const Header: React.FC = () => {
                     </Link>
                   )}
 
+                  {isAuthenticated && (
+                    <Link
+                      to="/support-chat"
+                      className="text-sm xl:text-[15px] 2xl:text-base font-medium text-gray-800 transition-colors duration-200 hover:text-red-500"
+                      style={{ fontFamily: "Poppins, sans-serif" }}
+                    >
+                      Support
+                    </Link>
+                  )}
+
                   {isAdmin && (
                     <Link
                       to={adminToggleTarget}
@@ -928,6 +938,23 @@ const Header: React.FC = () => {
                 </div>
                 Cart
               </Link>
+
+              {isAuthenticated && (
+                <Link
+                  to="/support-chat"
+                  className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.7}
+                      d="M8 10h8M8 14h5m8-2a9 9 0 11-4.2-7.62L21 4l-1.38 4.2A8.96 8.96 0 0121 12z"
+                    />
+                  </svg>
+                  Support Chat
+                </Link>
+              )}
 
               {isAuthenticated && (
                 <>

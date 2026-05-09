@@ -2,6 +2,7 @@ import { Icon } from "@iconify/react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import type { UpdateProfileDto } from "../../@types/auth.type";
+import { useAdminSettings, useUpdateAdminSettings } from "../../hooks/useAdmin";
 import { useAuth } from "../../hooks/useAuth";
 import { userService } from "../../services/userService";
 import {
@@ -40,6 +41,8 @@ const defaultSettings: AdminSettingsState = {
 
 export default function AdminSettingsPage() {
   const { user, refreshUser, updateAvatar, removeAvatar } = useAuth();
+  const settingsQuery = useAdminSettings();
+  const updateSettingsMutation = useUpdateAdminSettings();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [settings, setSettings] = useState<AdminSettingsState>(defaultSettings);
@@ -91,14 +94,47 @@ export default function AdminSettingsPage() {
     setOriginalProfile(data);
   }, [user]);
 
+  useEffect(() => {
+    if (!settingsQuery.data) return;
+
+    setSettings({
+      storeName: settingsQuery.data.storeName,
+      supportEmail: settingsQuery.data.supportEmail,
+      supportPhone: settingsQuery.data.supportPhone,
+      lowStockThreshold: settingsQuery.data.lowStockThreshold,
+      recentOrdersLimit: settingsQuery.data.recentOrdersLimit,
+      enableOrderNotifications: settingsQuery.data.enableOrderNotifications,
+      enableInventoryAlerts: settingsQuery.data.enableInventoryAlerts,
+      enableWeeklySummary: settingsQuery.data.enableWeeklySummary,
+    });
+
+    if (settingsQuery.data.updated) {
+      setSavedAt(new Date(settingsQuery.data.updated).toLocaleString("vi-VN"));
+    }
+  }, [settingsQuery.data]);
+
   const updateField = <K extends keyof AdminSettingsState>(key: K, value: AdminSettingsState[K]) => {
     setSettings((current) => ({ ...current, [key]: value }));
     setSettingsMessage(null);
   };
 
-  const handleSaveSettings = () => {
-    const nextSavedAt = new Date().toLocaleString("vi-VN");
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...settings, savedAt: nextSavedAt }));
+  const handleSaveSettings = async () => {
+    const savedSettings = await updateSettingsMutation.mutateAsync(settings);
+    const nextSavedAt = savedSettings.updated
+      ? new Date(savedSettings.updated).toLocaleString("vi-VN")
+      : new Date().toLocaleString("vi-VN");
+
+    setSettings({
+      storeName: savedSettings.storeName,
+      supportEmail: savedSettings.supportEmail,
+      supportPhone: savedSettings.supportPhone,
+      lowStockThreshold: savedSettings.lowStockThreshold,
+      recentOrdersLimit: savedSettings.recentOrdersLimit,
+      enableOrderNotifications: savedSettings.enableOrderNotifications,
+      enableInventoryAlerts: savedSettings.enableInventoryAlerts,
+      enableWeeklySummary: savedSettings.enableWeeklySummary,
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...savedSettings, savedAt: nextSavedAt }));
     setSavedAt(nextSavedAt);
     setSettingsMessage("Đã lưu cấu hình cục bộ cho khu vực admin.");
   };
@@ -186,28 +222,28 @@ export default function AdminSettingsPage() {
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <AdminStatCard
-          icon="solar:shop-bold-duotone"
+          icon="mdi:store-outline"
           label="Tên cửa hàng"
           value={settings.storeName}
           meta="Hiển thị trong admin"
           accentClass="bg-blue-50 text-blue-700"
         />
         <AdminStatCard
-          icon="solar:box-minimalistic-bold-duotone"
+          icon="mdi:package-variant-closed"
           label="Ngưỡng low stock"
           value={String(settings.lowStockThreshold)}
           meta="Áp dụng cho theo dõi kho"
           accentClass="bg-cyan-50 text-cyan-700"
         />
         <AdminStatCard
-          icon="solar:clipboard-list-bold-duotone"
+          icon="mdi:clipboard-text-outline"
           label="Đơn gần đây"
           value={String(settings.recentOrdersLimit)}
           meta="Hiển thị trên dashboard"
           accentClass="bg-sky-50 text-sky-700"
         />
         <AdminStatCard
-          icon="solar:clock-circle-bold-duotone"
+          icon="mdi:clock-outline"
           label="Cập nhật gần nhất"
           value={savedAt ?? "--"}
           meta="Lưu trong localStorage"
@@ -228,7 +264,7 @@ export default function AdminSettingsPage() {
                 <div className="relative">
                   <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[26px] bg-[linear-gradient(135deg,#2563eb,#06b6d4)] text-2xl font-semibold text-white shadow-[0_18px_40px_rgba(37,99,235,0.2)]">
                     {user?.avatar ? (
-                      <img src={`${user.avatar}?t=${Date.now()}`} alt="Avatar" className="h-full w-full object-cover" />
+                      <img src={user.avatar} alt="Avatar" className="h-full w-full object-cover" />
                     ) : (
                       getInitials(fullName)
                     )}
@@ -406,7 +442,12 @@ export default function AdminSettingsPage() {
                 </div>
               ) : null}
 
-              <AdminPrimaryButton type="button" onClick={handleSaveSettings} className="w-full">
+              <AdminPrimaryButton
+                type="button"
+                onClick={() => void handleSaveSettings()}
+                className="w-full"
+                disabled={updateSettingsMutation.isPending}
+              >
                 Lưu cài đặt admin
               </AdminPrimaryButton>
             </div>

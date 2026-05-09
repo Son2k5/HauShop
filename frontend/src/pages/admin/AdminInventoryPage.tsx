@@ -1,5 +1,7 @@
+import { Icon } from "@iconify/react";
 import { useState } from "react";
 import { useAdminInventory } from "../../hooks/useAdmin";
+import { useDebounce } from "../../hooks/useDebounce";
 import {
   AdminBadge,
   AdminEmptyState,
@@ -10,7 +12,8 @@ import {
 
 export default function AdminInventoryPage() {
   const [threshold, setThreshold] = useState(5);
-  const inventoryQuery = useAdminInventory(threshold);
+  const debouncedThreshold = useDebounce(threshold, 350);
+  const inventoryQuery = useAdminInventory(debouncedThreshold);
   const inventory = inventoryQuery.data;
 
   if (inventoryQuery.isLoading) {
@@ -30,6 +33,7 @@ export default function AdminInventoryPage() {
     return (
       <AdminPanel className="p-6">
         <AdminEmptyState
+          icon="mdi:alert-circle-outline"
           title="Không thể tải tồn kho"
           description="Kiểm tra lại hệ thống"
         />
@@ -41,7 +45,8 @@ export default function AdminInventoryPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <label className="inline-flex w-fit items-center gap-3 rounded-xl border border-sky-200 bg-white/90 px-4 py-3 text-sm font-medium text-slate-700 shadow-[0_12px_24px_rgba(37,99,235,0.08)]">
-          Ngưỡng cảnh báo
+          <Icon icon="mdi:tune-variant" width={18} className="text-sky-600" />
+          <span>Ngưỡng cảnh báo</span>
           <input
             type="number"
             min={0}
@@ -54,24 +59,28 @@ export default function AdminInventoryPage() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <AdminStatCard
+          icon="mdi:package-variant-closed"
           label="Tổng sản phẩm"
           value={String(inventory.totalProducts)}
           meta={`${inventory.activeProducts} đang bán`}
           accentClass="bg-blue-50 text-blue-700"
         />
         <AdminStatCard
+          icon="mdi:layers-outline"
           label="Tổng biến thể"
           value={String(inventory.totalVariants)}
           meta={`${inventory.activeVariants} đang hoạt động`}
           accentClass="bg-cyan-50 text-cyan-700"
         />
         <AdminStatCard
+          icon="mdi:archive-outline"
           label="Tổng tồn kho"
           value={inventory.totalStock.toLocaleString("vi-VN")}
           meta="Tồn kho khả dụng"
           accentClass="bg-sky-50 text-sky-700"
         />
         <AdminStatCard
+          icon="mdi:alert-outline"
           label="Cần xử lý"
           value={String(inventory.lowStockCount + inventory.outOfStockCount)}
           meta={`${inventory.outOfStockCount} hết hàng`}
@@ -81,9 +90,24 @@ export default function AdminInventoryPage() {
 
       <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
         <div className="grid gap-4">
-          <SimpleMetric title="Sắp hết hàng" value={inventory.lowStockCount} total={inventory.totalProducts} />
-          <SimpleMetric title="Hết hàng" value={inventory.outOfStockCount} total={inventory.totalProducts} />
-          <SimpleMetric title="Biến thể hoạt động" value={inventory.activeVariants} total={inventory.totalVariants} />
+          <SimpleMetric
+            title="Sắp hết hàng"
+            value={inventory.lowStockCount}
+            total={inventory.totalProducts}
+            icon="mdi:clock-fast"
+          />
+          <SimpleMetric
+            title="Hết hàng"
+            value={inventory.outOfStockCount}
+            total={inventory.totalProducts}
+            icon="mdi:close-circle-outline"
+          />
+          <SimpleMetric
+            title="Biến thể hoạt động"
+            value={inventory.activeVariants}
+            total={inventory.totalVariants}
+            icon="mdi:check-circle-outline"
+          />
         </div>
 
         <AdminPanel>
@@ -127,6 +151,7 @@ export default function AdminInventoryPage() {
               ))
             ) : (
               <AdminEmptyState
+                icon="mdi:package-variant-closed"
                 title="Kho đang ổn định"
                 description="Không có sản phẩm nào dưới ngưỡng cảnh báo hiện tại."
               />
@@ -142,14 +167,21 @@ function SimpleMetric({
   title,
   value,
   total,
+  icon,
 }: {
   title: string;
   value: number;
   total: number;
+  icon: string;
 }) {
   return (
     <AdminPanel className="p-5">
-      <p className="text-sm font-medium text-slate-500">{title}</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-medium text-slate-500">{title}</p>
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-50 text-sky-600">
+          <Icon icon={icon} width={20} />
+        </span>
+      </div>
       <p className="mt-2 text-3xl font-semibold text-slate-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
         {value}
       </p>

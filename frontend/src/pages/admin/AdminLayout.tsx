@@ -8,6 +8,7 @@ const navItems = [
   { to: "/admin", end: true, label: "Tổng quan", icon: "mdi:view-dashboard-outline" },
   { to: "/admin/users", label: "Nhân sự", icon: "mdi:account-group-outline" },
   { to: "/admin/orders", label: "Đơn hàng", icon: "mdi:clipboard-text-outline" },
+  { to: "/admin/chat", label: "Chat", icon: "mdi:chat-processing-outline" },
   { to: "/admin/products", label: "Sản phẩm", icon: "mdi:cube-outline" },
   { to: "/admin/inventory", label: "Tồn kho", icon: "mdi:archive-outline" },
   { to: "/admin/media", label: "Cloudinary", icon: "mdi:image-outline" },
@@ -55,20 +56,6 @@ export default function AdminLayout() {
               >
                 HAUSHOP
               </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="border-b border-sky-200/80 px-5 py-4">
-          <div className="rounded-[24px] border border-sky-100 bg-white/80 p-4 shadow-[0_12px_24px_rgba(37,99,235,0.08)]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[linear-gradient(135deg,#2563eb,#06b6d4)] text-sm font-semibold text-white shadow-[0_10px_22px_rgba(37,99,235,0.22)]">
-                {getInitials(fullName)}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-900">{fullName}</p>
-                <p className="truncate text-xs text-slate-500">{user?.email}</p>
-              </div>
             </div>
           </div>
         </div>
@@ -128,7 +115,7 @@ export default function AdminLayout() {
 
       <div className="lg:pl-[278px]">
         <header className="sticky top-0 z-30 border-b border-sky-200/80 bg-white/80 backdrop-blur-xl">
-          <div className="mx-auto flex max-w-[1440px] items-center gap-4 px-4 py-4 sm:px-6 lg:px-8">
+          <div className="mx-auto flex max-w-[1440px] items-center gap-4 px-4 py-2 sm:px-6 lg:px-8">
             <button
               type="button"
               onClick={() => setSidebarOpen((current) => !current)}
@@ -147,7 +134,37 @@ export default function AdminLayout() {
               </h1>
             </div>
 
-            
+            <div className="ml-auto flex items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-500 transition hover:bg-sky-50 hover:text-blue-700"
+                aria-label="Thông báo"
+              >
+                <Icon icon="mdi:bell-outline" width={22} />
+              </button>
+
+              <button
+                type="button"
+                className="flex items-center gap-3 rounded-full px-3 py-1.5 text-left transition hover:bg-sky-50"
+                aria-label="Thông tin người dùng"
+              >
+                <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(135deg,#2563eb,#06b6d4)] text-sm font-semibold text-white shadow-[0_10px_22px_rgba(37,99,235,0.18)]">
+                  {user?.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={fullName}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    getInitials(fullName)
+                  )}
+                </div>
+                <div className="hidden min-w-0 sm:block">
+                  <p className="truncate text-sm font-semibold text-slate-900">{fullName}</p>
+                  <p className="truncate text-xs text-slate-500">{user?.email}</p>
+                </div>
+              </button>
+            </div>
           </div>
         </header>
 

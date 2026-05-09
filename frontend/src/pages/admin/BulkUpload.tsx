@@ -82,28 +82,28 @@ export default function BulkUpload() {
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <AdminStatCard
-          icon="solar:gallery-add-bold-duotone"
+          icon="mdi:image-plus-outline"
           label="Tệp đang chờ"
           value={String(items.length)}
           meta="Danh sách ảnh sẵn sàng tải lên"
           accentClass="bg-blue-50 text-blue-700"
         />
         <AdminStatCard
-          icon="solar:diskette-bold-duotone"
+          icon="mdi:database-outline"
           label="Dung lượng"
           value={`${totalSizeMb} MB`}
           meta="Tổng dung lượng hiện tại"
           accentClass="bg-cyan-50 text-cyan-700"
         />
         <AdminStatCard
-          icon="solar:check-circle-bold-duotone"
+          icon="mdi:check-circle-outline"
           label="Thành công"
           value={String(uploadedCount)}
           meta="Kết quả lần tải gần nhất"
           accentClass="bg-emerald-50 text-emerald-700"
         />
         <AdminStatCard
-          icon="solar:danger-triangle-bold-duotone"
+          icon="mdi:alert-outline"
           label="Thất bại"
           value={String(failedCount)}
           meta="Ảnh cần kiểm tra lại"
@@ -130,7 +130,7 @@ export default function BulkUpload() {
 
               <div className="relative flex flex-col items-center text-center">
                 <div className="flex h-20 w-20 items-center justify-center rounded-[26px] bg-[linear-gradient(135deg,#2563eb,#06b6d4)] text-white shadow-[0_18px_40px_rgba(37,99,235,0.25)]">
-                  <Icon icon="solar:cloud-upload-bold-duotone" width={38} />
+                  <Icon icon="mdi:cloud-upload-outline" width={38} />
                 </div>
                 <h2
                   className="mt-5 text-2xl font-semibold text-slate-900"
@@ -144,11 +144,11 @@ export default function BulkUpload() {
 
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                   <AdminPrimaryButton type="button" onClick={() => fileRef.current?.click()}>
-                    <Icon icon="solar:gallery-add-bold-duotone" width={18} className="mr-2" />
+                    <Icon icon="mdi:image-plus-outline" width={18} className="mr-2" />
                     Chọn ảnh
                   </AdminPrimaryButton>
                   <AdminSecondaryButton type="button" onClick={() => folderRef.current?.click()}>
-                    <Icon icon="solar:folder-with-files-bold-duotone" width={18} className="mr-2" />
+                    <Icon icon="mdi:folder-outline" width={18} className="mr-2" />
                     Chọn thư mục
                   </AdminSecondaryButton>
                 </div>
@@ -199,7 +199,7 @@ export default function BulkUpload() {
                     <p className="text-sm text-slate-500">Kiểm tra nhanh ảnh trước khi tải lên.</p>
                   </div>
                   <AdminSecondaryButton type="button" onClick={() => setItems([])} disabled={loading}>
-                    <Icon icon="solar:trash-bin-minimalistic-bold-duotone" width={18} className="mr-2" />
+                    <Icon icon="mdi:delete-outline" width={18} className="mr-2" />
                     Dọn danh sách
                   </AdminSecondaryButton>
                 </div>
@@ -222,7 +222,7 @@ export default function BulkUpload() {
                             onClick={() => setItems((current) => current.filter((currentItem) => currentItem.id !== item.id))}
                             className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-red-600 shadow-sm transition hover:bg-red-50"
                           >
-                            <Icon icon="solar:close-circle-bold-duotone" width={18} />
+                            <Icon icon="mdi:close-circle-outline" width={18} />
                           </button>
                         ) : null}
                       </div>
@@ -239,7 +239,7 @@ export default function BulkUpload() {
               </div>
             ) : (
               <AdminEmptyState
-                icon="solar:gallery-wide-bold-duotone"
+                icon="mdi:image-multiple-outline"
                 title="Chưa có ảnh nào trong danh sách"
                 description="Chọn ảnh hoặc thư mục để bắt đầu tải hàng loạt lên Cloudinary."
               />
@@ -285,7 +285,7 @@ export default function BulkUpload() {
           Dọn danh sách
         </AdminSecondaryButton>
         <AdminPrimaryButton type="button" onClick={handleUpload} disabled={loading || items.length === 0}>
-          <Icon icon="solar:cloud-upload-bold-duotone" width={18} className="mr-2" />
+          <Icon icon="mdi:cloud-upload-outline" width={18} className="mr-2" />
           {loading ? "Đang tải lên..." : `Bắt đầu tải ${items.length} ảnh`}
         </AdminPrimaryButton>
       </div>

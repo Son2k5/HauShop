@@ -1,3 +1,4 @@
+import { Icon } from "@iconify/react";
 import { useMemo, useState } from "react";
 import { useAdminDashboard } from "../../hooks/useAdmin";
 import { formatPrice } from "../../utils/formatPrice";
@@ -59,7 +60,7 @@ export default function AdminDashboardPage() {
     return (
       <AdminPanel className="p-6">
         <AdminEmptyState
-          icon="solar:danger-circle-bold-duotone"
+          icon="mdi:alert-circle-outline"
           title="Không thể tải dashboard"
           description="Kiểm tra lại kết nối API hoặc quyền truy cập Admin."
         />
@@ -87,23 +88,27 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         <AdminStatCard
+          icon="mdi:wallet-outline"
           label="Tổng doanh thu"
           value={formatPrice(dashboard.totalRevenue)}
           meta={`Hôm nay ${formatPrice(dashboard.todayRevenue)}`}
         />
         <AdminStatCard
+          icon="mdi:clipboard-text-outline"
           label="Tổng đơn hàng"
           value={dashboard.totalOrders.toLocaleString("vi-VN")}
           meta={`Tháng này ${formatPrice(dashboard.monthRevenue)}`}
         />
         <AdminStatCard
+          icon="mdi:account-group-outline"
           label="Tổng khách hàng"
           value={dashboard.totalUsers.toLocaleString("vi-VN")}
           meta={`${dashboard.pendingReviews} review chờ duyệt`}
         />
         <AdminStatCard
+          icon="mdi:package-variant-closed"
           label="Sản phẩm đang bán"
           value={`${dashboard.activeProducts}/${dashboard.totalProducts}`}
           meta={`${dashboard.lowStockProducts.length} sản phẩm cần xử lý`}
@@ -185,7 +190,7 @@ export default function AdminDashboardPage() {
                 })
               ) : (
                 <AdminEmptyState
-                  icon="solar:pie-chart-3-bold-duotone"
+                  icon="mdi:chart-donut"
                   title="Chưa có đơn hàng"
                   description="Khi có dữ liệu đơn hàng, biểu đồ sẽ hiển thị tại đây."
                 />
@@ -226,7 +231,7 @@ export default function AdminDashboardPage() {
                 ))
               ) : (
                 <AdminEmptyState
-                  icon="solar:box-minimalistic-bold-duotone"
+                  icon="mdi:package-variant-closed"
                   title="Tồn kho ổn định"
                   description="Không có sản phẩm nào dưới ngưỡng cảnh báo."
                 />
@@ -289,9 +294,18 @@ export default function AdminDashboardPage() {
         <AdminPanel>
           <AdminPanelHeader title="Chỉ số bổ sung" />
           <div className="grid gap-3 px-5 pb-6 pt-5 sm:px-6">
-            <MiniInfo label="Sản phẩm tạm ẩn" value={String(dashboard.inactiveProducts)} />
-            <MiniInfo label="Doanh thu tháng này" value={formatPrice(dashboard.monthRevenue)} />
             <MiniInfo
+              icon="mdi:eye-off-outline"
+              label="Sản phẩm tạm ẩn"
+              value={String(dashboard.inactiveProducts)}
+            />
+            <MiniInfo
+              icon="mdi:chart-line"
+              label="Doanh thu tháng này"
+              value={formatPrice(dashboard.monthRevenue)}
+            />
+            <MiniInfo
+              icon="mdi:clock-outline"
               label="Đơn chờ xử lý"
               value={String(dashboard.orderStatusCounts.Pending ?? 0)}
             />
@@ -302,10 +316,23 @@ export default function AdminDashboardPage() {
   );
 }
 
-function MiniInfo({ label, value }: { label: string; value: string }) {
+function MiniInfo({
+  label,
+  value,
+  icon = "mdi:information-outline",
+}: {
+  label: string;
+  value: string;
+  icon?: string;
+}) {
   return (
     <div className="rounded-[20px] border border-[#eee6dc] bg-[#fcfaf7] p-4">
-      <p className="text-sm text-[#7d766f]">{label}</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-[#7d766f]">{label}</p>
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-[#8d7b68]">
+          <Icon icon={icon} width={20} />
+        </span>
+      </div>
       <p className="mt-1 text-lg font-semibold text-[#241f1a]">{value}</p>
     </div>
   );

@@ -6,6 +6,7 @@ export const adminTitles: Record<string, { title: string }> = {
   "/admin": { title: "Tổng quan" },
   "/admin/users": { title: "Nhân sự" },
   "/admin/orders": { title: "Quản lý đơn hàng" },
+  "/admin/chat": { title: "Chat hỗ trợ" },
   "/admin/products": { title: "Quản lý sản phẩm" },
   "/admin/inventory": { title: "Quản lý tồn kho" },
   "/admin/media": { title: "Cloudinary Upload" },
@@ -100,9 +101,11 @@ export function AdminPanel({
 
 export function AdminPanelHeader({
   title,
+  subtitle,
   action,
 }: {
   title: string;
+  subtitle?: string;
   action?: ReactNode;
 }) {
   return (
@@ -114,6 +117,7 @@ export function AdminPanelHeader({
         >
           {title}
         </h3>
+        {subtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}
       </div>
       {action ? <div className="flex items-center gap-2">{action}</div> : null}
     </div>

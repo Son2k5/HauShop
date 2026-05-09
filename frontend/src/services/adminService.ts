@@ -5,11 +5,21 @@ import type {
   AdminOrderDetailDto,
   AdminOrderListItemDto,
   AdminPagedResultDto,
+  AdminSettingsDto,
+  AdminUpdateInventoryDto,
   AdminUpdateOrderStatusDto,
+  AdminUpdateUserDto,
   AdminUpdateUserRoleDto,
   AdminUserDetailDto,
   AdminUserListItemDto,
+  UpdateAdminSettingsDto,
 } from "../@types/admin.type";
+import type {
+  CreateProductDto,
+  ProductDto,
+  ProductSummaryDto,
+  UpdateProductDto,
+} from "../@types/product.type";
 
 export type AdminUserFilters = {
   search?: string;
@@ -25,11 +35,18 @@ export type AdminOrderFilters = {
   pageSize?: number;
 };
 
-function buildQuery(params: Record<string, string | number | undefined>) {
+export type AdminProductFilters = {
+  search?: string;
+  isActive?: boolean;
+  page?: number;
+  pageSize?: number;
+};
+
+function buildQuery(params: Record<string, string | number | boolean | undefined | null>) {
   const query = new URLSearchParams();
 
   for (const [key, value] of Object.entries(params)) {
-    if (value === undefined || value === "") continue;
+    if (value === undefined || value === null || value === "") continue;
     query.set(key, String(value));
   }
 
@@ -64,6 +81,12 @@ export const adminService = {
       .then((res) => res.data);
   },
 
+  updateUser(userId: string, dto: AdminUpdateUserDto) {
+    return api
+      .put<AdminUserDetailDto>(`/admin/users/${userId}`, dto)
+      .then((res) => res.data);
+  },
+
   getOrders(filters: AdminOrderFilters = {}) {
     return api
       .get<AdminPagedResultDto<AdminOrderListItemDto>>(
@@ -84,11 +107,57 @@ export const adminService = {
       .then((res) => res.data);
   },
 
+  getProducts(filters: AdminProductFilters = {}) {
+    return api
+      .get<AdminPagedResultDto<ProductSummaryDto>>(
+        `/admin/products${buildQuery(filters)}`
+      )
+      .then((res) => res.data);
+  },
+
+  getProductById(productId: string) {
+    return api.get<ProductDto>(`/admin/products/${productId}`).then((res) => res.data);
+  },
+
+  createProduct(dto: CreateProductDto) {
+    return api.post<ProductDto>("/admin/products", dto).then((res) => res.data);
+  },
+
+  updateProduct(productId: string, dto: UpdateProductDto) {
+    return api
+      .put<ProductDto>(`/admin/products/${productId}`, dto)
+      .then((res) => res.data);
+  },
+
+  deleteProduct(productId: string) {
+    return api.delete(`/admin/products/${productId}`).then(() => undefined);
+  },
+
+  toggleProductActive(productId: string) {
+    return api
+      .patch<ProductDto>(`/admin/products/${productId}/toggle-active`)
+      .then((res) => res.data);
+  },
+
   getInventoryOverview(lowStockThreshold = 5) {
     return api
       .get<AdminInventoryOverviewDto>(
         `/admin/inventory/overview${buildQuery({ lowStockThreshold })}`
       )
       .then((res) => res.data);
+  },
+
+  updateInventory(productId: string, dto: AdminUpdateInventoryDto) {
+    return api
+      .patch<ProductDto>(`/admin/products/${productId}/inventory`, dto)
+      .then((res) => res.data);
+  },
+
+  getSettings() {
+    return api.get<AdminSettingsDto>("/admin/settings").then((res) => res.data);
+  },
+
+  updateSettings(dto: UpdateAdminSettingsDto) {
+    return api.put<AdminSettingsDto>("/admin/settings", dto).then((res) => res.data);
   },
 };

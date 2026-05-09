@@ -36,6 +36,9 @@ using api.services.interfaces.review;
 using api.services.implementations.review;
 using api.services.interfaces.admin;
 using api.services.implementations.admin;
+using api.hubs;
+using api.services.implementations.chat;
+using api.services.interfaces.chat;
 
 
 // Load .env BEFORE creating builder
@@ -62,6 +65,7 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
+builder.Services.AddSignalR();
 
 // ===========================
 // SWAGGER WITH JWT
@@ -125,7 +129,6 @@ builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 209715200);
 // DATABASE CONFIGURATION
 // ===========================
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-
 if (string.IsNullOrEmpty(connectionString))
 {
     throw new InvalidOperationException("Connection string is missing. Check your .env file.");
@@ -315,6 +318,7 @@ builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 builder.Services.AddScoped<IAdminManagementService, AdminManagementService>();
+builder.Services.AddScoped<IChatService, ChatService>();
 
 
 // ===========================
@@ -341,13 +345,17 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseStaticFiles();
 app.UseRouting();
 app.UseCors("AllowReactApp");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.MapGet("/health", () => Results.Ok(new
 {

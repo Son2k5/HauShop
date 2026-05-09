@@ -1,7 +1,8 @@
 import { Icon } from "@iconify/react";
-import { startTransition, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 import type { AdminUpdateOrderStatusDto } from "../../@types/admin.type";
 import { useAdminOrder, useAdminOrders, useUpdateAdminOrderStatus } from "../../hooks/useAdmin";
+import { useDebounce } from "../../hooks/useDebounce";
 import { formatPrice } from "../../utils/formatPrice";
 import {
   AdminBadge,
@@ -43,15 +44,15 @@ export default function AdminOrdersPage() {
   const [draftStatus, setDraftStatus] = useState<AdminUpdateOrderStatusDto["status"]>("Pending");
   const [formError, setFormError] = useState<string | null>(null);
 
-  const deferredSearch = useDeferredValue(search);
+  const debouncedSearch = useDebounce(search, 350);
   const filters = useMemo(
     () => ({
-      search: deferredSearch,
+      search: debouncedSearch,
       status: status || undefined,
       page,
       pageSize: 10,
     }),
-    [deferredSearch, page, status]
+    [debouncedSearch, page, status]
   );
 
   const ordersQuery = useAdminOrders(filters);
@@ -102,21 +103,21 @@ export default function AdminOrdersPage() {
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <AdminStatCard
-          icon="solar:clipboard-list-bold-duotone"
+          icon="mdi:clipboard-text-outline"
           label="Tổng đơn trong trang"
           value={String(ordersQuery.data?.items.length ?? 0)}
           meta={`Tổng kết quả ${ordersQuery.data?.total ?? 0}`}
           accentClass="bg-blue-50 text-blue-700"
         />
         <AdminStatCard
-          icon="solar:clock-circle-bold-duotone"
+          icon="mdi:clock-outline"
           label="Đang chờ / xử lý"
           value={String(stats.pending)}
           meta="Cần theo dõi tiếp"
           accentClass="bg-red-50 text-red-700"
         />
         <AdminStatCard
-          icon="solar:delivery-bold-duotone"
+          icon="mdi:truck-delivery-outline"
           label="Đang giao / hoàn tất"
           value={String(stats.shipping + stats.completed)}
           meta={`${stats.completed} đã hoàn thành`}
@@ -131,7 +132,7 @@ export default function AdminOrdersPage() {
           <div className="flex flex-col gap-3 border-b border-slate-200/80 px-5 py-5 sm:flex-row sm:px-6">
             <div className="relative flex-1">
               <Icon
-                icon="solar:magnifer-bold-duotone"
+                icon="mdi:magnify"
                 width={18}
                 className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
               />
@@ -220,7 +221,7 @@ export default function AdminOrdersPage() {
             {!ordersQuery.data?.items.length ? (
               <div className="px-2 py-4">
                 <AdminEmptyState
-                  icon="solar:bag-cross-bold-duotone"
+                  icon="mdi:shopping-off"
                   title="Không có đơn hàng phù hợp"
                   description="Thử đổi từ khóa tìm kiếm hoặc bỏ bộ lọc trạng thái hiện tại."
                 />
@@ -260,7 +261,7 @@ export default function AdminOrdersPage() {
           <div className="px-5 pb-6 pt-5 sm:px-6">
             {!selectedOrderId ? (
               <AdminEmptyState
-                icon="solar:bag-smile-bold-duotone"
+                icon="mdi:shopping-outline"
                 title="Chọn một đơn hàng"
                 description="Chi tiết giao nhận, item và thao tác cập nhật trạng thái sẽ hiển thị tại đây."
               />
@@ -379,7 +380,7 @@ export default function AdminOrdersPage() {
               </div>
             ) : (
               <AdminEmptyState
-                icon="solar:danger-circle-bold-duotone"
+                icon="mdi:alert-circle-outline"
                 title="Không tìm thấy đơn"
                 description="Bản ghi có thể đã bị thay đổi hoặc không tồn tại."
               />

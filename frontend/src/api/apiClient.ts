@@ -30,7 +30,7 @@ function normalizeErrorPayload(data: any): any {
 
 
 const api = axios.create({
-    baseURL: 'https://localhost:7288/api',
+    baseURL: import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7288/api',
     withCredentials: true,
 });
 

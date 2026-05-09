@@ -23,11 +23,13 @@ import OrderDetailPage from "./pages/OrderDetailPage";
 import MyOrdersPage from "./pages/OrderPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import WishlistPage from "./pages/WishlistPage";
+import SupportChatPage from "./pages/SupportChatPage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
 const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage"));
 const AdminUsersPage = lazy(() => import("./pages/admin/AdminUsersPage"));
 const AdminOrdersPage = lazy(() => import("./pages/admin/AdminOrdersPage"));
+const AdminChatPage = lazy(() => import("./pages/admin/AdminChatPage"));
 const AdminProductsPage = lazy(() => import("./pages/admin/AdminProductsPage"));
 const AdminInventoryPage = lazy(() => import("./pages/admin/AdminInventoryPage"));
 const AdminMediaPage = lazy(() => import("./pages/admin/BulkUpload"));
@@ -86,6 +88,7 @@ function App() {
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/orders" element={<MyOrdersPage />} />
           <Route path="/orders/:id" element={<OrderDetailPage />} />
+          <Route path="/support-chat" element={<SupportChatPage />} />
           <Route path="/payment/vnpay-return" element={<VnPayReturnPage />} />
           {!isAdminRoute ? <Route path="*" element={<NotFound />} /> : null}
         </Route>
@@ -121,6 +124,14 @@ function App() {
             element={
               <Suspense fallback={<AdminPageFallback />}>
                 <AdminOrdersPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="chat"
+            element={
+              <Suspense fallback={<AdminPageFallback />}>
+                <AdminChatPage />
               </Suspense>
             }
           />
