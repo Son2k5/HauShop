@@ -14,11 +14,13 @@ namespace api.hubs
     {
         private readonly ApplicationDbContext _context;
         private readonly IChatService _chatService;
+        private readonly IAiChatService _aiChatService;
 
-        public ChatHub(ApplicationDbContext context, IChatService chatService)
+        public ChatHub(ApplicationDbContext context, IChatService chatService, IAiChatService aiChatService)
         {
             _context = context;
             _chatService = chatService;
+            _aiChatService = aiChatService;
         }
 
         public override async Task OnConnectedAsync()
@@ -106,6 +108,26 @@ namespace api.hubs
 
             await Clients.Group(RoomGroup(dto.ChatRoomId)).SendAsync("ReceiveMessage", message);
             await Clients.Group(AdminGroup).SendAsync("RoomUpdated", dto.ChatRoomId);
+        }
+
+        public async Task SendAiMessage(SendChatMessageDto dto)
+        {
+            if (IsAdmin())
+            {
+                throw new HubException("Admins cannot use AI customer chat.");
+            }
+
+            var userId = GetUserId();
+            var message = await _chatService.SendAiCustomerMessageAsync(
+                dto.ChatRoomId,
+                userId,
+                dto.Message,
+                dto.MessageType);
+
+            await Clients.Group(RoomGroup(dto.ChatRoomId)).SendAsync("ReceiveMessage", message);
+
+            var aiResult = await _aiChatService.ReplyAsync(dto.ChatRoomId, userId, dto.Message);
+            await Clients.Group(RoomGroup(dto.ChatRoomId)).SendAsync("ReceiveMessage", aiResult.AssistantMessage);
         }
 
         public async Task MarkAsRead(string roomId)

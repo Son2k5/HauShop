@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMyOrders } from "../hooks/useOrder";
 import { formatPrice } from "../utils/formatPrice";
@@ -5,15 +6,15 @@ import { formatPrice } from "../utils/formatPrice";
 function getStatusLabel(status: string) {
   switch (status) {
     case "Pending":
-      return "Chờ xử lý";
+      return "Cho xu ly";
     case "Processing":
-      return "Đang xử lý";
+      return "Dang xu ly";
     case "Shipping":
-      return "Đang giao";
+      return "Dang giao";
     case "Completed":
-      return "Hoàn thành";
+      return "Hoan thanh";
     case "Cancelled":
-      return "Đã hủy";
+      return "Da huy";
     default:
       return status;
   }
@@ -37,7 +38,11 @@ function getStatusColor(status: string) {
 }
 
 export default function MyOrdersPage() {
-  const { orders, isLoading, isError, error } = useMyOrders();
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const { orders, total, totalPages, isLoading, isError, error } = useMyOrders(page, pageSize);
+  const canGoPrevious = page > 1;
+  const canGoNext = totalPages > 0 && page < totalPages;
 
   if (isLoading) {
     return (
@@ -60,71 +65,109 @@ export default function MyOrdersPage() {
   return (
     <div className="max-w-container mx-auto px-10 py-12">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold font-titleFont">Đơn hàng của tôi</h1>
+        <h1 className="text-3xl font-bold font-titleFont">Don hang cua toi</h1>
         <div className="flex gap-3">
           <Link
             to="/cart"
             className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
           >
-            Giỏ hàng
+            Gio hang
           </Link>
           <Link
             to="/shop"
             className="px-4 py-2 bg-primeColor text-white rounded-lg hover:bg-gray-800 transition"
           >
-            Mua sắm
+            Mua sam
           </Link>
         </div>
       </div>
 
       {orders.length === 0 ? (
         <div className="border border-dashed border-gray-200 p-8 text-center">
-          <p className="text-lightText mb-4">Bạn chưa có đơn hàng nào.</p>
+          <p className="text-lightText mb-4">Ban chua co don hang nao.</p>
           <Link
             to="/shop"
             className="inline-block px-6 py-3 bg-primeColor text-white rounded-lg hover:bg-gray-800 transition"
           >
-            Bắt đầu mua sắm
+            Bat dau mua sam
           </Link>
         </div>
       ) : (
         <div className="space-y-5">
-          {orders.map((order) => (
-            <Link
-              key={order.id}
-              to={`/orders/${order.id}`}
-              className="block border border-gray-200 p-5 hover:border-primeColor hover:shadow-md transition"
-            >
-              <div className="flex items-center justify-between gap-4 flex-wrap">
-                <div>
-                  <p className="font-semibold text-lg">Mã đơn: #{order.id.slice(-8).toUpperCase()}</p>
-                  <p className="text-sm text-lightText">
-                    {new Date(order.created).toLocaleString("vi-VN")}
-                  </p>
-                </div>
+          <p className="text-sm text-lightText">
+            {total > 0 ? `${total} don hang` : "Dang hien thi don hang gan day"}
+          </p>
 
-                <div className="text-right">
-                  <p className="font-semibold text-red-500 text-lg">{formatPrice(order.total)}</p>
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                    {getStatusLabel(order.status)}
-                  </span>
-                </div>
-              </div>
+          <div className="space-y-5">
+            {orders.map((order) => (
+              <Link
+                key={order.id}
+                to={`/orders/${order.id}`}
+                className="block border border-gray-200 p-5 hover:border-primeColor hover:shadow-md transition"
+              >
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div>
+                    <p className="font-semibold text-lg">
+                      Ma don: #{order.id.slice(-8).toUpperCase()}
+                    </p>
+                    <p className="text-sm text-lightText">
+                      {new Date(order.created).toLocaleString("vi-VN")}
+                    </p>
+                  </div>
 
-              <div className="mt-4 text-sm text-lightText border-t border-gray-100 pt-4">
-                <div className="flex flex-wrap gap-2">
-                  {order.items.slice(0, 3).map((item, idx) => (
-                    <span key={idx} className="bg-gray-50 px-2 py-1 rounded">
-                      {item.productName} x {item.quantity}
+                  <div className="text-right">
+                    <p className="font-semibold text-red-500 text-lg">
+                      {formatPrice(order.total)}
+                    </p>
+                    <span
+                      className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}
+                    >
+                      {getStatusLabel(order.status)}
                     </span>
-                  ))}
-                  {order.items.length > 3 && (
-                    <span className="text-gray-400">+ {order.items.length - 3} sản phẩm khác</span>
-                  )}
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+
+                <div className="mt-4 text-sm text-lightText border-t border-gray-100 pt-4">
+                  <div className="flex flex-wrap gap-2">
+                    {order.items.slice(0, 3).map((item) => (
+                      <span key={item.id} className="bg-gray-50 px-2 py-1 rounded">
+                        {item.productName} x {item.quantity}
+                      </span>
+                    ))}
+                    {order.items.length > 3 && (
+                      <span className="text-gray-400">
+                        + {order.items.length - 3} san pham khac
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 pt-4">
+              <button
+                type="button"
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                disabled={!canGoPrevious}
+                className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50"
+              >
+                Truoc
+              </button>
+              <span className="text-sm text-lightText">
+                Trang {page} / {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage((current) => current + 1)}
+                disabled={!canGoNext}
+                className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50"
+              >
+                Sau
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

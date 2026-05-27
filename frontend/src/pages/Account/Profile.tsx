@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { userService } from '../../services/userService';
 import type { UpdateProfileDto } from '../../@types/auth.type';
 import type { AddressDto, CreateAddressDto } from '../../@types/address.type';
+import { ROUTES } from '../../lib/routes';
 
 // Profile Page Component
 const Profile: React.FC = () => {
@@ -38,7 +39,7 @@ const Profile: React.FC = () => {
     // Redirect if not authenticated
     useEffect(() => {
         if (!isAuthenticated) {
-            navigate('/signin');
+            navigate(ROUTES.SIGN_IN);
         }
     }, [isAuthenticated, navigate]);
 

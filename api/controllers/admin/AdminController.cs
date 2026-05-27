@@ -215,7 +215,7 @@ namespace api.controllers.admin
             var validation = await _createProductValidator.ValidateAsync(dto, ct);
             if (!validation.IsValid)
             {
-                return BadRequest(new { success = false, errors = validation.ToDictionary() });
+                return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
             }
 
             try
@@ -245,7 +245,7 @@ namespace api.controllers.admin
             var validation = await _updateProductValidator.ValidateAsync(dto, ct);
             if (!validation.IsValid)
             {
-                return BadRequest(new { success = false, errors = validation.ToDictionary() });
+                return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
             }
 
             try

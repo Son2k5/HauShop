@@ -2,6 +2,7 @@ namespace api.DTOs.order
 {
     public class PaymentDto
     {
+        public string Id { get; set; } = string.Empty;
         public string Method { get; set; }
         public string Status { get; set; }
 

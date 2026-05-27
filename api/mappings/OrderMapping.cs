@@ -24,6 +24,9 @@ namespace api.mappings
 
                 Items = o.OrderItems?.Select(i => new OrderItemDto
                 {
+                    Id = i.Id,
+                    ProductId = i.ProductId,
+                    ProductVariantId = i.ProductVariantId,
                     ProductName = i.ProductName,
                     VariantSku = i.VariantSku,
                     VariantSize = i.VariantSize,
@@ -35,6 +38,7 @@ namespace api.mappings
 
                 Payments = o.Payments?.Select(p => new PaymentDto
                 {
+                    Id = p.Id,
                     Method = p.Method.ToString(),
                     Status = p.Status.ToString(),
                     Amount = p.Amount,

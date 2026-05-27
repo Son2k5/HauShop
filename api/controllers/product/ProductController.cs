@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Globalization;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -34,15 +36,53 @@ namespace api.controllers.product
         //         sortBy: "created|price|name", sortOrder: "asc|desc",
         //         page: 1, pageSize: 20 }
         // ════════════════════════════════════════════════════════════════════════
+        [HttpGet]
+        [AllowAnonymous]
+        [ResponseCache(Duration = 30, VaryByQueryKeys = new[] { "*" })]
+        [ProducesResponseType(typeof(PagedProductDto), StatusCodes.Status200OK)]
+        public Task<IActionResult> GetAll(
+            [FromQuery] ProductQueryDto query,
+            CancellationToken ct) => SearchProductsAsync(query, "GET /api/product", ct);
+
+        [HttpGet("search")]
+        [AllowAnonymous]
+        [ResponseCache(Duration = 30, VaryByQueryKeys = new[] { "*" })]
+        [ProducesResponseType(typeof(PagedProductDto), StatusCodes.Status200OK)]
+        public Task<IActionResult> SearchGet(
+            [FromQuery] ProductQueryDto query,
+            CancellationToken ct) => SearchProductsAsync(query, "GET /api/product/search", ct);
+
         [HttpPost("search")]
         [AllowAnonymous]
         [ProducesResponseType(typeof(PagedProductDto), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetAll(
+        public Task<IActionResult> Search(
             [FromBody] ProductQueryDto? query,
+            CancellationToken ct) => SearchProductsAsync(query ?? new ProductQueryDto(), "POST /api/product/search", ct);
+
+        private async Task<IActionResult> SearchProductsAsync(
+            ProductQueryDto query,
+            string routeName,
             CancellationToken ct)
         {
-            query ??= new ProductQueryDto();
+            var stopwatch = Stopwatch.StartNew();
             var result = await _service.GetProductsAsync(query, ct);
+
+            stopwatch.Stop();
+            Response.Headers["Server-Timing"] = string.Create(
+                CultureInfo.InvariantCulture,
+                $"product-search;dur={stopwatch.Elapsed.TotalMilliseconds:0.##}");
+            Response.Headers["X-Product-Search-Ms"] = stopwatch.ElapsedMilliseconds.ToString(CultureInfo.InvariantCulture);
+
+            _logger.LogInformation(
+                "{RouteName} returned {Count} items in {ElapsedMs}ms. Search={Search} Page={Page} PageSize={PageSize} IncludeTotal={IncludeTotal}",
+                routeName,
+                result.Items.Count,
+                stopwatch.ElapsedMilliseconds,
+                query.Search,
+                query.Page,
+                query.PageSize,
+                query.IncludeTotal);
+
             return Ok(result);
         }
 
@@ -88,7 +128,7 @@ namespace api.controllers.product
         {
             var validation = await _createValidator.ValidateAsync(dto, ct);
             if (!validation.IsValid)
-                return BadRequest(new { success = false, errors = validation.ToDictionary() });
+                return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
 
             var product = await _service.CreateAsync(dto, ct);
             return StatusCode(StatusCodes.Status201Created, product);
@@ -109,7 +149,7 @@ namespace api.controllers.product
         {
             var validation = await _updateValidator.ValidateAsync(dto, ct);
             if (!validation.IsValid)
-                return BadRequest(new { success = false, errors = validation.ToDictionary() });
+                return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
 
             var product = await _service.UpdateAsync(id, dto, ct);
             return Ok(product);

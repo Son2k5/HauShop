@@ -1,19 +1,29 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { useAppSelector, useAppDispatch } from "../store/hooks";
-import { clearCart } from "../store/cartSlice";
+import { useCart } from "../hooks/useCart";
+import { cartDtoToState, emptyCartState } from "../lib/cart";
 import { checkoutApi } from "../services/orderService";
 import { userService } from "../services/userService";
 import { useToast } from "../context/toastContext";
 import { formatPrice } from "../utils/formatPrice";
 import type { AddressDto } from "../@types/address.type";
+import { queryKeys } from "../lib/queryKeys";
+import { logger } from "../lib/logger";
+import { useAuth } from "../hooks/useAuth";
+import { ROUTES, routeTo } from "../lib/routes";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
   const { showToast } = useToast();
+  const { isAuthenticated } = useAuth();
 
-  const cart = useAppSelector((state) => state.cart);
+  const cartQuery = useCart({ enabled: isAuthenticated });
+  const cart = useMemo(
+    () => (isAuthenticated ? cartDtoToState(cartQuery.data) : emptyCartState),
+    [cartQuery.data, isAuthenticated]
+  );
 
   const [addresses, setAddresses] = useState<AddressDto[]>([]);
   const [addressesLoading, setAddressesLoading] = useState(true);
@@ -25,6 +35,13 @@ export default function CheckoutPage() {
 
   // Fetch user addresses on mount
   useEffect(() => {
+    if (!isAuthenticated) {
+      setAddresses([]);
+      setAddressesLoading(false);
+      setShippingAddressId("");
+      return;
+    }
+
     const fetchAddresses = async () => {
       try {
         setAddressesLoading(true);
@@ -38,7 +55,7 @@ export default function CheckoutPage() {
           setShippingAddressId(data[0].id);
         }
       } catch (error) {
-        console.error("Failed to fetch addresses:", error);
+        logger.error("Failed to fetch addresses", error);
         showToast("Không thể tải danh sách địa chỉ", "error");
       } finally {
         setAddressesLoading(false);
@@ -46,7 +63,7 @@ export default function CheckoutPage() {
     };
 
     fetchAddresses();
-  }, [showToast]);
+  }, [isAuthenticated, showToast]);
 
   const subtotal = useMemo(() => {
     return cart.items.reduce((sum: number, item: any) => {
@@ -57,6 +74,12 @@ export default function CheckoutPage() {
   const total = subtotal + shippingFee;
 
   const handleCheckout = async () => {
+    if (!isAuthenticated) {
+      showToast("Vui long dang nhap de thanh toan", "warning");
+      navigate(ROUTES.SIGN_IN);
+      return;
+    }
+
     if (!cart.items.length) {
       showToast("Giỏ hàng đang trống", "warning");
       return;
@@ -78,9 +101,11 @@ export default function CheckoutPage() {
       });
 
       if (paymentMethod === 0) {
-        dispatch(clearCart());
+        queryClient.removeQueries({ queryKey: queryKeys.cart.me });
+        queryClient.setQueryData(queryKeys.orders.detail(res.order.id), res.order);
+        await queryClient.invalidateQueries({ queryKey: queryKeys.orders.mineRoot });
         showToast("Đặt hàng thành công", "success");
-        navigate(`/orders/${res.order.id}`);
+        navigate(routeTo.order(res.order.id));
         return;
       }
 
@@ -91,7 +116,7 @@ export default function CheckoutPage() {
 
       showToast("Không tạo được link thanh toán", "error");
     } catch (err: any) {
-      console.error(err);
+      logger.error("Checkout failed", err);
       showToast(
         err?.response?.data?.message || "Không thể đặt hàng",
         "error"
@@ -113,7 +138,7 @@ export default function CheckoutPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Thông tin giao hàng</h2>
               <Link
-                to="/orders"
+                to={ROUTES.ORDERS}
                 className="text-sm text-primeColor hover:underline"
               >
                 Xem đơn hàng của tôi →
@@ -126,7 +151,7 @@ export default function CheckoutPage() {
               <div className="text-center py-4 border border-dashed border-gray-200 rounded">
                 <p className="text-sm text-gray-500 mb-2">Bạn chưa có địa chỉ nào</p>
                 <Link
-                  to="/profile"
+                  to={ROUTES.PROFILE}
                   className="text-sm text-primeColor hover:underline"
                 >
                   Thêm địa chỉ mới →
@@ -206,8 +231,8 @@ export default function CheckoutPage() {
           <h2 className="text-lg font-semibold mb-5">Đơn hàng của bạn</h2>
 
           <div className="space-y-4 mb-6">
-            {cart.items.map((item: any, idx: number) => (
-              <div key={`${item.productId}-${item.variantId}-${idx}`} className="border-b border-gray-100 pb-4">
+            {cart.items.map((item: any) => (
+              <div key={item.cartItemId} className="border-b border-gray-100 pb-4">
                 <p className="font-medium">{item.product?.name || "Sản phẩm"}</p>
                 <p className="text-sm text-lightText">
                   {item.variantSku ? `SKU: ${item.variantSku}` : ""}

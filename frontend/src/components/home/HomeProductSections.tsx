@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useProducts } from "../../hooks/useProducts";
+import { useWishlistIds } from "../../hooks/useWishlist";
 import ProductCard from "../product/ProductCard";
 import ProductCardSkeleton from "../product/Productcardskeleton";
 import { useScrollReveal } from "../../hooks/useScrollReveal";
@@ -45,12 +46,16 @@ type ProductRailProps = {
 
 function ProductRail({ title, href, query, tone = "light" }: ProductRailProps) {
   const { ref, visible } = useScrollReveal<HTMLDivElement>();
+  const { data: wishlistIds = [] } = useWishlistIds({ enabled: visible });
   const { items, isLoading, isError } = useProducts({
     isActive: true,
     sortBy: "created",
     sortOrder: "desc",
     pageSize: 4,
+    includeTotal: false,
     ...query,
+  }, {
+    enabled: visible,
   });
 
   return (
@@ -101,7 +106,10 @@ function ProductRail({ title, href, query, tone = "light" }: ProductRailProps) {
                     }`}
                     style={{ transitionDelay: `${index * 70}ms` }}
                   >
-                    <ProductCard product={product} />
+                    <ProductCard
+                      product={product}
+                      initialWished={wishlistIds.includes(product.id)}
+                    />
                   </div>
                 ))}
           </div>
@@ -142,6 +150,8 @@ export default function HomeProductSections() {
                 <img
                   src={tile.image}
                   alt={tile.title}
+                  loading="lazy"
+                  decoding="async"
                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />

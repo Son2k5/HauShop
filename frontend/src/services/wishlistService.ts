@@ -1,5 +1,5 @@
-import api from "../api/apiClient";
 import type { ProductSummaryDto } from "../@types/product.type";
+import { http } from "../lib/http";
 
 export interface WishlistItemDto {
   id: string;
@@ -9,20 +9,18 @@ export interface WishlistItemDto {
 }
 
 export async function getMyWishlistApi(): Promise<WishlistItemDto[]> {
-  const res = await api.get("/wishlist/me");
-  return res.data;
+  return http.get<WishlistItemDto[]>("/wishlist/me");
 }
 
 export async function addWishlistItemApi(productId: string): Promise<WishlistItemDto> {
-  const res = await api.post("/wishlist/items", { productId });
-  return res.data;
+  return http.post<WishlistItemDto>("/wishlist/items", { productId });
 }
 
 export async function removeWishlistProductApi(productId: string): Promise<void> {
-  await api.delete(`/wishlist/products/${productId}`);
+  await http.delete(`/wishlist/products/${productId}`);
 }
 export async function getMyWishlistProductIdsApi(): Promise<string[]> {
-  const res = await api.get("/wishlist/me/product-ids");
-  return Array.isArray(res.data) ? res.data : [];
+  const data = await http.get<string[]>("/wishlist/me/product-ids");
+  return Array.isArray(data) ? data : [];
 }
 

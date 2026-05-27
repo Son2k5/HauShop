@@ -5,22 +5,37 @@ import type {
   ProductQueryDto,
   ProductSummaryDto,
 } from "../@types/product.type";
+import { cachePolicy } from "../lib/cachePolicy";
+import { normalizeProductQuery } from "../lib/productQuery";
 import { queryKeys } from "../lib/queryKeys";
 
-export function useProducts(query: ProductQueryDto = {}) {
+export function useProducts(
+  query: ProductQueryDto = {},
+  options: { enabled?: boolean } = {}
+) {
+  const enabled = options.enabled ?? true;
+  const normalizedQuery = normalizeProductQuery(query);
+
   const result = useQuery<PagedProductDto, Error>({
-    queryKey: queryKeys.products.list(query),
-    queryFn: () => productService.getAll(query),
+    queryKey: queryKeys.products.list(normalizedQuery),
+    queryFn: ({ signal }) => productService.getAll(normalizedQuery, signal),
+    enabled,
     placeholderData: keepPreviousData,
-    staleTime: 60 * 1000,
+    staleTime: cachePolicy.productList.staleTime,
+    gcTime: cachePolicy.productList.gcTime,
   });
+
+  const pageSize = result.data?.pageSize ?? normalizedQuery.pageSize ?? 20;
+  const total = result.data?.total ?? 0;
+  const computedTotalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 0;
 
   return {
     items: (result.data?.items ?? []) as ProductSummaryDto[],
-    total: result.data?.total ?? 0,
-    totalPages: result.data?.totalPages ?? 0,
-    page: result.data?.page ?? query.page ?? 1,
-    isLoading: result.isLoading,
+    total,
+    totalPages: result.data?.totalPages ?? computedTotalPages,
+    hasNextPage: result.data?.hasNextPage ?? false,
+    page: result.data?.page ?? normalizedQuery.page ?? 1,
+    isLoading: enabled ? result.isLoading : true,
     isError: result.isError,
     error: result.error?.message ?? null,
     isFetching: result.isFetching,

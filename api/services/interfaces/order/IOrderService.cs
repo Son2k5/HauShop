@@ -11,7 +11,11 @@ namespace api.services.interfaces.order
             HttpContext httpContext,
             CancellationToken ct = default);
 
-        Task<List<OrderDto>> GetMyOrdersAsync(string userId, CancellationToken ct = default);
+        Task<PagedOrderDto> GetMyOrdersAsync(
+            string userId,
+            int page = 1,
+            int pageSize = 10,
+            CancellationToken ct = default);
 
         Task<OrderDto> GetMyOrderByIdAsync(string userId, string orderId, CancellationToken ct = default);
 

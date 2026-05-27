@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import bannerOne from "../../assets/images/banner/photo-1764698192249-641a17d7a4fe.avif";
+import bannerTwo from "../../assets/images/banner/photo-1763935724017-471cbc57d105.avif";
+import bannerThree from "../../assets/images/banner/photo-1765815442424-5acf90d01e41.avif";
 
 interface Slide {
   id: number;
@@ -27,8 +30,7 @@ const slides: Slide[] = [
     primaryHref: "/shop?search=Áo",
     secondaryLabel: "Xem tất cả",
     secondaryHref: "/shop",
-    imageUrl:
-      "https://images.unsplash.com/photo-1764698192249-641a17d7a4fe?w=1800&auto=format&fit=crop&q=85",
+    imageUrl: bannerOne,
     badge: "NEW",
   },
   {
@@ -42,8 +44,7 @@ const slides: Slide[] = [
     primaryHref: "/shop?search=Sneaker",
     secondaryLabel: "Sản phẩm mới",
     secondaryHref: "/shop?search=Áo%20khoác",
-    imageUrl:
-      "https://images.unsplash.com/photo-1763935724017-471cbc57d105?w=1800&auto=format&fit=crop&q=85",
+    imageUrl: bannerTwo,
     badge: "-50%",
   },
   {
@@ -57,8 +58,7 @@ const slides: Slide[] = [
     primaryHref: "/shop?search=Balo",
     secondaryLabel: "Xem bộ sưu tập",
     secondaryHref: "/shop?search=Phụ%20kiện",
-    imageUrl:
-      "https://images.unsplash.com/photo-1765815442424-5acf90d01e41?w=1800&auto=format&fit=crop&q=85",
+    imageUrl: bannerThree,
     badge: "STYLE",
   },
 ];
@@ -99,7 +99,10 @@ export default function HeroBanner() {
           src={slide.imageUrl}
           alt={slide.title}
           className="h-full w-full object-cover"
+          decoding="async"
+          fetchPriority={slide.id === 1 ? "high" : "auto"}
           loading={slide.id === 1 ? "eager" : "lazy"}
+          sizes="100vw"
         />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.48)_42%,rgba(0,0,0,0.12)_100%)]" />
       </div>

@@ -1,0 +1,128 @@
+{
+   "checksum": "47aa8f943563507cc1c4bceab82e547c",
+   "roots": {
+      "bookmark_bar": {
+         "children": [ {
+            "date_added": "13234169476798089",
+            "date_last_used": "0",
+            "guid": "2e82f29e-0822-422c-b9a7-e478293a815b",
+            "id": "7",
+            "name": "Google",
+            "show_icon": false,
+            "source": "sync",
+            "type": "url",
+            "url": "https://www.google.com.vn/?hl=vi",
+            "visit_count": 0
+         }, {
+            "date_added": "13233657213786154",
+            "date_last_used": "13357709634132412",
+            "guid": "d48a0139-7bac-498c-a845-15c237c354c0",
+            "id": "8",
+            "name": "(1) Facebook",
+            "show_icon": false,
+            "source": "sync",
+            "type": "url",
+            "url": "https://www.facebook.com/",
+            "visit_count": 0
+         }, {
+            "date_added": "13233677307408781",
+            "date_last_used": "13375026079009873",
+            "guid": "d973c41a-b887-4a91-8928-558ef3ee01f6",
+            "id": "9",
+            "name": "(6) YouTube",
+            "show_icon": false,
+            "source": "sync",
+            "type": "url",
+            "url": "https://www.youtube.com/channel/UCiX9gu20qg1mUwQq5vKpSZg",
+            "visit_count": 1
+         }, {
+            "date_added": "13233734522415586",
+            "date_last_used": "0",
+            "guid": "03cfeb3a-5bde-47fc-8bb0-a02492be5f45",
+            "id": "10",
+            "name": "Hộp thư đến (8) - nguyenhakienson@gmail.com - Gmail",
+            "show_icon": false,
+            "source": "sync",
+            "type": "url",
+            "url": "https://mail.google.com/mail/u/0/#inbox",
+            "visit_count": 0
+         }, {
+            "date_added": "13236511899450571",
+            "date_last_used": "0",
+            "guid": "b11b0122-b29a-457a-bcb8-21dc1aa53f93",
+            "id": "11",
+            "name": "GDĐT - Trang chủ",
+            "show_icon": false,
+            "source": "sync",
+            "type": "url",
+            "url": "https://giaoducdientu.hnegov.vn/",
+            "visit_count": 0
+         }, {
+            "date_added": "13237209450971867",
+            "date_last_used": "0",
+            "guid": "3467fcd4-0733-466c-9469-58502d5033f6",
+            "id": "12",
+            "name": "Laban Dictionary - Từ điển Anh Việt, Việt Anh, Anh Anh",
+            "show_icon": false,
+            "source": "sync",
+            "type": "url",
+            "url": "https://dict.laban.vn/",
+            "visit_count": 0
+         }, {
+            "date_added": "13239123124026264",
+            "date_last_used": "0",
+            "guid": "3349006f-0c8c-4d6d-bbe1-5df4d08b7008",
+            "id": "13",
+            "name": "Đăng nhập",
+            "show_icon": false,
+            "source": "sync",
+            "type": "url",
+            "url": "https://ssoedu.hanoi.gov.vn/auth/realms/one-edu/protocol/openid-connect/auth?redirect_uri=https%3A%2F%2Fgiaoducdientuv2.hanoi.gov.vn%2Fowin%2Fsecurity%2Fkeycloak%2Fhelisoft%2Fcallback&response_type=code&scope=openid&state=oidc_state_fee6fd6d1e874aecbb7b5e6a03326254&client_id=one-edu",
+            "visit_count": 0
+         } ],
+         "date_added": "13424258363471820",
+         "date_last_used": "0",
+         "date_modified": "13239123124026264",
+         "guid": "0bc5d13f-2cba-5d74-951f-3f233fe6c908",
+         "id": "1",
+         "name": "Favorites bar",
+         "source": "unknown",
+         "type": "folder"
+      },
+      "other": {
+         "children": [  ],
+         "date_added": "13424258363471820",
+         "date_last_used": "0",
+         "date_modified": "0",
+         "guid": "82b081ec-3dd3-529c-8475-ab6c344590dd",
+         "id": "2",
+         "name": "Other favorites",
+         "source": "unknown",
+         "type": "folder"
+      },
+      "synced": {
+         "children": [  ],
+         "date_added": "13424258363471820",
+         "date_last_used": "0",
+         "date_modified": "0",
+         "guid": "4cf2e351-0e85-532b-bb37-df045d8f8d0f",
+         "id": "3",
+         "name": "Mobile favorites",
+         "source": "unknown",
+         "type": "folder"
+      },
+      "workspaces_v2": {
+         "children": [  ],
+         "date_added": "13424258363471820",
+         "date_last_used": "0",
+         "date_modified": "0",
+         "guid": "75aa6670-344f-549d-b742-660f029506ab",
+         "id": "5",
+         "name": "Workspaces",
+         "source": "unknown",
+         "type": "folder"
+      }
+   },
+   "sync_metadata": "CkEKHgiIgQISCLuqbWOeAQAAKg4QABgBIAAoBjAAOABAABIAKhg2eWRLSkRJbTdRYnl4ZkxRSENlZ1d3PT1IA6AGDBKtAQgMEqgBChx3dlVSL3VnWFlGcWVqSU5SK3FQSW0wZHp1dnc9EiQzNDY3ZmNkNC0wNzMzLTQ2NmMtOTQ2OS01ODUwMmQ1MDMzZjYYACAAKAAwmtahm68xOPXE19ryL0D1xNfa8i9KHGlENTJBUVh2bW9pR0FvaU9ON2o0ZUxrMXdOQT1aHyId7jV3UXI5SGFOdklEWm5WSVQ0UlNXeDBtNS9kUT1lTTbEbcI+AmAFEo4BCAISiQEKHFljU1RvbnZFU1B3cUNzNEwyY3JWaHY2OEw5OD0SJDE5YWQzMmQzLTkwNGEtNTc4Mi1iMjEyLTQ4MTQyNjE1MmI2OBgAIAAoADDJ3NHUgy84577X2vIvQOe+19ryL0ocb1BWa2h3QlJiVjY1S0NXUjIrSU9OSFdvT3U4PVoAZQAAAADCPgJgABKtAQgNEqgBChxjQmZSdUJqOWlsZTNXYlN2R3dXdU81eWlHc289EiQzMzQ5MDA2Zi0wYzhjLTRkNmQtYmJlMS01ZGY0ZDA4YjcwMDgYACAAKAAwmJLN25sxONbE19ryL0DWxNfa8i9KHHdaMG8vMythZGM4TTdBUFlSREIrZTRBeG1pMD1aHyId9zNuRVpsaHRNRjhKUGpsaVJ5ZVY2OGt3cGtvST1lveo4ScI+AmAFEq0BCAsSqAEKHG1SK0NYUjVXZ0E5MVY4b3BJSG9sVEh6UjF5OD0SJGIxMWIwMTIyLWIyOWEtNDU3YS1iY2I4LTIxZGMxYWE1M2Y5MxgAIAAoADDGu5Th6S84pMXX2vIvQKTF19ryL0ocZUdTdkF0d1pLT0NkN3NMT1NXVlcvQVBkb3k0PVofIh3dcWRXdUFHWGtwOFVJYml6Z0ZjdGw5ZkdnRkpjPWUAAAAAwj4CYAUSrQEIChKoAQocUXlrd3F6R0FvRmlPTUIwVVZscXUvVlZsdldjPRIkMDNjZmViM2EtNWJkZS00N2ZjLThiYjAtYTAyNDkyYmU1ZjQ1GAAgACgAMK7t49ubMTinxNfa8i9Ap8TX2vIvShwzNU85L0Z5MXdRbWg3ZEJvMkhCOXlxa1dQNGM9Wh8iHbtQYjZNL015WVpsejBrUDFkYzZmS1lMTmw5TXM9ZYugjNHCPgJgBRKsAQgJEqcBChw3eXVXcGlCa29uSXlrTkZZS2lrVXFqRDhGc1k9EiRkOTczYzQxYS1iODg3LTRhOTEtODkyOC01NThlZjNlZTAxZjYYACAAKAAwxdDd564yONPF19ryL0DTxdfa8i9KHEIxL0Z2WW8xTmRINzlkMmhWRUYyVzEwckhNND1aHiIcd0FhaWV5TVpCZG1VNzhGSklHR1BEQlBZRStvPWU4+Tkzwj4CYAUSrAEICBKnAQocTFEvLzhKUjFnZ24xQ0FIY3hXblQxUm1BZ2g0PRIkZDQ4YTAxMzktN2JhYy00OThjLWE4NDUtMTVjMjM3YzM1NGMwGAAgACgAMOH/zabuMTjDxdfa8i9Aw8XX2vIvShxrVi9QUEpQSUNIaVZDTEtGZHN6SVkyRnNpZlk9Wh4iHHZyRUFwYXM1Zmc3OFB1YVIvbitncmJlMm4wYz1lRAj9fcI+AmAFEqwBCAcSpwEKHFkxVFRJL1hBeDVsNjhiZ3dBZFpwWXIvNXdIaz0SJDJlODJmMjllLTA4MjItNDIyYy1iOWE3LWU0NzgyOTNhODE1YhgAIAAoADDGu5Th6S84xsTX2vIvQMbE19ryL0ocVkFmUDhwZ0p1ZlJHdGdTVzdaalFibXpsb2NrPVoeIhwxY3ppT1VqdzZsd2pRUGxacHlIMGNBWDh4Tk09ZQAAAADCPgJgBRKOAQgFEokBChx3UkJyWkwrNlBBOWF2S2dqTlA3SlhETGNmdnM9EiQyOWMxZDBkMi0zNmYzLTUwMWItYWFlNC0zNTIzYTc3OTBlY2YYACAAKAAw0/6yo6QzOIT/sqOkM0CE/7KjpDNKHG5teDY1c1FEdnhJOFRnRWV2K0ErbnR0b1NuND1aAGUAAAAAwj4CYAASjgEIARKJAQoceXhKLzZmdmtlY3I3a3A1RVF6QjR0V0xwZGJFPRIkMGYxN2I0NzEtNzRlZi01NDEwLWI2NzktNTYxODljYTQ4ODMyGAAgACgAMMjc0dSDLzjXvtfa8i9A177X2vIvShxhUkNXTGdoRjliNUlucUtJRHZ1Si9qdlFrRmM9WgBlAAAAAMI+AmAAEo4BCAMSiQEKHG5qZ0R1ODhlQ3J2WHA4NnBEN2ZIR2NxRnA4OD0SJGI1YzA5NzY2LThiZjMtNWI3Zi1hZWI5LTY0NWIzZDc1NmYxYRgAIAAoADDN3NHUgy84pb/X2vIvQKW/19ryL0oceXpOQjAxY241NEE3Y1JVMHVUKy9QZ21UdFVvPVoAZQAAAADCPgJgADAAOAA=",
+   "version": 1
+}

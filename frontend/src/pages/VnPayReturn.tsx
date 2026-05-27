@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import api from "../api/apiClient";
 import { useToast } from "../context/toastContext";
+import { http } from "../lib/http";
+import { logger } from "../lib/logger";
 
 export default function VnPayReturnPage() {
   const location = useLocation();
@@ -13,13 +14,12 @@ export default function VnPayReturnPage() {
     const processReturn = async () => {
       try {
         const queryString = location.search || "";
-        const res = await api.get(`/order/vnpay-return${queryString}`);
-        const order = res.data;
+        const order = await http.get<{ id: string }>(`/order/vnpay-return${queryString}`);
 
         showToast("Thanh toán VNPay đã được xử lý", "success");
         navigate(`/orders/${order.id}`, { replace: true });
       } catch (err: any) {
-        console.error(err);
+        logger.error("VNPay return failed", err);
         showToast(err?.response?.data?.message || "Xử lý thanh toán thất bại", "error");
         navigate("/orders", { replace: true });
       } finally {

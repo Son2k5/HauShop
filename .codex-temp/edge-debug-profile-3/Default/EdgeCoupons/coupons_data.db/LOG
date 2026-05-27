@@ -1,0 +1,5 @@
+2026/05/26-15:39:25.826 4240 Creating DB D:\Nam3\HauShop\.codex-temp\edge-debug-profile-3\Default\EdgeCoupons/coupons_data.db since it was missing.
+2026/05/26-15:39:25.832 4240 Reusing MANIFEST D:\Nam3\HauShop\.codex-temp\edge-debug-profile-3\Default\EdgeCoupons/coupons_data.db/MANIFEST-000001
+2026/05/26-15:39:30.195 1fd4 Level-0 table #5: started
+2026/05/26-15:39:30.199 1fd4 Level-0 table #5: 682468 bytes OK
+2026/05/26-15:39:30.201 1fd4 Delete type=0 #3

@@ -1,40 +1,13 @@
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useProducts } from "../hooks/useProducts";
 import ProductCard from "../components/product/ProductCard";
 import ProductCardSkeleton from "../components/product/Productcardskeleton";
 import type { ProductQueryDto } from "../@types/product.type";
 import { useDebounce } from "../hooks/useDebounce";
-
-// ── Sort options ──────────────────────────────────────────────────────────────
-const SORT_OPTIONS: {
-  label: string;
-  sortBy: ProductQueryDto["sortBy"];
-  sortOrder: ProductQueryDto["sortOrder"];
-}[] = [
-  { label: "Mới nhất", sortBy: "created", sortOrder: "desc" },
-  { label: "Cũ nhất", sortBy: "created", sortOrder: "asc" },
-  { label: "Giá tăng dần", sortBy: "price", sortOrder: "asc" },
-  { label: "Giá giảm dần", sortBy: "price", sortOrder: "desc" },
-  { label: "Tên A → Z", sortBy: "name", sortOrder: "asc" },
-  { label: "Tên Z → A", sortBy: "name", sortOrder: "desc" },
-];
-
-const PRICE_RANGES = [
-  { label: "Tất cả", min: undefined, max: undefined },
-  { label: "Dưới 500K", min: undefined, max: 500000 },
-  { label: "500K – 1Tr", min: 500000, max: 1000000 },
-  { label: "1Tr – 2Tr", min: 1000000, max: 2000000 },
-  { label: "Trên 2Tr", min: 2000000, max: undefined },
-];
-
-const STATUS_OPTIONS = [
-  { label: "Đang bán", value: true },
-  { label: "Ngừng bán", value: false },
-  { label: "Tất cả", value: undefined },
-];
-
-const PAGE_SIZE = 15;
+import { useWishlistIds } from "../hooks/useWishlist";
+import { PAGE_SIZE, PRICE_RANGES, SORT_OPTIONS, STATUS_OPTIONS } from "../lib/catalog";
+import { normalizeProductQuery } from "../lib/productQuery";
 
 export default function ShopPage() {
   const [searchParams] = useSearchParams();
@@ -48,7 +21,7 @@ export default function ShopPage() {
   const [status, setStatus] = useState<boolean | undefined>(true);
   const [page, setPage] = useState(1);
 
-  const debouncedSearch = useDebounce(searchInput, 400);
+  const debouncedSearch = useDebounce(searchInput, 250);
   const sort = SORT_OPTIONS[sortIdx];
 
   useEffect(() => {
@@ -56,18 +29,24 @@ export default function ShopPage() {
     setPage(1);
   }, [searchFromUrl]);
 
-  const query: ProductQueryDto = {
-    search: debouncedSearch || undefined,
-    isActive: status,
-    sortBy: sort.sortBy,
-    sortOrder: sort.sortOrder,
-    minPrice,
-    maxPrice,
-    page,
-    pageSize: PAGE_SIZE,
-  };
+  const query = useMemo<ProductQueryDto>(
+    () =>
+      normalizeProductQuery({
+        search: debouncedSearch || undefined,
+        isActive: status,
+        sortBy: sort.sortBy,
+        sortOrder: sort.sortOrder,
+        minPrice,
+        maxPrice,
+        page,
+        pageSize: PAGE_SIZE,
+        includeTotal: false,
+      }),
+    [debouncedSearch, maxPrice, minPrice, page, sort.sortBy, sort.sortOrder, status]
+  );
 
-  const { items, total, totalPages, isLoading, isError, error, refetch } = useProducts(query);
+  const { items, total, totalPages, hasNextPage, isLoading, isError, error, refetch } = useProducts(query);
+  const { data: wishlistIds = [] } = useWishlistIds();
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleSearch = useCallback((v: string) => {
@@ -121,7 +100,11 @@ export default function ShopPage() {
           </nav>
           <h1 className="font-titleFont text-3xl font-bold">Tất cả sản phẩm</h1>
           <p className="text-sm text-lightText font-bodyFont mt-1.5">
-            {isLoading ? "Đang tải..." : `Hiển thị ${items.length} / ${total} sản phẩm`}
+            {isLoading
+              ? "Đang tải..."
+              : total > 0
+                ? `Hiển thị ${items.length} / ${total} sản phẩm`
+                : `Hiển thị ${items.length} sản phẩm`}
           </p>
         </div>
       </div>
@@ -223,7 +206,7 @@ export default function ShopPage() {
           {/* Toolbar */}
           <div className="flex items-center justify-between mb-7 pb-5 border-b border-gray-100">
             <p className="text-sm text-lightText font-bodyFont hidden md:block">
-              {isLoading ? "..." : `${total} sản phẩm`}
+              {isLoading ? "..." : total > 0 ? `${total} sản phẩm` : `${items.length} sản phẩm`}
             </p>
             <div className="flex items-center gap-3">
               <span className="text-sm text-lightText font-bodyFont">Sắp xếp:</span>
@@ -284,7 +267,13 @@ export default function ShopPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
               {isLoading
                 ? Array.from({ length: PAGE_SIZE }).map((_, i) => <ProductCardSkeleton key={i} />)
-                : items.map((product) => <ProductCard key={product.id} product={product} />)}
+                : items.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      initialWished={wishlistIds.includes(product.id)}
+                    />
+                  ))}
             </div>
           )}
 
@@ -308,7 +297,7 @@ export default function ShopPage() {
           )}
 
           {/* Pagination */}
-          {totalPages > 1 && !isLoading && (
+          {(totalPages > 1 || page > 1 || hasNextPage) && !isLoading && (
             <div className="flex items-center justify-center gap-2 mt-12">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -320,35 +309,41 @@ export default function ShopPage() {
                 </svg>
               </button>
 
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => {
-                if (n === 1 || n === totalPages || (n >= page - 2 && n <= page + 2)) {
-                  return (
-                    <button
-                      key={n}
-                      onClick={() => setPage(n)}
-                      className={`w-10 h-10 flex items-center justify-center text-sm font-medium font-bodyFont border transition-all duration-200 ${
-                        n === page
-                          ? "bg-red-500 border-red-500 text-white"
-                          : "border-gray-200 hover:bg-primeColor hover:text-white hover:border-primeColor"
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  );
-                }
-                if (n === page - 3 || n === page + 3) {
-                  return (
-                    <span key={n} className="w-10 h-10 flex items-center justify-center text-lightText font-bodyFont">
-                      ...
-                    </span>
-                  );
-                }
-                return null;
-              })}
+              {totalPages > 0 ? (
+                Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => {
+                  if (n === 1 || n === totalPages || (n >= page - 2 && n <= page + 2)) {
+                    return (
+                      <button
+                        key={n}
+                        onClick={() => setPage(n)}
+                        className={`w-10 h-10 flex items-center justify-center text-sm font-medium font-bodyFont border transition-all duration-200 ${
+                          n === page
+                            ? "bg-red-500 border-red-500 text-white"
+                            : "border-gray-200 hover:bg-primeColor hover:text-white hover:border-primeColor"
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    );
+                  }
+                  if (n === page - 3 || n === page + 3) {
+                    return (
+                      <span key={n} className="w-10 h-10 flex items-center justify-center text-lightText font-bodyFont">
+                        ...
+                      </span>
+                    );
+                  }
+                  return null;
+                })
+              ) : (
+                <span className="h-10 px-4 inline-flex items-center justify-center border border-red-500 bg-red-500 text-sm font-medium text-white">
+                  Trang {page}
+                </span>
+              )}
 
               <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
+                onClick={() => setPage((p) => p + 1)}
+                disabled={totalPages > 0 ? page === totalPages : !hasNextPage}
                 className="w-10 h-10 flex items-center justify-center border border-gray-200 hover:bg-primeColor hover:text-white hover:border-primeColor disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">

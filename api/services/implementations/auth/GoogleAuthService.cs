@@ -2,6 +2,7 @@
 using System.Text.Json;
 using api.data;
 using api.DTOs.user;
+using api.exceptions;
 using api.repositories.interfaces;
 using api.services.interfaces;
 using api.services.interfaces.auth;
@@ -70,12 +71,12 @@ namespace api.services.implementations.auth
         {
             if (string.IsNullOrWhiteSpace(state) || state != expectedState)
             {
-                throw new UnauthorizedAccessException("Invalid OAuth state");
+                throw new ApiAuthenticationException("Invalid OAuth state");
             }
             var googleAccessToken = await ExchangeCodeForTokenAsync(code);
             var googleUser = await GetGoogleUserInfoAsync(googleAccessToken);
             if (!googleUser.EmailVerified)
-                throw new UnauthorizedAccessException("Google email is not verified");
+                throw new ApiAuthenticationException("Google email is not verified");
 
             var user = await FindOrCreateUserAsync(googleUser);
             var isNewEntity = _context.Entry(user).State == EntityState.Added;
@@ -142,10 +143,10 @@ namespace api.services.implementations.auth
             {
                 var body = await res.Content.ReadAsStringAsync();
                 _logger.LogError("Google token exchange fail");
-                throw new UnauthorizedAccessException("Faild to exchange Google authorization code");
+                throw new ApiAuthenticationException("Failed to exchange Google authorization code");
             }
             var json = await res.Content.ReadFromJsonAsync<JsonElement>();
-            return json.GetProperty("access_token").GetString() ?? throw new UnauthorizedAccessException("Google access token is missing in response");
+            return json.GetProperty("access_token").GetString() ?? throw new ApiAuthenticationException("Google access token is missing in response");
 
         }
 
@@ -155,7 +156,7 @@ namespace api.services.implementations.auth
             var client = _httpClientFactory.CreateClient("google");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", googleAccessToken);
             var userinfo = await client.GetFromJsonAsync<GoogleUserInfoDto>(UserInfoEndpoint);
-            return userinfo ?? throw new UnauthorizedAccessException("Failed to retrieve Google user info");
+            return userinfo ?? throw new ApiAuthenticationException("Failed to retrieve Google user info");
         }
 
         // Ham tim hoac tao user 

@@ -1,4 +1,4 @@
-import api from "../api/apiClient";
+import { http } from "../lib/http";
 import type {
   AdminDashboardDto,
   AdminInventoryOverviewDto,
@@ -56,108 +56,84 @@ function buildQuery(params: Record<string, string | number | boolean | undefined
 
 export const adminService = {
   getDashboard(lowStockThreshold = 5, recentOrdersLimit = 5) {
-    return api
-      .get<AdminDashboardDto>(
-        `/admin/dashboard${buildQuery({ lowStockThreshold, recentOrdersLimit })}`
-      )
-      .then((res) => res.data);
+    return http.get<AdminDashboardDto>(
+      `/admin/dashboard${buildQuery({ lowStockThreshold, recentOrdersLimit })}`
+    );
   },
 
   getUsers(filters: AdminUserFilters = {}) {
-    return api
-      .get<AdminPagedResultDto<AdminUserListItemDto>>(
-        `/admin/users${buildQuery(filters)}`
-      )
-      .then((res) => res.data);
+    return http.get<AdminPagedResultDto<AdminUserListItemDto>>(
+      `/admin/users${buildQuery(filters)}`
+    );
   },
 
   getUserById(userId: string) {
-    return api.get<AdminUserDetailDto>(`/admin/users/${userId}`).then((res) => res.data);
+    return http.get<AdminUserDetailDto>(`/admin/users/${userId}`);
   },
 
   updateUserRole(userId: string, dto: AdminUpdateUserRoleDto) {
-    return api
-      .patch<AdminUserDetailDto>(`/admin/users/${userId}/role`, dto)
-      .then((res) => res.data);
+    return http.patch<AdminUserDetailDto>(`/admin/users/${userId}/role`, dto);
   },
 
   updateUser(userId: string, dto: AdminUpdateUserDto) {
-    return api
-      .put<AdminUserDetailDto>(`/admin/users/${userId}`, dto)
-      .then((res) => res.data);
+    return http.put<AdminUserDetailDto>(`/admin/users/${userId}`, dto);
   },
 
   getOrders(filters: AdminOrderFilters = {}) {
-    return api
-      .get<AdminPagedResultDto<AdminOrderListItemDto>>(
-        `/admin/orders${buildQuery(filters)}`
-      )
-      .then((res) => res.data);
+    return http.get<AdminPagedResultDto<AdminOrderListItemDto>>(
+      `/admin/orders${buildQuery(filters)}`
+    );
   },
 
   getOrderById(orderId: string) {
-    return api
-      .get<AdminOrderDetailDto>(`/admin/orders/${orderId}`)
-      .then((res) => res.data);
+    return http.get<AdminOrderDetailDto>(`/admin/orders/${orderId}`);
   },
 
   updateOrderStatus(orderId: string, dto: AdminUpdateOrderStatusDto) {
-    return api
-      .patch<AdminOrderDetailDto>(`/admin/orders/${orderId}/status`, dto)
-      .then((res) => res.data);
+    return http.patch<AdminOrderDetailDto>(`/admin/orders/${orderId}/status`, dto);
   },
 
   getProducts(filters: AdminProductFilters = {}) {
-    return api
-      .get<AdminPagedResultDto<ProductSummaryDto>>(
-        `/admin/products${buildQuery(filters)}`
-      )
-      .then((res) => res.data);
+    return http.get<AdminPagedResultDto<ProductSummaryDto>>(
+      `/admin/products${buildQuery(filters)}`
+    );
   },
 
   getProductById(productId: string) {
-    return api.get<ProductDto>(`/admin/products/${productId}`).then((res) => res.data);
+    return http.get<ProductDto>(`/admin/products/${productId}`);
   },
 
   createProduct(dto: CreateProductDto) {
-    return api.post<ProductDto>("/admin/products", dto).then((res) => res.data);
+    return http.post<ProductDto>("/admin/products", dto);
   },
 
   updateProduct(productId: string, dto: UpdateProductDto) {
-    return api
-      .put<ProductDto>(`/admin/products/${productId}`, dto)
-      .then((res) => res.data);
+    return http.put<ProductDto>(`/admin/products/${productId}`, dto);
   },
 
   deleteProduct(productId: string) {
-    return api.delete(`/admin/products/${productId}`).then(() => undefined);
+    return http.delete(`/admin/products/${productId}`);
   },
 
   toggleProductActive(productId: string) {
-    return api
-      .patch<ProductDto>(`/admin/products/${productId}/toggle-active`)
-      .then((res) => res.data);
+    return http.patch<ProductDto>(`/admin/products/${productId}/toggle-active`);
   },
 
   getInventoryOverview(lowStockThreshold = 5) {
-    return api
-      .get<AdminInventoryOverviewDto>(
-        `/admin/inventory/overview${buildQuery({ lowStockThreshold })}`
-      )
-      .then((res) => res.data);
+    return http.get<AdminInventoryOverviewDto>(
+      `/admin/inventory/overview${buildQuery({ lowStockThreshold })}`
+    );
   },
 
   updateInventory(productId: string, dto: AdminUpdateInventoryDto) {
-    return api
-      .patch<ProductDto>(`/admin/products/${productId}/inventory`, dto)
-      .then((res) => res.data);
+    return http.patch<ProductDto>(`/admin/products/${productId}/inventory`, dto);
   },
 
   getSettings() {
-    return api.get<AdminSettingsDto>("/admin/settings").then((res) => res.data);
+    return http.get<AdminSettingsDto>("/admin/settings");
   },
 
   updateSettings(dto: UpdateAdminSettingsDto) {
-    return api.put<AdminSettingsDto>("/admin/settings", dto).then((res) => res.data);
+    return http.put<AdminSettingsDto>("/admin/settings", dto);
   },
 };

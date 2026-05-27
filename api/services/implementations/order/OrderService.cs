@@ -1,9 +1,14 @@
 using api.data;
 using api.DTOs.order;
+using api.events;
+using api.exceptions;
+using api.infrastructure.redis;
 using api.mappings;
 using api.models.entities;
 using api.models.enums;
 using api.repositories.interfaces;
+using api.services.interfaces.caching;
+using api.services.interfaces.cart;
 using api.services.interfaces.order;
 using api.services.interfaces.payment;
 using Microsoft.AspNetCore.Http;
@@ -18,6 +23,9 @@ namespace api.services.implementations.order
         private readonly IProductVariantRepository _productVariantRepository;
         private readonly ApplicationDbContext _context;
         private readonly IVnPayService _vnPayService;
+        private readonly IRedisCacheService _cache;
+        private readonly IRedisEventBus _eventBus;
+        private readonly ICartCacheService _cartCache;
         private readonly ILogger<OrderService> _logger;
 
         public OrderService(
@@ -26,6 +34,9 @@ namespace api.services.implementations.order
             IProductVariantRepository productVariantRepository,
             ApplicationDbContext context,
             IVnPayService vnPayService,
+            IRedisCacheService cache,
+            IRedisEventBus eventBus,
+            ICartCacheService cartCache,
             ILogger<OrderService> logger)
         {
             _cartRepository = cartRepository;
@@ -33,6 +44,9 @@ namespace api.services.implementations.order
             _productVariantRepository = productVariantRepository;
             _context = context;
             _vnPayService = vnPayService;
+            _cache = cache;
+            _eventBus = eventBus;
+            _cartCache = cartCache;
             _logger = logger;
         }
 
@@ -71,6 +85,19 @@ namespace api.services.implementations.order
             {
                 decimal subtotal = 0;
                 var shippingFee = dto.ShippingFee < 0 ? 0 : dto.ShippingFee;
+                var variantIds = cart.Items
+                    .Select(i => i.ProductVariantId)
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .Distinct()
+                    .ToList();
+
+                if (variantIds.Count != cart.Items.Count)
+                    throw new InvalidOperationException("Cart item thiếu ProductVariantId");
+
+                var variantsById = await _context.ProductVariants
+                    .Include(v => v.Product)
+                    .Where(v => variantIds.Contains(v.Id))
+                    .ToDictionaryAsync(v => v.Id, ct);
 
                 var fullAddress = $"{address.AddressLine}, {address.City}, {address.State}, {address.Country}".Replace(", ,", ",").Trim(',', ' ');
 
@@ -93,10 +120,7 @@ namespace api.services.implementations.order
 
                 foreach (var cartItem in cart.Items)
                 {
-                    if (string.IsNullOrWhiteSpace(cartItem.ProductVariantId))
-                        throw new InvalidOperationException("Cart item thiếu ProductVariantId");
-
-                    var variant = await _productVariantRepository.GetTrackedByIdAsync(cartItem.ProductVariantId, ct)
+                    var variant = variantsById.GetValueOrDefault(cartItem.ProductVariantId!)
                         ?? throw new KeyNotFoundException($"Không tìm thấy biến thể sản phẩm: {cartItem.ProductVariantId}");
 
                     if (!variant.IsActive)
@@ -185,13 +209,34 @@ namespace api.services.implementations.order
 
                 await _context.SaveChangesAsync(ct);
 
-                foreach (var productId in order.OrderItems.Select(i => i.ProductId).Distinct())
-                {
-                    await UpdateProductStockDirectAsync(productId, ct);
-                }
+                await UpdateProductStocksDirectAsync(
+                    order.OrderItems.Select(i => i.ProductId),
+                    ct);
 
                 await _context.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
+
+                var affectedProductIds = order.OrderItems
+                    .Select(i => i.ProductId)
+                    .Distinct()
+                    .ToList();
+
+                await InvalidateProductCachesAsync(affectedProductIds, ct);
+                if (dto.PaymentMethod == PaymentMethod.COD)
+                    await _cartCache.RemoveUserCartAsync(userId, ct);
+
+                var orderEvent = new OrderCreatedEvent
+                {
+                    OrderId = order.Id,
+                    UserId = userId,
+                    Total = order.Total,
+                    PaymentMethod = dto.PaymentMethod,
+                    ProductIds = affectedProductIds,
+                    CreatedAtUtc = DateTime.UtcNow
+                };
+
+                await _eventBus.PublishAsync(RedisChannels.OrderCreated, orderEvent, ct);
+                await _eventBus.EnqueueAsync(RedisStreams.OrderEvents, orderEvent, ct);
 
                 var created = await _orderRepository.GetByIdWithIncludesAsync(order.Id, ct)
                     ?? throw new InvalidOperationException("Không thể tải lại order sau checkout");
@@ -214,10 +259,23 @@ namespace api.services.implementations.order
             }
         }
 
-        public async Task<List<OrderDto>> GetMyOrdersAsync(string userId, CancellationToken ct = default)
+        public async Task<PagedOrderDto> GetMyOrdersAsync(
+            string userId,
+            int page = 1,
+            int pageSize = 10,
+            CancellationToken ct = default)
         {
-            var orders = await _orderRepository.GetByUserIdAsync(userId, ct);
-            return orders.Select(OrderMapping.MapToDto).ToList();
+            page = Math.Max(page, 1);
+            pageSize = Math.Clamp(pageSize, 1, 50);
+
+            var (items, total) = await _orderRepository.GetByUserIdAsync(userId, page, pageSize, ct);
+            return new PagedOrderDto
+            {
+                Items = items,
+                Total = total,
+                Page = page,
+                PageSize = pageSize
+            };
         }
 
         public async Task<OrderDto> GetMyOrderByIdAsync(string userId, string orderId, CancellationToken ct = default)
@@ -226,7 +284,7 @@ namespace api.services.implementations.order
                 ?? throw new KeyNotFoundException("Không tìm thấy đơn hàng");
 
             if (order.UserId != userId)
-                throw new UnauthorizedAccessException("Bạn không có quyền xem đơn hàng này");
+                throw new ForbiddenAccessException("Bạn không có quyền xem đơn hàng này");
 
             return OrderMapping.MapToDto(order);
         }
@@ -237,7 +295,7 @@ namespace api.services.implementations.order
                 ?? throw new KeyNotFoundException("Không tìm thấy đơn hàng");
 
             if (order.UserId != userId)
-                throw new UnauthorizedAccessException("Bạn không có quyền hủy đơn hàng này");
+                throw new ForbiddenAccessException("Bạn không có quyền hủy đơn hàng này");
 
             if (order.Status != OrderStatus.Pending)
                 throw new InvalidOperationException("Chỉ có thể hủy đơn hàng ở trạng thái Pending");
@@ -245,15 +303,21 @@ namespace api.services.implementations.order
             order.Status = OrderStatus.Cancelled;
             order.Updated = DateTime.UtcNow;
 
+            var variantIds = order.OrderItems
+                .Select(i => i.ProductVariantId)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct()
+                .ToList();
+            var variantsById = await _context.ProductVariants
+                .Where(v => variantIds.Contains(v.Id))
+                .ToDictionaryAsync(v => v.Id, ct);
+
             foreach (var item in order.OrderItems)
             {
                 if (string.IsNullOrWhiteSpace(item.ProductVariantId))
                     continue;
 
-                var variant = await _context.ProductVariants
-                    .FirstOrDefaultAsync(v => v.Id == item.ProductVariantId, ct);
-
-                if (variant != null)
+                if (variantsById.TryGetValue(item.ProductVariantId, out var variant))
                     variant.Stock += item.Quantity;
             }
 
@@ -265,12 +329,15 @@ namespace api.services.implementations.order
 
             await _context.SaveChangesAsync(ct);
 
-            foreach (var productId in order.OrderItems.Select(i => i.ProductId).Distinct())
-            {
-                await UpdateProductStockDirectAsync(productId, ct);
-            }
+            await UpdateProductStocksDirectAsync(
+                order.OrderItems.Select(i => i.ProductId),
+                ct);
 
             await _context.SaveChangesAsync(ct);
+
+            await InvalidateProductCachesAsync(
+                order.OrderItems.Select(i => i.ProductId).Distinct(),
+                ct);
 
             var updated = await _orderRepository.GetByIdWithIncludesAsync(orderId, ct)
                 ?? throw new InvalidOperationException("Không thể tải lại đơn hàng sau khi hủy");
@@ -319,27 +386,39 @@ namespace api.services.implementations.order
                 order.Status = OrderStatus.Cancelled;
                 order.Updated = DateTime.UtcNow;
 
+                var variantIds = order.OrderItems
+                    .Select(i => i.ProductVariantId)
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .Distinct()
+                    .ToList();
+                var variantsById = await _context.ProductVariants
+                    .Where(v => variantIds.Contains(v.Id))
+                    .ToDictionaryAsync(v => v.Id, ct);
+
                 foreach (var item in order.OrderItems)
                 {
                     if (string.IsNullOrWhiteSpace(item.ProductVariantId))
                         continue;
 
-                    var variant = await _context.ProductVariants
-                        .FirstOrDefaultAsync(v => v.Id == item.ProductVariantId, ct);
-
-                    if (variant != null)
+                    if (variantsById.TryGetValue(item.ProductVariantId, out var variant))
                         variant.Stock += item.Quantity;
                 }
             }
 
             await _context.SaveChangesAsync(ct);
 
-            foreach (var productId in order.OrderItems.Select(i => i.ProductId).Distinct())
-            {
-                await UpdateProductStockDirectAsync(productId, ct);
-            }
+            await UpdateProductStocksDirectAsync(
+                order.OrderItems.Select(i => i.ProductId),
+                ct);
 
             await _context.SaveChangesAsync(ct);
+
+            await InvalidateProductCachesAsync(
+                order.OrderItems.Select(i => i.ProductId).Distinct(),
+                ct);
+
+            if (responseCode == "00")
+                await _cartCache.RemoveUserCartAsync(order.UserId, ct);
 
             var updated = await _orderRepository.GetByIdWithIncludesAsync(order.Id, ct)
                 ?? throw new InvalidOperationException("Không thể tải lại đơn hàng sau callback");
@@ -347,17 +426,47 @@ namespace api.services.implementations.order
             return OrderMapping.MapToDto(updated);
         }
 
-        private async Task UpdateProductStockDirectAsync(string productId, CancellationToken ct)
+        private async Task InvalidateProductCachesAsync(IEnumerable<string> productIds, CancellationToken ct)
         {
-            var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == productId, ct);
-            if (product == null) return;
+            foreach (var productId in productIds)
+            {
+                await _cache.RemoveAsync(RedisCacheKeys.ProductDetail(productId), ct);
+            }
 
-            var totalStock = await _context.ProductVariants
-                .Where(v => v.ProductId == productId && v.IsActive)
-                .SumAsync(v => (int?)v.Stock, ct) ?? 0;
+            await _cache.RemoveByPrefixAsync(RedisCacheKeys.ProductListPrefix, ct);
+            await _cache.RemoveByPrefixAsync(RedisCacheKeys.ProductSlugPrefix, ct);
+            await _cache.RemoveByPrefixAsync(RedisCacheKeys.HomepagePrefix, ct);
+        }
 
-            product.Stock = totalStock;
-            product.Updated = DateTime.UtcNow;
+        private async Task UpdateProductStocksDirectAsync(IEnumerable<string> productIds, CancellationToken ct)
+        {
+            var ids = productIds
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct()
+                .ToList();
+
+            if (ids.Count == 0) return;
+
+            var totals = await _context.ProductVariants
+                .Where(v => ids.Contains(v.ProductId) && v.IsActive)
+                .GroupBy(v => v.ProductId)
+                .Select(g => new
+                {
+                    ProductId = g.Key,
+                    Stock = g.Sum(v => v.Stock)
+                })
+                .ToListAsync(ct);
+
+            var totalsByProduct = totals.ToDictionary(t => t.ProductId, t => t.Stock);
+            var products = await _context.Products
+                .Where(p => ids.Contains(p.Id))
+                .ToListAsync(ct);
+
+            foreach (var product in products)
+            {
+                product.Stock = totalsByProduct.GetValueOrDefault(product.Id, 0);
+                product.Updated = DateTime.UtcNow;
+            }
         }
     }
 }

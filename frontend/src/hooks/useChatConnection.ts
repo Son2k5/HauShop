@@ -1,8 +1,7 @@
 import * as signalR from "@microsoft/signalr";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChatMessageDto, SendChatMessageDto } from "../@types/chat.type";
-
-const HUB_URL = import.meta.env.VITE_SIGNALR_URL ?? "https://localhost:7288/hubs/chat";
+import { SIGNALR_HUB_URL } from "../lib/env";
 
 export function useChatConnection({
   enabled,
@@ -20,7 +19,7 @@ export function useChatConnection({
     if (!enabled) return null;
 
     return new signalR.HubConnectionBuilder()
-      .withUrl(HUB_URL, { withCredentials: true })
+      .withUrl(SIGNALR_HUB_URL, { withCredentials: true })
       .withAutomaticReconnect()
       .configureLogging(signalR.LogLevel.Warning)
       .build();
@@ -82,10 +81,21 @@ export function useChatConnection({
     });
   }, []);
 
+  const sendAiMessage = useCallback(async (dto: SendChatMessageDto) => {
+    if (!connectionRef.current || connectionRef.current.state !== signalR.HubConnectionState.Connected) {
+      throw new Error("Chat connection is not ready.");
+    }
+    await connectionRef.current.invoke("SendAiMessage", {
+      chatRoomId: dto.chatRoomId,
+      message: dto.message,
+      messageType: dto.messageType ?? "Text",
+    });
+  }, []);
+
   const markAsRead = useCallback(async (roomId: string) => {
     if (!connectionRef.current || connectionRef.current.state !== signalR.HubConnectionState.Connected) return;
     await connectionRef.current.invoke("MarkAsRead", roomId);
   }, []);
 
-  return { status, joinRoom, leaveRoom, sendMessage, markAsRead };
+  return { status, joinRoom, leaveRoom, sendMessage, sendAiMessage, markAsRead };
 }

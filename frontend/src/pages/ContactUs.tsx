@@ -1,6 +1,7 @@
 import { Icon } from '@iconify/react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { logger } from '../lib/logger';
 
 const ContactUs = () => {
   const [formData, setFormData] = useState({
@@ -29,7 +30,6 @@ const ContactUs = () => {
     setLoading(true);
 
     try {
-      console.log('Form data:', formData);
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       setSuccess(true);
@@ -37,7 +37,7 @@ const ContactUs = () => {
 
       setTimeout(() => setSuccess(false), 3000);
     } catch (error) {
-      console.error('Error submitting form:', error);
+      logger.error('Error submitting form', error);
     } finally {
       setLoading(false);
     }

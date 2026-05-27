@@ -8,6 +8,9 @@ export interface CreateOrderDto {
 }
 
 export interface OrderItemDto {
+  id: string;
+  productId: string;
+  productVariantId?: string | null;
   productName: string;
   variantSku?: string | null;
   variantSize?: string | null;
@@ -18,6 +21,7 @@ export interface OrderItemDto {
 }
 
 export interface PaymentDto {
+  id: string;
   method: string;
   status: string;
   amount: number;
@@ -41,6 +45,22 @@ export interface OrderDto {
   updated?: string | null;
   items: OrderItemDto[];
   payments: PaymentDto[];
+}
+
+export interface OrderSummaryDto {
+  id: string;
+  total: number;
+  status: string;
+  created: string;
+  items: OrderItemDto[];
+}
+
+export interface PagedOrderDto {
+  items: OrderSummaryDto[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 export interface CheckoutResponseDto {

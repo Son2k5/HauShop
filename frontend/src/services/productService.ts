@@ -1,26 +1,15 @@
-import type   {
+import type {
   PagedProductDto,
   ProductDto,
   ProductQueryDto,
   CreateProductDto,
   UpdateProductDto,
 } from "../@types/product.type.ts";
+import { http } from "../lib/http";
 
 export interface UploadResponse {
   uploaded: string[];
   errors: { fileName: string; error: string }[];
-}
-
-const BASE_API = "https://localhost:7288";
-
-class ApiError extends Error {
-  readonly status: number;
-
-  constructor(message: string, status: number) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-  }
 }
 
 export async function uploadImages(
@@ -34,31 +23,23 @@ export async function uploadImages(
     const batch = files.slice(i, i + BATCH_SIZE);
     const formData = new FormData();
 
-    batch.forEach(file => {
+    batch.forEach((file) => {
       formData.append("files", file, file.name);
     });
 
     try {
-      const response = await fetch(`${BASE_API}/api/image/upload`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Server báo lỗi: ${response.status}`);
-      }
-
-      const data: UploadResponse = await response.json();
+      const data = await http.post<UploadResponse>("/image/upload", formData);
 
       if (data.uploaded) results.uploaded.push(...data.uploaded);
       if (data.errors) results.errors.push(...data.errors);
-
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Lỗi kết nối Server";
-      batch.forEach(f => results.errors.push({
-        fileName: f.name,
-        error: errorMessage
-      }));
+      const errorMessage = err instanceof Error ? err.message : "Cannot connect to server";
+      batch.forEach((file) =>
+        results.errors.push({
+          fileName: file.name,
+          error: errorMessage,
+        })
+      );
     }
 
     onProgress?.(Math.min(i + BATCH_SIZE, files.length), files.length);
@@ -67,133 +48,42 @@ export async function uploadImages(
   return results;
 }
 
-function getToken(): string | null {
-  return localStorage.getItem("_token");
-}
- 
-async function request<T>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const token = getToken();
-  const res = await fetch(`${BASE_API}/api${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers ?? {}),
-    },
-  });
- 
-  if (!res.ok) {
-    // Thử parse lỗi có cấu trúc từ FluentValidation / controller
-    const body = await res.json().catch(() => null);
-    const message =
-      body?.errors
-        ? Object.values(body.errors as Record<string, string[]>)
-            .flat()
-            .join("; ")
-        : `HTTP ${res.status}`;
-    throw new ApiError(message, res.status);
-  }
- 
-  // 204 No Content
-  if (res.status === 204) return undefined as T;
- 
-  return res.json() as Promise<T>;
-}
-
-function buildQuery(params: ProductQueryDto): string {
-  const q = new URLSearchParams();
-  if (params.search) q.set("search", params.search);
-  if (params.brandId) q.set("brandId", params.brandId);
-  if (params.categoryId) q.set("categoryId", params.categoryId);
-  if (params.minPrice != null) q.set("minPrice", String(params.minPrice));
-  if (params.maxPrice != null) q.set("maxPrice", String(params.maxPrice));
-  if (params.isActive != null) q.set("isActive", String(params.isActive));
-  if (params.sortBy) q.set("sortBy", params.sortBy);
-  if (params.sortOrder) q.set("sortOrder", params.sortOrder);
-  if (params.page) q.set("page", String(params.page));
-  if (params.pageSize) q.set("pageSize", String(params.pageSize));
-
-  const str = q.toString();
-  return str ? `?${str}` : "";
-}
- 
- 
-// ─── Public API ──────────────────────────────────────────────────────────────
- 
 export const productService = {
-  /**
-   * POST /api/product/search
-   * Lấy danh sách sản phẩm có phân trang, filter, sort
-   */
-  getAll(query: ProductQueryDto = {}): Promise<PagedProductDto> {
-    return request<PagedProductDto>("/product/search", {
-      method: "POST",
-      body: JSON.stringify(query),
-    }).catch((error: unknown) => {
-      if (error instanceof ApiError && (error.status === 404 || error.status === 405)) {
-        return request<PagedProductDto>(`/product${buildQuery(query)}`);
-      }
+  async getAll(query: ProductQueryDto = {}, signal?: AbortSignal): Promise<PagedProductDto> {
+    return http.get<PagedProductDto>("/product", {
+      params: query,
+      signal,
+      skipAuthRedirect: true,
+    });
+  },
 
-      throw error;
+  async getById(id: string, signal?: AbortSignal): Promise<ProductDto> {
+    return http.get<ProductDto>(`/product/${id}`, {
+      signal,
+      skipAuthRedirect: true,
     });
   },
- 
-  /**
-   * GET /api/product/{id}
-   */
-  getById(id: string): Promise<ProductDto> {
-    return request<ProductDto>(`/product/${id}`);
-  },
- 
-  /**
-   * GET /api/product/slug/{slug}
-   * Dùng cho product detail page (SEO-friendly URL)
-   */
-  getBySlug(slug: string): Promise<ProductDto> {
-    return request<ProductDto>(`/product/slug/${slug}`);
-  },
- 
-  /**
-   * POST /api/product   [Admin, Merchant]
-   * Flow ảnh: 1) POST /api/image/upload → nhận imageUrl + imageKey
-   *            2) Gọi hàm này với imageUrl + imageKey đã có
-   */
-  create(dto: CreateProductDto): Promise<ProductDto> {
-    return request<ProductDto>("/product", {
-      method: "POST",
-      body: JSON.stringify(dto),
+
+  async getBySlug(slug: string, signal?: AbortSignal): Promise<ProductDto> {
+    return http.get<ProductDto>(`/product/slug/${slug}`, {
+      signal,
+      skipAuthRedirect: true,
     });
   },
- 
-  /**
-   * PUT /api/product/{id}   [Admin, Merchant]
-   * Chỉ gửi các field cần update (partial)
-   * Để xóa brand: truyền brandId = "null"
-   */
-  update(id: string, dto: UpdateProductDto): Promise<ProductDto> {
-    return request<ProductDto>(`/product/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(dto),
-    });
+
+  async create(dto: CreateProductDto): Promise<ProductDto> {
+    return http.post<ProductDto>("/product", dto);
   },
- 
-  /**
-   * DELETE /api/product/{id}   [Admin, Merchant]
-   * Backend tự xóa ảnh Cloudinary
-   */
-  delete(id: string): Promise<void> {
-    return request<void>(`/product/${id}`, { method: "DELETE" });
+
+  async update(id: string, dto: UpdateProductDto): Promise<ProductDto> {
+    return http.put<ProductDto>(`/product/${id}`, dto);
   },
- 
-  /**
-   * PATCH /api/product/{id}/toggle-active   [Admin, Merchant]
-   */
-  toggleActive(id: string): Promise<ProductDto> {
-    return request<ProductDto>(`/product/${id}/toggle-active`, {
-      method: "PATCH",
-    });
+
+  async delete(id: string): Promise<void> {
+    await http.delete(`/product/${id}`);
+  },
+
+  async toggleActive(id: string): Promise<ProductDto> {
+    return http.patch<ProductDto>(`/product/${id}/toggle-active`);
   },
 };

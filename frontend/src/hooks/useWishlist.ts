@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthState } from "./useAuthState";
 import { queryKeys } from "../lib/queryKeys";
@@ -17,13 +16,14 @@ function useWishlistUser() {
   };
 }
 
-export function useWishlistIds() {
+export function useWishlistIds(options: { enabled?: boolean } = {}) {
   const { isAuthenticated, userId } = useWishlistUser();
+  const enabled = options.enabled ?? true;
 
   return useQuery({
     queryKey: userId ? queryKeys.wishlist.ids(userId) : ["wishlist", "ids", "guest"],
     queryFn: getMyWishlistProductIdsApi,
-    enabled: isAuthenticated && !!userId,
+    enabled: enabled && isAuthenticated && !!userId,
     staleTime: 2 * 60 * 1000,
   });
 }
@@ -40,17 +40,18 @@ export function useWishlistItems() {
 }
 
 export function useWishlistProduct(productId: string) {
-  const { isAuthenticated } = useWishlistUser();
-  const idsQuery = useWishlistIds();
-
-  const wished = useMemo(() => {
-    if (!isAuthenticated) return false;
-    return (idsQuery.data ?? []).includes(productId);
-  }, [idsQuery.data, isAuthenticated, productId]);
+  const { isAuthenticated, userId } = useWishlistUser();
+  const idsQuery = useQuery({
+    queryKey: userId ? queryKeys.wishlist.ids(userId) : ["wishlist", "ids", "guest"],
+    queryFn: getMyWishlistProductIdsApi,
+    enabled: isAuthenticated && !!userId,
+    staleTime: 2 * 60 * 1000,
+    select: (ids) => ids.includes(productId),
+  });
 
   return {
     ...idsQuery,
-    wished,
+    wished: idsQuery.data ?? false,
   };
 }
 

@@ -5,15 +5,24 @@ import React, {
     useMemo,
     useReducer,
 } from 'react';
+import { useLocation } from 'react-router-dom';
 import { queryClient } from '../lib/queryClient';
-import { authService } from '../services/authService';
-import { userService } from '../services/userService';
 import type {
     ChangePasswordDto,
     LoginDto,
     RegisterDto,
     UserDto,
 } from '../@types/auth.type';
+
+async function loadAuthService() {
+    const { authService } = await import('../services/authService');
+    return authService;
+}
+
+async function loadUserService() {
+    const { userService } = await import('../services/userService');
+    return userService;
+}
 
 // ── Storage ──────────────────────────────────────────────────────────────────
 // Chỉ lưu UserDto (thông tin hiển thị UI) vào localStorage.
@@ -38,6 +47,21 @@ const storage = {
 };
 
 // ── State & Reducer ───────────────────────────────────────────────────────────
+function removeAccountScopedQueries(): void {
+    queryClient.removeQueries({
+        predicate: (query) => {
+            const [scope] = query.queryKey as readonly unknown[];
+            return (
+                scope === 'wishlist' ||
+                scope === 'auth' ||
+                scope === 'admin' ||
+                scope === 'cart' ||
+                scope === 'orders'
+            );
+        },
+    });
+}
+
 type State = {
     user: UserDto | null;
     status: 'idle' | 'authenticated' | 'unauthenticated';
@@ -89,13 +113,27 @@ function getInitialState(): State {
     const user = storage.load();
     return {
         user,
-        status: user ? 'authenticated' : 'idle',
-        loading: !user,
+        status: user ? 'idle' : 'unauthenticated',
+        loading: false,
         error: null,
     };
 }
 
 // ── Context types ────────────────────────────────────────────────────────────
+function shouldBootstrapAuth(pathname: string): boolean {
+    return (
+        pathname.startsWith('/admin') ||
+        pathname.startsWith('/cart') ||
+        pathname.startsWith('/profile') ||
+        pathname.startsWith('/change-password') ||
+        pathname.startsWith('/checkout') ||
+        pathname.startsWith('/orders') ||
+        pathname.startsWith('/wishlist') ||
+        pathname.startsWith('/support-chat') ||
+        pathname.startsWith('/payment')
+    );
+}
+
 export interface AuthStateValue {
     user: UserDto | null;
     status: 'idle' | 'authenticated' | 'unauthenticated';
@@ -136,12 +174,19 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 // ── Provider ──────────────────────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [state, dispatch] = useReducer(reducer, undefined, getInitialState);
+    const location = useLocation();
 
     useEffect(() => {
+        const hasCachedUser = !!storage.load();
+        if (!hasCachedUser) return;
+        if (state.status === 'authenticated') return;
+        if (!shouldBootstrapAuth(location.pathname)) return;
+
         let cancelled = false;
 
         const bootstrapAuth = async () => {
             try {
+                const authService = await loadAuthService();
                 const freshUser = await authService.getCurrentUser();
                 if (cancelled) return;
 
@@ -155,17 +200,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
         };
 
-        void bootstrapAuth();
+        const schedule =
+            typeof window.requestIdleCallback === 'function'
+                ? window.requestIdleCallback(() => void bootstrapAuth(), { timeout: 2500 })
+                : window.setTimeout(() => void bootstrapAuth(), 1200);
 
         return () => {
             cancelled = true;
+            if (typeof window.cancelIdleCallback === 'function') {
+                window.cancelIdleCallback(schedule);
+            } else {
+                window.clearTimeout(schedule);
+            }
         };
-    }, []);
+    }, [location.pathname, state.status]);
 
     // Sync nhiều tab: nếu tab khác logout (xóa _u) thì tab này cũng sign out
     useEffect(() => {
         const handler = (e: StorageEvent) => {
             if (e.key === STORAGE_KEY && e.newValue === null) {
+                removeAccountScopedQueries();
                 dispatch({ type: 'SIGN_OUT' });
             }
         };
@@ -178,6 +232,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const login = useCallback(async (dto: LoginDto): Promise<UserDto> => {
         dispatch({ type: 'LOADING' });
         try {
+            const authService = await loadAuthService();
             const response = await authService.login(dto);
             // Xử lý cả trường hợp backend trả về PascalCase và camelCase
             const user = response.user || (response as any).User;
@@ -186,6 +241,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 throw new Error('User data not found in response');
             }
 
+            removeAccountScopedQueries();
             storage.save(user);
             dispatch({ type: 'SET_USER', payload: user });
             return user;
@@ -199,6 +255,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const register = useCallback(async (dto: RegisterDto): Promise<UserDto> => {
         dispatch({ type: 'LOADING' });
         try {
+            const authService = await loadAuthService();
             const response = await authService.register(dto);
             // Xử lý cả trường hợp backend trả về PascalCase và camelCase
             const user = response.user || (response as any).User;
@@ -207,6 +264,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 throw new Error('User data not found in response');
             }
 
+            removeAccountScopedQueries();
             storage.save(user);
             dispatch({ type: 'SET_USER', payload: user });
             return user;
@@ -218,35 +276,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     const loginWithGoogle = useCallback(() => {
-        authService.loginWithGoogle();
+        void loadAuthService().then((authService) => authService.loginWithGoogle());
     }, []);
 
     const logout = useCallback(async (): Promise<void> => {
         try {
+            const authService = await loadAuthService();
             await authService.logout();
         } catch {
             // Dù API fail vẫn clear local state
         }
         storage.clear();
-        queryClient.removeQueries({
-            predicate: (query) => {
-                const [scope] = query.queryKey as string[];
-                return scope === 'wishlist' || scope === 'auth' || scope === 'admin';
-            },
-        });
+        removeAccountScopedQueries();
         dispatch({ type: 'SIGN_OUT' });
     }, []);
 
     const changePassword = useCallback(async (dto: ChangePasswordDto): Promise<void> => {
+        const authService = await loadAuthService();
         await authService.changePassword(dto);
         // Đổi mật khẩu → revoke tất cả token → bắt login lại
         storage.clear();
-        queryClient.removeQueries({
-            predicate: (query) => {
-                const [scope] = query.queryKey as string[];
-                return scope === 'wishlist' || scope === 'auth' || scope === 'admin';
-            },
-        });
+        removeAccountScopedQueries();
         dispatch({ type: 'SIGN_OUT' });
     }, []);
 
@@ -257,6 +307,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const updateAvatar = useCallback(async (file: File): Promise<void> => {
         dispatch({ type: 'LOADING' });
         try {
+            const userService = await loadUserService();
             const res = await userService.updateAvatar(file);
             storage.save(res.user);
             dispatch({ type: 'SET_USER', payload: res.user });
@@ -273,6 +324,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const removeAvatar = useCallback(async (): Promise<void> => {
         dispatch({ type: 'LOADING' });
         try {
+            const userService = await loadUserService();
             const res = await userService.removeAvatar();
             storage.save(res.user);
             dispatch({ type: 'SET_USER', payload: res.user });
@@ -290,6 +342,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
      */
     const refreshUser = useCallback(async (): Promise<void> => {
         try {
+            const authService = await loadAuthService();
             const freshUser = await authService.getCurrentUser();
             const currentUser = storage.load();
 

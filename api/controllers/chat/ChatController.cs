@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using api.DTOs.chat;
+using api.exceptions;
 using api.services.interfaces.chat;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -22,6 +23,13 @@ namespace api.controllers.chat
         public async Task<ActionResult<ChatRoomDto>> StartSupportChat([FromBody] StartSupportChatDto dto, CancellationToken ct)
         {
             var room = await _chatService.GetOrCreateSupportRoomAsync(GetUserId(), dto.Subject, ct);
+            return Ok(room);
+        }
+
+        [HttpPost("ai/start")]
+        public async Task<ActionResult<ChatRoomDto>> StartAiChat(CancellationToken ct)
+        {
+            var room = await _chatService.GetOrCreateAiRoomAsync(GetUserId(), ct);
             return Ok(room);
         }
 
@@ -52,7 +60,7 @@ namespace api.controllers.chat
         private string GetUserId()
         {
             return User.FindFirstValue(ClaimTypes.NameIdentifier)
-                ?? throw new UnauthorizedAccessException("User is not authenticated.");
+                ?? throw new ApiAuthenticationException("User is not authenticated.");
         }
     }
 }

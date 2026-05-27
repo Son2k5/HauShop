@@ -1,5 +1,6 @@
 using api.data;
 using api.DTOs.wishlist;
+using api.exceptions;
 using api.mappings;
 using api.models.entities;
 using api.repositories.interfaces;
@@ -95,7 +96,7 @@ namespace api.services.implementations.wishlist
                 ?? throw new KeyNotFoundException($"Khong tim thay wishlist item: {wishlistItemId}");
 
             if (item.UserId != userId)
-                throw new UnauthorizedAccessException("Ban khong co quyen xoa wishlist item nay");
+                throw new ForbiddenAccessException("Ban khong co quyen xoa wishlist item nay");
 
             _wishlistRepository.Delete(item);
             await _context.SaveChangesAsync(ct);

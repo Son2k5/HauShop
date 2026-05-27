@@ -2,6 +2,7 @@ import { Icon } from "@iconify/react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
+import { ROUTES } from "../../lib/routes";
 
 type FormState = {
   currentPassword: string;
@@ -33,7 +34,7 @@ export default function ChangePassword() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate("/signin", { replace: true });
+      navigate(ROUTES.SIGN_IN, { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -84,7 +85,7 @@ export default function ChangePassword() {
         currentPassword: form.currentPassword,
         newPassword: form.newPassword,
       });
-      navigate("/signin", {
+      navigate(ROUTES.SIGN_IN, {
         replace: true,
         state: { from: returnPath, passwordChanged: true },
       });

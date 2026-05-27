@@ -1,73 +1,53 @@
-import { useEffect, useState } from "react";
-import type { OrderDto } from "../@types/order.type";
-import { getMyOrdersApi, getMyOrderByIdApi } from "../services/orderService";
+import { useQuery } from "@tanstack/react-query";
+import type { OrderDto, PagedOrderDto } from "../@types/order.type";
+import { cachePolicy } from "../lib/cachePolicy";
+import { queryKeys } from "../lib/queryKeys";
+import { getMyOrderByIdApi, getMyOrdersApi } from "../services/orderService";
 
-export function useMyOrders() {
-  const [orders, setOrders] = useState<OrderDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isError, setIsError] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchOrders = async () => {
-    try {
-      setIsLoading(true);
-      setIsError(false);
-      setError(null);
-      const data = await getMyOrdersApi();
-      setOrders(data);
-    } catch (err: any) {
-      setIsError(true);
-      setError(err?.response?.data?.message || err?.message || "Không thể tải đơn hàng");
-    } finally {
-      setIsLoading(false);
-    }
+function getErrorMessage(error: unknown, fallback: string): string {
+  const maybeApiError = error as {
+    response?: { data?: { message?: string } };
+    message?: string;
   };
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
+  return maybeApiError.response?.data?.message ?? maybeApiError.message ?? fallback;
+}
+
+export function useMyOrders(page = 1, pageSize = 10) {
+  const result = useQuery<PagedOrderDto, unknown>({
+    queryKey: queryKeys.orders.mine(page, pageSize),
+    queryFn: () => getMyOrdersApi(page, pageSize),
+    staleTime: cachePolicy.order.staleTime,
+    gcTime: cachePolicy.order.gcTime,
+  });
 
   return {
-    orders,
-    isLoading,
-    isError,
-    error,
-    refetch: fetchOrders,
+    orders: result.data?.items ?? [],
+    total: result.data?.total ?? 0,
+    page: result.data?.page ?? page,
+    pageSize: result.data?.pageSize ?? pageSize,
+    totalPages: result.data?.totalPages ?? 0,
+    isLoading: result.isLoading,
+    isError: result.isError,
+    error: result.error ? getErrorMessage(result.error, "Khong the tai don hang") : null,
+    refetch: result.refetch,
   };
 }
 
 export function useMyOrder(orderId?: string) {
-  const [order, setOrder] = useState<OrderDto | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isError, setIsError] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchOrder = async () => {
-    if (!orderId) return;
-
-    try {
-      setIsLoading(true);
-      setIsError(false);
-      setError(null);
-      const data = await getMyOrderByIdApi(orderId);
-      setOrder(data);
-    } catch (err: any) {
-      setIsError(true);
-      setError(err?.response?.data?.message || err?.message || "Không thể tải chi tiết đơn hàng");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchOrder();
-  }, [orderId]);
+  const result = useQuery<OrderDto, unknown>({
+    queryKey: orderId ? queryKeys.orders.detail(orderId) : ["orders", "detail", "empty"],
+    queryFn: () => getMyOrderByIdApi(orderId!),
+    enabled: !!orderId,
+    staleTime: cachePolicy.order.staleTime,
+    gcTime: cachePolicy.order.gcTime,
+  });
 
   return {
-    order,
-    isLoading,
-    isError,
-    error,
-    refetch: fetchOrder,
+    order: result.data ?? null,
+    isLoading: !!orderId && result.isLoading,
+    isError: result.isError,
+    error: result.error ? getErrorMessage(result.error, "Khong the tai chi tiet don hang") : null,
+    refetch: result.refetch,
   };
 }

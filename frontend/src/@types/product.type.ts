@@ -91,9 +91,10 @@ export interface PagedProductDto {
   page: number;
   pageSize: number;
   totalPages: number;
+  hasNextPage: boolean;
 }
  
-// Request body -> POST /api/product/search
+
 export interface ProductQueryDto {
   search?: string;
   brandId?: string;
@@ -105,6 +106,7 @@ export interface ProductQueryDto {
   sortOrder?: "asc" | "desc";
   page?: number;
   pageSize?: number;
+  includeTotal?: boolean;
 }
  
 // ── Create / Update ───────────────────────────────────────────────────────────
@@ -190,19 +192,6 @@ export interface CartDto {
   subtotal: number;
   created: string;
 }
-export interface CartContextValue extends CartState {
-  addItem: (
-    product: ProductSummaryDto,
-    qty?: number,
-    variantId?: string,
-    variantSku?: string,
-    unitPrice?: number
-  ) => void;
-  removeItem: (productId: string, variantId?: string) => void;
-  updateQty: (productId: string, qty: number, variantId?: string) => void;
-  clearCart: () => void;
-  isInCart: (productId: string, variantId?: string) => boolean;
-}
  
 // ── Toast ─────────────────────────────────────────────────────────────────────
  
@@ -253,6 +242,7 @@ export interface UseProductsResult {
   items: ProductSummaryDto[];
   total: number;
   totalPages: number;
+  hasNextPage: boolean;
   page: number;
   isLoading: boolean;
   isError: boolean;

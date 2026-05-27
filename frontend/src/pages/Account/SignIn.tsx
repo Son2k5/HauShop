@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuthActions } from "../../hooks/useAuthActions";
 import { type ApiError, type UserDto } from "../../@types/auth.type";
+import { ROUTES } from "../../lib/routes";
 
 const GOOGLE_ERRORS: Record<string, string> = {
   google_denied: "You denied Google sign-in",
@@ -108,7 +109,7 @@ const SignIn = () => {
         );
         setEmail("");
         setPassword("");
-        navigate(user.role === "Admin" ? "/admin" : from, { replace: true });
+        navigate(user.role === "Admin" ? ROUTES.ADMIN : from, { replace: true });
       } catch (err) {
         const e = err as ApiError;
         if (e.errors && Object.keys(e.errors).length > 0) {

@@ -2,6 +2,7 @@ import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuthState } from "../../hooks/useAuthState";
 import type { Role, AuthState } from "../../@types/auth.type";
+import { ROUTES } from "../../lib/routes";
 
 interface Props {
   children: React.ReactNode;
@@ -39,7 +40,7 @@ export function ProtectedRoute({ children, allowedRoles }: Props) {
   }
 
   if (status !== "authenticated") {
-    return <Navigate to="/signin" state={{ from: location.pathname }} replace />;
+    return <Navigate to={ROUTES.SIGN_IN} state={{ from: location.pathname }} replace />;
   }
 
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {

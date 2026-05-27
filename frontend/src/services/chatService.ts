@@ -1,25 +1,26 @@
-import api from "../api/apiClient";
 import type { ChatMessageDto, ChatRoomDto } from "../@types/chat.type";
+import { http } from "../lib/http";
 
 export const chatService = {
   async startSupportChat(subject?: string): Promise<ChatRoomDto> {
-    const response = await api.post<ChatRoomDto>("/chat/support/start", { subject });
-    return response.data;
+    return http.post<ChatRoomDto>("/chat/support/start", { subject });
+  },
+
+  async startAiChat(): Promise<ChatRoomDto> {
+    return http.post<ChatRoomDto>("/chat/ai/start");
   },
 
   async getRooms(): Promise<ChatRoomDto[]> {
-    const response = await api.get<ChatRoomDto[]>("/chat/rooms");
-    return response.data;
+    return http.get<ChatRoomDto[]>("/chat/rooms");
   },
 
   async getMessages(roomId: string, take = 50): Promise<ChatMessageDto[]> {
-    const response = await api.get<ChatMessageDto[]>(`/chat/rooms/${roomId}/messages`, {
+    return http.get<ChatMessageDto[]>(`/chat/rooms/${roomId}/messages`, {
       params: { take },
     });
-    return response.data;
   },
 
   async markAsRead(roomId: string): Promise<void> {
-    await api.post(`/chat/rooms/${roomId}/read`);
+    await http.post(`/chat/rooms/${roomId}/read`);
   },
 };

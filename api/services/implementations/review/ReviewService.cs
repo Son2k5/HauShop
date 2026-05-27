@@ -1,5 +1,6 @@
 using api.data;
 using api.DTOs.review;
+using api.exceptions;
 using api.models.entities;
 using api.models.enums;
 using api.repositories.interfaces;
@@ -156,7 +157,7 @@ namespace api.services.implementations.review
                 ?? throw new KeyNotFoundException("Không tìm thấy review");
 
             if (!isAdmin && review.UserId != userId)
-                throw new UnauthorizedAccessException("Bạn không có quyền xóa review này");
+                throw new ForbiddenAccessException("Bạn không có quyền xóa review này");
 
             var productId = review.ProductId;
 

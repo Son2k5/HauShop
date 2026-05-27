@@ -1,16 +1,19 @@
-import { useState } from "react";
+import { memo, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../context/toastContext";
 import { formatPrice } from "../../utils/formatPrice";
-import { useAppDispatch } from "../../store/hooks";
-import { setCartFromServer } from "../../store/cartSlice";
 import type { ProductSummaryDto } from "../../@types/product.type";
-import { addToCartApi, getMyCartApi } from "../../services/cartService";
 import { useAuth } from "../../hooks/useAuth";
-import { useToggleWishlist, useWishlistProduct } from "../../hooks/useWishlist";
+import { useAddToCart } from "../../hooks/useCart";
+import { useToggleWishlist } from "../../hooks/useWishlist";
+import { queryKeys } from "../../lib/queryKeys";
+import { logger } from "../../lib/logger";
+import { ROUTES, routeTo } from "../../lib/routes";
 
 interface Props {
   product: ProductSummaryDto;
+  initialWished?: boolean;
 }
 
 function displayPrice(p: ProductSummaryDto): number {
@@ -29,43 +32,58 @@ const StarIcon = ({ filled }: { filled: boolean }) => (
   </svg>
 );
 
-export default function ProductCard({ product: p }: Props) {
+function ProductCard({ product: p, initialWished }: Props) {
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
   const { showToast } = useToast();
-  const { isAuthenticated } = useAuth();
-  const { wished } = useWishlistProduct(p.id);
+  const { isAuthenticated, user } = useAuth();
+  const addToCart = useAddToCart();
   const toggleWishlist = useToggleWishlist();
 
   const [added, setAdded] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [localWished, setLocalWished] = useState<boolean | null>(null);
 
   const price = displayPrice(p);
   const isOutOfStock = p.totalStock != null && p.totalStock <= 0;
+  const wishlistIds = user?.id
+    ? queryClient.getQueryData<string[]>(queryKeys.wishlist.ids(user.id))
+    : null;
+  const wished = localWished ?? initialWished ?? wishlistIds?.includes(p.id) ?? false;
+
+  useEffect(() => {
+    setLocalWished(null);
+  }, [initialWished, p.id, user?.id]);
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation();
 
-    if (isOutOfStock || adding) return;
+    if (isOutOfStock || adding || addToCart.isPending) return;
 
     try {
       setAdding(true);
 
-      if (!p.defaultVariantId) {
-        navigate(`/shop/${p.slug}`);
+      if (!isAuthenticated) {
+        showToast("Vui long dang nhap de them vao gio hang", "warning");
+        navigate(ROUTES.SIGN_IN);
         return;
       }
 
-      await addToCartApi(p.defaultVariantId, 1);
+      if (!p.defaultVariantId) {
+        navigate(routeTo.product(p.slug));
+        return;
+      }
 
-      const cart = await getMyCartApi();
-      dispatch(setCartFromServer(cart));
+      await addToCart.mutateAsync({
+        productVariantId: p.defaultVariantId,
+        quantity: 1,
+      });
 
       setAdded(true);
       showToast(`Đã thêm "${p.name}" vào giỏ!`, "success");
       setTimeout(() => setAdded(false), 2000);
     } catch (error) {
-      console.error("Add to cart failed:", error);
+      logger.error("Add to cart failed", error);
       showToast("Không thể thêm vào giỏ hàng", "error");
     } finally {
       setAdding(false);
@@ -74,7 +92,7 @@ export default function ProductCard({ product: p }: Props) {
 
   const handleBuyNow = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate(`/shop/${p.slug}`);
+    navigate(routeTo.product(p.slug));
   };
 
   const handleWishlist = async (e: React.MouseEvent) => {
@@ -82,7 +100,7 @@ export default function ProductCard({ product: p }: Props) {
 
     if (!isAuthenticated) {
       showToast("Vui lòng đăng nhập để dùng wishlist", "warning");
-      navigate("/signin");
+      navigate(ROUTES.SIGN_IN);
       return;
     }
 
@@ -90,16 +108,17 @@ export default function ProductCard({ product: p }: Props) {
 
     try {
       const nextWished = await toggleWishlist.mutateAsync({ productId: p.id, wished });
+      setLocalWished(nextWished);
       showToast(nextWished ? "Đã thêm vào yêu thích" : "Đã xóa khỏi yêu thích", "success");
     } catch (error) {
-      console.error("Wishlist failed:", error);
+      logger.error("Wishlist failed", error);
       showToast("Không thể cập nhật wishlist", "error");
     }
   };
 
   return (
     <div
-      onClick={() => navigate(`/shop/${p.slug}`)}
+      onClick={() => navigate(routeTo.product(p.slug))}
       className="group relative bg-white border border-gray-200 cursor-pointer
                  transition-all duration-350
                  hover:-translate-y-2.5 hover:shadow-cardHover hover:border-transparent"
@@ -270,3 +289,5 @@ export default function ProductCard({ product: p }: Props) {
     </div>
   );
 }
+
+export default memo(ProductCard);

@@ -1,4 +1,4 @@
-import api from "../api/apiClient";
+import { http } from "../lib/http";
 
 export type ReviewStatus = 0 | 1 | 2;
 
@@ -35,24 +35,21 @@ export async function getProductReviewsApi(
   page = 1,
   pageSize = 10
 ): Promise<PagedReviewDto> {
-  const res = await api.get(`/review/product/${productId}`, {
+  return http.get<PagedReviewDto>(`/review/product/${productId}`, {
     params: { page, pageSize },
   });
-  return res.data;
 }
 
 export async function createReviewApi(dto: CreateReviewDto): Promise<ReviewDto> {
-  const res = await api.post("/review", dto);
-  return res.data;
+  return http.post<ReviewDto>("/review", dto);
 }
 
 export async function getMyReviewsApi(page = 1, pageSize = 10): Promise<PagedReviewDto> {
-  const res = await api.get("/review/me", {
+  return http.get<PagedReviewDto>("/review/me", {
     params: { page, pageSize },
   });
-  return res.data;
 }
 
 export async function deleteReviewApi(reviewId: string): Promise<void> {
-  await api.delete(`/review/${reviewId}`);
+  await http.delete(`/review/${reviewId}`);
 }

@@ -4,7 +4,6 @@ using api.models.entities;
 using api.repositories.interfaces;
 using api.services.interfaces.cart;
 using Microsoft.EntityFrameworkCore;
-using System.Threading;
 
 namespace api.services.implementations.cart
 {
@@ -12,68 +11,68 @@ namespace api.services.implementations.cart
     {
         private readonly ICartRepository _cartRepository;
         private readonly IProductVariantRepository _productVariantRepository;
+        private readonly ICartCacheService _cartCache;
         private readonly ApplicationDbContext _dbContext;
         private readonly ILogger<CartService> _logger;
 
         public CartService(
             ICartRepository cartRepository,
             IProductVariantRepository productVariantRepository,
+            ICartCacheService cartCache,
             ApplicationDbContext dbContext,
             ILogger<CartService> logger)
         {
             _cartRepository = cartRepository;
             _productVariantRepository = productVariantRepository;
+            _cartCache = cartCache;
             _dbContext = dbContext;
             _logger = logger;
         }
 
         public async Task<CartDto> GetMyCartAsync(string userId, CancellationToken ct = default)
         {
+            var cachedCart = await _cartCache.GetUserCartAsync(userId, ct);
+            if (cachedCart != null)
+                return cachedCart;
+
             var cart = await EnsureCartExistsAsync(userId, ct);
-
-            var fullCart = await _cartRepository.GetByIdWithItemsAsync(cart.Id, ct)
-                ?? throw new KeyNotFoundException("Không tìm thấy giỏ hàng");
-
-            return MapCartToDto(fullCart);
+            return await LoadAndCacheCartAsync(userId, cart.Id, ct);
         }
 
         public async Task<CartDto> AddItemAsync(string userId, AddCartItemDto dto, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(dto.ProductVariantId))
-                throw new InvalidOperationException("ProductVariantId là bắt buộc");
+                throw new InvalidOperationException("ProductVariantId is required");
 
             if (dto.Quantity <= 0)
-                throw new InvalidOperationException("Quantity phải lớn hơn 0");
+                throw new InvalidOperationException("Quantity must be greater than zero");
 
             var cart = await EnsureCartExistsAsync(userId, ct);
 
             var variant = await _productVariantRepository.GetActiveByIdAsync(dto.ProductVariantId, ct)
-                ?? throw new KeyNotFoundException("Không tìm thấy biến thể sản phẩm hoặc biến thể đã bị vô hiệu hóa");
+                ?? throw new KeyNotFoundException("Product variant was not found or is inactive");
 
             if (variant.Product == null || !variant.Product.IsActive)
-                throw new InvalidOperationException("Sản phẩm không còn khả dụng");
+                throw new InvalidOperationException("Product is not available");
 
             if (variant.Stock <= 0)
-                throw new InvalidOperationException("Biến thể sản phẩm đã hết hàng");
+                throw new InvalidOperationException("Product variant is out of stock");
 
             var existingItem = await _cartRepository.GetTrackedCartItemByVariantAsync(cart.Id, variant.Id, ct);
 
             if (existingItem != null)
             {
                 var newQuantity = existingItem.Quantity + dto.Quantity;
-
-                if (newQuantity > variant.Stock)
-                    throw new InvalidOperationException($"Số lượng vượt quá tồn kho. Tồn hiện tại: {variant.Stock}");
+                EnsureStockIsEnough(newQuantity, variant.Stock);
 
                 existingItem.Quantity = newQuantity;
                 existingItem.Price = variant.Price;
             }
             else
             {
-                if (dto.Quantity > variant.Stock)
-                    throw new InvalidOperationException($"Số lượng vượt quá tồn kho. Tồn hiện tại: {variant.Stock}");
+                EnsureStockIsEnough(dto.Quantity, variant.Stock);
 
-                var cartItem = new CartItem
+                _cartRepository.AddCartItem(new CartItem
                 {
                     Id = Guid.NewGuid().ToString(),
                     CartId = cart.Id,
@@ -82,9 +81,7 @@ namespace api.services.implementations.cart
                     Quantity = dto.Quantity,
                     Price = variant.Price,
                     Created = DateTime.UtcNow
-                };
-
-                _cartRepository.AddCartItem(cartItem);
+                });
             }
 
             await _dbContext.SaveChangesAsync(ct);
@@ -93,34 +90,50 @@ namespace api.services.implementations.cart
                 "Added item to cart. UserId={UserId}, CartId={CartId}, VariantId={VariantId}, Quantity={Quantity}",
                 userId, cart.Id, variant.Id, dto.Quantity);
 
-            var updatedCart = await _cartRepository.GetByIdWithItemsAsync(cart.Id, ct)
-                ?? throw new InvalidOperationException("Không thể tải lại giỏ hàng sau khi thêm sản phẩm");
-
-            return MapCartToDto(updatedCart);
+            return await LoadAndCacheCartAsync(userId, cart.Id, ct);
         }
 
-        public async Task<CartDto> UpdateItemQuantityAsync(string userId, string cartItemId, UpdateCartItemDto dto, CancellationToken ct = default)
+        public async Task<CartDto> IncreaseItemQuantityAsync(
+            string userId,
+            string cartItemId,
+            int quantity = 1,
+            CancellationToken ct = default)
+        {
+            if (quantity <= 0)
+                throw new InvalidOperationException("Quantity increment must be greater than zero");
+
+            var item = await GetUserCartItemAsync(userId, cartItemId, ct)
+                ?? throw new KeyNotFoundException("Cart item was not found");
+
+            return await UpdateItemQuantityAsync(
+                userId,
+                cartItemId,
+                new UpdateCartItemDto { Quantity = item.Quantity + quantity },
+                ct);
+        }
+
+        public async Task<CartDto> UpdateItemQuantityAsync(
+            string userId,
+            string cartItemId,
+            UpdateCartItemDto dto,
+            CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(cartItemId))
-                throw new InvalidOperationException("CartItemId không hợp lệ");
+                throw new InvalidOperationException("CartItemId is invalid");
 
             if (dto.Quantity <= 0)
-                throw new InvalidOperationException("Quantity phải lớn hơn 0");
+                throw new InvalidOperationException("Quantity must be greater than zero");
 
-            var item = await _cartRepository.GetTrackedCartItemByIdAsync(cartItemId, ct)
-                ?? throw new KeyNotFoundException("Không tìm thấy cart item");
-
-            if (item.Cart == null || item.Cart.UserId != userId)
-                throw new UnauthorizedAccessException("Bạn không có quyền cập nhật cart item này");
+            var item = await GetUserCartItemAsync(userId, cartItemId, ct)
+                ?? throw new KeyNotFoundException("Cart item was not found");
 
             if (item.Product == null || !item.Product.IsActive)
-                throw new InvalidOperationException("Sản phẩm không còn khả dụng");
+                throw new InvalidOperationException("Product is not available");
 
             if (item.ProductVariant == null || !item.ProductVariant.IsActive)
-                throw new InvalidOperationException("Biến thể sản phẩm không còn khả dụng");
+                throw new InvalidOperationException("Product variant is not available");
 
-            if (dto.Quantity > item.ProductVariant.Stock)
-                throw new InvalidOperationException($"Số lượng vượt quá tồn kho. Tồn hiện tại: {item.ProductVariant.Stock}");
+            EnsureStockIsEnough(dto.Quantity, item.ProductVariant.Stock);
 
             item.Quantity = dto.Quantity;
             item.Price = item.ProductVariant.Price;
@@ -131,22 +144,24 @@ namespace api.services.implementations.cart
                 "Updated cart item quantity. UserId={UserId}, CartItemId={CartItemId}, Quantity={Quantity}",
                 userId, cartItemId, dto.Quantity);
 
-            var updatedCart = await _cartRepository.GetByIdWithItemsAsync(item.CartId, ct)
-                ?? throw new InvalidOperationException("Không thể tải lại giỏ hàng sau khi cập nhật");
-
-            return MapCartToDto(updatedCart);
+            return await LoadAndCacheCartAsync(userId, item.CartId, ct);
         }
 
         public async Task<CartDto> RemoveItemAsync(string userId, string cartItemId, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(cartItemId))
-                throw new InvalidOperationException("CartItemId không hợp lệ");
+                throw new InvalidOperationException("CartItemId is invalid");
 
-            var item = await _cartRepository.GetTrackedCartItemByIdAsync(cartItemId, ct)
-                ?? throw new KeyNotFoundException("Không tìm thấy cart item");
+            var item = await GetUserCartItemAsync(userId, cartItemId, ct);
+            if (item == null)
+            {
+                var currentCart = await EnsureCartExistsAsync(userId, ct);
+                _logger.LogInformation(
+                    "Skipped removing cart item because it was not in the user's cart. UserId={UserId}, CartItemId={CartItemId}",
+                    userId, cartItemId);
 
-            if (item.Cart == null || item.Cart.UserId != userId)
-                throw new UnauthorizedAccessException("Bạn không có quyền xóa cart item này");
+                return await LoadAndCacheCartAsync(userId, currentCart.Id, ct);
+            }
 
             var cartId = item.CartId;
 
@@ -157,16 +172,12 @@ namespace api.services.implementations.cart
                 "Removed cart item. UserId={UserId}, CartItemId={CartItemId}",
                 userId, cartItemId);
 
-            var updatedCart = await _cartRepository.GetByIdWithItemsAsync(cartId, ct)
-                ?? throw new InvalidOperationException("Không thể tải lại giỏ hàng sau khi xóa sản phẩm");
-
-            return MapCartToDto(updatedCart);
+            return await LoadAndCacheCartAsync(userId, cartId, ct);
         }
 
         public async Task<CartDto> ClearCartAsync(string userId, CancellationToken ct = default)
         {
             var cart = await EnsureCartExistsAsync(userId, ct);
-
             var items = await _cartRepository.GetTrackedItemsByCartIdAsync(cart.Id, ct);
 
             if (items.Count > 0)
@@ -175,14 +186,30 @@ namespace api.services.implementations.cart
                 await _dbContext.SaveChangesAsync(ct);
             }
 
-            _logger.LogInformation(
-                "Cleared cart. UserId={UserId}, CartId={CartId}",
-                userId, cart.Id);
+            _logger.LogInformation("Cleared cart. UserId={UserId}, CartId={CartId}", userId, cart.Id);
 
-            var updatedCart = await _cartRepository.GetByIdWithItemsAsync(cart.Id, ct)
-                ?? throw new InvalidOperationException("Không thể tải lại giỏ hàng sau khi clear");
+            return await LoadAndCacheCartAsync(userId, cart.Id, ct);
+        }
 
-            return MapCartToDto(updatedCart);
+        public async Task<CartDto> MergeGuestCartAsync(
+            string userId,
+            MergeGuestCartDto dto,
+            CancellationToken ct = default)
+        {
+            foreach (var item in dto.Items.Where(item =>
+                         !string.IsNullOrWhiteSpace(item.ProductVariantId) && item.Quantity > 0))
+            {
+                await AddItemAsync(
+                    userId,
+                    new AddCartItemDto
+                    {
+                        ProductVariantId = item.ProductVariantId,
+                        Quantity = item.Quantity
+                    },
+                    ct);
+            }
+
+            return await GetMyCartAsync(userId, ct);
         }
 
         private async Task<Cart> EnsureCartExistsAsync(string userId, CancellationToken ct)
@@ -201,10 +228,41 @@ namespace api.services.implementations.cart
 
             _cartRepository.Add(cart);
             await _dbContext.SaveChangesAsync(ct);
+            await _cartCache.RemoveUserCartAsync(userId, ct);
 
             _logger.LogInformation("Created cart for user. UserId={UserId}, CartId={CartId}", userId, cart.Id);
 
             return cart;
+        }
+
+        private Task<CartItem?> GetUserCartItemAsync(
+            string userId,
+            string cartItemId,
+            CancellationToken ct)
+        {
+            return _dbContext.Set<CartItem>()
+                .Include(i => i.Cart)
+                .Include(i => i.Product)
+                .Include(i => i.ProductVariant)
+                .FirstOrDefaultAsync(
+                    i => i.Id == cartItemId && i.Cart.UserId == userId,
+                    ct);
+        }
+
+        private async Task<CartDto> LoadAndCacheCartAsync(string userId, string cartId, CancellationToken ct)
+        {
+            var cart = await _cartRepository.GetByIdWithItemsAsync(cartId, ct)
+                ?? throw new KeyNotFoundException("Cart was not found");
+
+            var result = MapCartToDto(cart);
+            await _cartCache.SetUserCartAsync(userId, result, ct);
+            return result;
+        }
+
+        private static void EnsureStockIsEnough(int requestedQuantity, int stock)
+        {
+            if (requestedQuantity > stock)
+                throw new InvalidOperationException($"Quantity exceeds available stock. Current stock: {stock}");
         }
 
         private static CartDto MapCartToDto(Cart cart)
@@ -223,13 +281,11 @@ namespace api.services.implementations.cart
                         ProductName = i.Product?.Name ?? string.Empty,
                         ProductSlug = i.Product?.Slug ?? string.Empty,
                         ProductImageUrl = i.Product?.ImageUrl,
-
                         ProductVariantId = i.ProductVariantId,
                         VariantSku = i.ProductVariant?.Sku,
                         VariantSize = i.ProductVariant?.Size,
                         VariantColor = i.ProductVariant?.Color,
                         VariantImageUrl = i.ProductVariant?.ImageUrl,
-
                         UnitPrice = i.Price,
                         Quantity = i.Quantity,
                         AvailableStock = i.ProductVariant?.Stock ?? 0,

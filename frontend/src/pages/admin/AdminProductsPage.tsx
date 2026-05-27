@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { memo, startTransition, useEffect, useMemo, useState } from "react";
 import type { CreateProductDto, ProductDto, ProductSummaryDto, UpdateProductDto } from "../../@types/product.type";
 import { useDebounce } from "../../hooks/useDebounce";
+import { cachePolicy } from "../../lib/cachePolicy";
 import { queryKeys } from "../../lib/queryKeys";
 import { categoryService } from "../../services/categoryService";
 import { adminService } from "../../services/adminService";
@@ -76,9 +77,10 @@ export default function AdminProductsPage() {
   });
 
   const categoriesQuery = useQuery({
-    queryKey: ["categories", "active"],
+    queryKey: queryKeys.categories.active,
     queryFn: () => categoryService.getActive(),
-    staleTime: 60_000,
+    staleTime: cachePolicy.category.staleTime,
+    gcTime: cachePolicy.category.gcTime,
   });
 
   const selectedProductQuery = useQuery({

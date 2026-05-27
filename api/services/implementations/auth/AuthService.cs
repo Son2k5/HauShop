@@ -21,6 +21,7 @@ namespace api.services.implementations.auth
         private readonly IRefreshTokenRepository _refreshTokenRepository;
         private readonly IUserRepository _userRepository;
         private readonly IOtpService _otpService;
+        private readonly IAuthTokenCacheService _tokenCache;
         private readonly int MAX_REFRESH_TOKENS_PER_USER = 5;
         private readonly int OTP_EXPIRATION_MINUTES = 15;
 
@@ -31,7 +32,8 @@ namespace api.services.implementations.auth
             IConfiguration config,
             IUserRepository userRepository,
             IRefreshTokenRepository refreshTokenRepository,
-            IOtpService otpService)
+            IOtpService otpService,
+            IAuthTokenCacheService tokenCache)
         {
             _config = config;
             _context = context;
@@ -40,87 +42,81 @@ namespace api.services.implementations.auth
             _userRepository = userRepository;
             _refreshTokenRepository = refreshTokenRepository;
             _otpService = otpService;
+            _tokenCache = tokenCache;
         }
 
-        public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
+        public async Task<AuthResult<AuthResponseDto>> RegisterAsync(RegisterDto dto)
         {
             var existingUser = await _userRepository.GetByEmailAsync(dto.Email);
             if (existingUser != null)
-                throw new InvalidOperationException("Email already exists");
+                return AuthResult<AuthResponseDto>.Failure("Email already exists", StatusCodes.Status409Conflict);
 
-            try
+            var user = new User
             {
-                var user = new User
-                {
-                    Id = Guid.NewGuid().ToString(),
-                    Email = dto.Email.Trim().ToLowerInvariant(),
-                    FirstName = dto.FirstName.Trim(),
-                    LastName = dto.LastName?.Trim() ?? string.Empty,
-                    PhoneNumber = dto.PhoneNumber?.Trim() ?? string.Empty,
-                    PasswordHash = PasswordHasher.Hash(dto.Password),
-                    Provider = Provider.Local,
-                    Role = Role.Member,
-                    IsOnline = false,
-                    Created = DateTime.UtcNow
-                };
+                Id = Guid.NewGuid().ToString(),
+                Email = dto.Email.Trim().ToLowerInvariant(),
+                FirstName = dto.FirstName.Trim(),
+                LastName = dto.LastName?.Trim() ?? string.Empty,
+                PhoneNumber = dto.PhoneNumber?.Trim() ?? string.Empty,
+                PasswordHash = PasswordHasher.Hash(dto.Password),
+                Provider = Provider.Local,
+                Role = Role.Member,
+                IsOnline = false,
+                Created = DateTime.UtcNow
+            };
 
-                var accessToken = _tokenService.GenerateAccessToken(user);
-                var refreshTokenValue = _tokenService.GenerateRefreshToken();
+            var accessToken = _tokenService.GenerateAccessToken(user);
+            var refreshTokenValue = _tokenService.GenerateRefreshToken();
 
-                var refreshTokenDays =
-                    _config.GetValue<int?>("Jwt:RefreshTokenExpirationDays") ?? 7;
+            var refreshTokenDays =
+                _config.GetValue<int?>("Jwt:RefreshTokenExpirationDays") ?? 7;
 
-                var refreshToken = new RefreshToken
-                {
-                    Id = Guid.NewGuid().ToString(),
-                    Token = HashRefreshToken.Hash(refreshTokenValue),
-                    UserId = user.Id,
-                    Created = DateTime.UtcNow,
-                    Expires = DateTime.UtcNow.AddDays(refreshTokenDays)
-                };
-
-                _userRepository.Add(user);
-                _refreshTokenRepository.Add(refreshToken);
-
-                await _context.SaveChangesAsync();
-
-
-                return new AuthResponseDto
-                {
-                    AccessToken = accessToken,
-                    RefreshToken = refreshTokenValue,
-                    User = UserMapper.MapToUserDto(user)
-                };
-            }
-            catch
+            var refreshToken = new RefreshToken
             {
+                Id = Guid.NewGuid().ToString(),
+                Token = HashRefreshToken.Hash(refreshTokenValue),
+                UserId = user.Id,
+                Created = DateTime.UtcNow,
+                Expires = DateTime.UtcNow.AddDays(refreshTokenDays)
+            };
 
-                throw;
-            }
+            _userRepository.Add(user);
+            _refreshTokenRepository.Add(refreshToken);
+
+            await _context.SaveChangesAsync();
+            await _tokenCache.StoreRefreshTokenAsync(
+                refreshToken.Token,
+                user.Id,
+                TimeSpan.FromDays(refreshTokenDays));
+
+            return AuthResult<AuthResponseDto>.Success(new AuthResponseDto
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshTokenValue,
+                User = UserMapper.MapToUserDto(user)
+            });
         }
 
-
-        public async Task<AuthResponseDto> RefreshTokenAsync(string refreshToken)
+        public async Task<AuthResult<AuthResponseDto>> RefreshTokenAsync(string refreshToken)
         {
             if (string.IsNullOrWhiteSpace(refreshToken))
-            {
-                throw new ArgumentException("Refresh Token is required");
-            }
+                return AuthResult<AuthResponseDto>.Failure("Refresh token is required", StatusCodes.Status400BadRequest);
+
             var hashToken = HashRefreshToken.Hash(refreshToken);
             var storedToken = await _refreshTokenRepository.FirstOrDefaultAsync(e => e.Token == hashToken, CancellationToken.None);
             if (storedToken == null)
-            {
-                throw new UnauthorizedAccessException("Invalid refresh token");
-            }
+                return AuthResult<AuthResponseDto>.Failure("Invalid refresh token", StatusCodes.Status401Unauthorized);
+
             var user = await _userRepository.GetByIdAsync(storedToken.UserId, CancellationToken.None);
             if (user == null)
-            {
-                throw new UnauthorizedAccessException("User not found");
-            }
+                return AuthResult<AuthResponseDto>.Failure("User not found", StatusCodes.Status401Unauthorized);
+
             if (!storedToken.IsActive)
             {
-                throw new UnauthorizedAccessException("Token is expired or revoked");
+                await _tokenCache.RemoveRefreshTokenAsync(hashToken);
+                return AuthResult<AuthResponseDto>.Failure("Token is expired or revoked", StatusCodes.Status401Unauthorized);
             }
+
             var newAccessToken = _tokenService.GenerateAccessToken(user);
             var newRefreshTokenString = _tokenService.GenerateRefreshToken();
 
@@ -140,38 +136,38 @@ namespace api.services.implementations.auth
 
             _refreshTokenRepository.Add(newRefreshToken);
 
-            // Clean up old tokens
             await CleanupUserTokenAsync(user.Id);
 
             await _context.SaveChangesAsync();
+            await _tokenCache.RemoveRefreshTokenAsync(hashToken);
+            await _tokenCache.StoreRefreshTokenAsync(
+                newRefreshToken.Token,
+                user.Id,
+                newRefreshToken.Expires - DateTime.UtcNow);
 
-            return new AuthResponseDto
+            return AuthResult<AuthResponseDto>.Success(new AuthResponseDto
             {
                 AccessToken = newAccessToken,
                 RefreshToken = newRefreshTokenString,
                 User = UserMapper.MapToUserDto(user)
-            };
+            });
         }
 
-        public async Task<AuthResponseDto> LoginAsync(LoginDto loginDto)
+        public async Task<AuthResult<AuthResponseDto>> LoginAsync(LoginDto loginDto)
         {
             if (string.IsNullOrWhiteSpace(loginDto.Email))
-            {
-                throw new ArgumentException("Email is required");
-            }
+                return AuthResult<AuthResponseDto>.Failure("Email is required", StatusCodes.Status400BadRequest);
+
             if (string.IsNullOrWhiteSpace(loginDto.Password))
-            {
-                throw new ArgumentException("Password is required");
-            }
+                return AuthResult<AuthResponseDto>.Failure("Password is required", StatusCodes.Status400BadRequest);
+
             var user = await _userRepository.GetByEmailAsync(loginDto.Email);
             if (user == null)
-            {
-                throw new UnauthorizedAccessException("Invalid email or password");
-            }
+                return AuthResult<AuthResponseDto>.Failure("Invalid email or password", StatusCodes.Status401Unauthorized);
+
             if (!PasswordHasher.Verify(loginDto.Password, user.PasswordHash))
-            {
-                throw new UnauthorizedAccessException("Invalid email or password");
-            }
+                return AuthResult<AuthResponseDto>.Failure("Invalid email or password", StatusCodes.Status401Unauthorized);
+
             var accessToken = _tokenService.GenerateAccessToken(user);
             var refreshTokenString = _tokenService.GenerateRefreshToken();
             await CleanupUserTokenAsync(user.Id);
@@ -191,21 +187,24 @@ namespace api.services.implementations.auth
             _userRepository.Update(user);
 
             await _context.SaveChangesAsync();
+            await _tokenCache.StoreRefreshTokenAsync(
+                refreshToken.Token,
+                user.Id,
+                refreshToken.Expires - DateTime.UtcNow);
 
-            return new AuthResponseDto
+            return AuthResult<AuthResponseDto>.Success(new AuthResponseDto
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshTokenString,
                 User = UserMapper.MapToUserDto(user)
-            };
+            });
         }
 
-        public async Task LogoutAsync(string userId, string refreshToken)
+        public async Task<AuthResult> LogoutAsync(string userId, string refreshToken)
         {
             if (string.IsNullOrWhiteSpace(userId))
-            {
-                throw new ArgumentException("User ID is required");
-            }
+                return AuthResult.Failure("User ID is required", StatusCodes.Status400BadRequest);
+
             var user = await _userRepository.GetByIdAsync(userId, CancellationToken.None);
             if (user != null)
             {
@@ -214,78 +213,71 @@ namespace api.services.implementations.auth
                 _userRepository.Update(user);
             }
             if (!string.IsNullOrWhiteSpace(refreshToken))
-            {
                 await RevokeRefreshTokenAsync(userId, refreshToken);
-            }
+
             await _context.SaveChangesAsync();
+            return AuthResult.Success();
         }
 
-        public async Task RevokeRefreshTokenAsync(string userId, string refreshToken)
+        public async Task<AuthResult> RevokeRefreshTokenAsync(string userId, string refreshToken)
         {
             if (string.IsNullOrWhiteSpace(userId))
-            {
-                throw new ArgumentException("User ID is required");
-            }
+                return AuthResult.Failure("User ID is required", StatusCodes.Status400BadRequest);
+
             if (string.IsNullOrWhiteSpace(refreshToken))
-            {
-                throw new ArgumentException("Refresh token is required");
-            }
+                return AuthResult.Failure("Refresh token is required", StatusCodes.Status400BadRequest);
+
             var hashedToken = HashRefreshToken.Hash(refreshToken);
             var storedToken = await _refreshTokenRepository
-                        .FirstOrDefaultAsync(e => e.UserId == userId && e.Token == hashedToken, CancellationToken.None);
+                .FirstOrDefaultAsync(e => e.UserId == userId && e.Token == hashedToken, CancellationToken.None);
+
             if (storedToken != null)
             {
                 storedToken.IsRevoked = true;
                 storedToken.RevokedAt = DateTime.UtcNow;
                 _refreshTokenRepository.Update(storedToken);
             }
+            await _tokenCache.RemoveRefreshTokenAsync(hashedToken);
+            await _context.SaveChangesAsync();
+            return AuthResult.Success();
         }
 
-        public async Task ChangePasswordAsync(ChangePasswordDto dto, string userId)
+        public async Task<AuthResult> ChangePasswordAsync(ChangePasswordDto dto, string userId)
         {
             if (string.IsNullOrWhiteSpace(userId))
-                throw new ArgumentException("UserId is required");
+                return AuthResult.Failure("UserId is required", StatusCodes.Status400BadRequest);
 
-            if (string.IsNullOrWhiteSpace(dto.CurrentPassword) ||
-                string.IsNullOrWhiteSpace(dto.NewPassword))
-                throw new ArgumentException("Password is required");
+            if (string.IsNullOrWhiteSpace(dto.CurrentPassword) || string.IsNullOrWhiteSpace(dto.NewPassword))
+                return AuthResult.Failure("Password is required", StatusCodes.Status400BadRequest);
 
             var user = await _userRepository.GetByIdAsync(userId, CancellationToken.None);
             if (user == null)
-                throw new UnauthorizedAccessException("User not found");
+                return AuthResult.Failure("User not found", StatusCodes.Status401Unauthorized);
 
             if (!PasswordHasher.Verify(dto.CurrentPassword, user.PasswordHash))
-                throw new UnauthorizedAccessException("Old password is incorrect");
+                return AuthResult.Failure("Old password is incorrect", StatusCodes.Status401Unauthorized);
 
             user.PasswordHash = PasswordHasher.Hash(dto.NewPassword);
             user.Updated = DateTime.UtcNow;
-
             _userRepository.Update(user);
 
             await _refreshTokenRepository.RevokeAllUserTokensAsync(userId);
-
+            await _tokenCache.RemoveAllUserRefreshTokensAsync(userId);
             await _context.SaveChangesAsync();
 
-            // Send notification email
-            await _emailService.SendPasswordChangedNotificationAsync(
-                user.Email,
-                user.FirstName
-            );
+            await _emailService.SendPasswordChangedNotificationAsync(user.Email, user.FirstName);
+
+            return AuthResult.Success();
         }
 
-        public async Task ForgotPasswordAsync(string email)
+        public async Task<AuthResult> ForgotPasswordAsync(string email)
         {
             if (string.IsNullOrWhiteSpace(email))
-            {
-                throw new ArgumentException("Email is required");
-            }
+                return AuthResult.Failure("Email is required", StatusCodes.Status400BadRequest);
 
             var user = await _userRepository.GetByEmailAsync(email);
             if (user == null)
-            {
-
-                return;
-            }
+                return AuthResult.Success();
 
             var existingOtps = await _context.PasswordResetOtps
                 .Where(o => o.UserId == user.Id && !o.IsUsed && o.ExpiredAt > DateTime.UtcNow)
@@ -297,7 +289,6 @@ namespace api.services.implementations.auth
                 otp.UsedAt = DateTime.UtcNow;
             }
 
-            // Generate new OTP
             var otpCode = _otpService.GenerateOtp();
             var otpHash = _otpService.HashOtp(otpCode);
 
@@ -313,59 +304,64 @@ namespace api.services.implementations.auth
 
             _context.PasswordResetOtps.Add(passwordResetOtp);
             await _context.SaveChangesAsync();
+            await _tokenCache.StorePasswordResetOtpAsync(
+                user.Id,
+                otpHash,
+                TimeSpan.FromMinutes(OTP_EXPIRATION_MINUTES));
 
-            // Send OTP via email
-            await _emailService.SendPasswordResetOtpAsync(
-                user.Email,
-                user.FirstName,
-                otpCode
-            );
+            await _emailService.SendPasswordResetOtpAsync(user.Email, user.FirstName, otpCode);
+
+            return AuthResult.Success();
         }
-        public async Task<UserDto> GetCurrentUserAsync(string userId)
+
+        public async Task<AuthResult<UserDto>> GetCurrentUserAsync(string userId)
         {
             if (string.IsNullOrWhiteSpace(userId))
-            {
-                throw new ArgumentException("User ID is required");
-            }
+                return AuthResult<UserDto>.Failure("User ID is required", StatusCodes.Status400BadRequest);
 
             var user = await _userRepository.GetByIdAsync(userId, CancellationToken.None);
-
             if (user == null)
-            {
-                throw new KeyNotFoundException("User not found");
-            }
+                return AuthResult<UserDto>.Failure("User not found", StatusCodes.Status404NotFound);
 
-            // Sử dụng Mapper để chuyển đổi từ Entity sang DTO
-            return UserMapper.MapToUserDto(user);
+            return AuthResult<UserDto>.Success(UserMapper.MapToUserDto(user));
         }
 
-        public async Task ResetPasswordAsync(ResetPasswordDto dto)
+        public async Task<AuthResult> ResetPasswordAsync(ResetPasswordDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.Email))
-            {
-                throw new ArgumentException("Email is required");
-            }
+                return AuthResult.Failure("Email is required", StatusCodes.Status400BadRequest);
+
             if (string.IsNullOrWhiteSpace(dto.Otp))
-            {
-                throw new ArgumentException("OTP is required");
-            }
+                return AuthResult.Failure("OTP is required", StatusCodes.Status400BadRequest);
+
             if (string.IsNullOrWhiteSpace(dto.NewPassword))
-            {
-                throw new ArgumentException("New password is required");
-            }
+                return AuthResult.Failure("New password is required", StatusCodes.Status400BadRequest);
 
             var user = await _userRepository.GetByEmailAsync(dto.Email);
             if (user == null)
-            {
-                throw new UnauthorizedAccessException("Invalid email or OTP");
-            }
-
-            var otpRecords = await _context.PasswordResetOtps
-                .Where(o => o.UserId == user.Id && !o.IsUsed && o.ExpiredAt > DateTime.UtcNow)
-                .OrderByDescending(o => o.CreatedAt)
-                .ToListAsync();
+                return AuthResult.Failure("Invalid email or OTP", StatusCodes.Status401Unauthorized);
 
             PasswordResetOtp? validOtp = null;
+            var cachedOtpHash = await _tokenCache.GetPasswordResetOtpHashAsync(user.Id);
+            if (!string.IsNullOrWhiteSpace(cachedOtpHash) &&
+                _otpService.VerifyOtp(dto.Otp, cachedOtpHash))
+            {
+                validOtp = await _context.PasswordResetOtps
+                    .Where(o => o.UserId == user.Id &&
+                                o.OtpHash == cachedOtpHash &&
+                                !o.IsUsed &&
+                                o.ExpiredAt > DateTime.UtcNow)
+                    .OrderByDescending(o => o.CreatedAt)
+                    .FirstOrDefaultAsync();
+            }
+
+            var otpRecords = validOtp == null
+                ? await _context.PasswordResetOtps
+                    .Where(o => o.UserId == user.Id && !o.IsUsed && o.ExpiredAt > DateTime.UtcNow)
+                    .OrderByDescending(o => o.CreatedAt)
+                    .ToListAsync()
+                : new List<PasswordResetOtp>();
+
             foreach (var record in otpRecords)
             {
                 if (_otpService.VerifyOtp(dto.Otp, record.OtpHash))
@@ -376,9 +372,7 @@ namespace api.services.implementations.auth
             }
 
             if (validOtp == null)
-            {
-                throw new UnauthorizedAccessException("Invalid or expired OTP");
-            }
+                return AuthResult.Failure("Invalid or expired OTP", StatusCodes.Status401Unauthorized);
 
             validOtp.IsUsed = true;
             validOtp.UsedAt = DateTime.UtcNow;
@@ -387,16 +381,15 @@ namespace api.services.implementations.auth
             user.Updated = DateTime.UtcNow;
             _userRepository.Update(user);
 
-
             await _refreshTokenRepository.RevokeAllUserTokensAsync(user.Id);
+            await _tokenCache.RemoveAllUserRefreshTokensAsync(user.Id);
+            await _tokenCache.RemovePasswordResetOtpAsync(user.Id);
 
             await _context.SaveChangesAsync();
 
+            await _emailService.SendPasswordChangedNotificationAsync(user.Email, user.FirstName);
 
-            await _emailService.SendPasswordChangedNotificationAsync(
-                user.Email,
-                user.FirstName
-            );
+            return AuthResult.Success();
         }
 
         private async Task CleanupUserTokenAsync(string userId)
@@ -408,6 +401,9 @@ namespace api.services.implementations.auth
                                                 .Take(activedTokens.Count - MAX_REFRESH_TOKENS_PER_USER)
                                                 .ToList();
                 _refreshTokenRepository.DeleteRange(tokensRemove);
+
+                foreach (var token in tokensRemove)
+                    await _tokenCache.RemoveRefreshTokenAsync(token.Token);
             }
         }
     }

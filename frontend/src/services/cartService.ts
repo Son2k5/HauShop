@@ -1,31 +1,33 @@
-import api from "../api/apiClient";
+import type { CartDto } from "../@types/product.type";
+import { http } from "../lib/http";
 
-export async function getMyCartApi() {
-  const res = await api.get("/cart/me");
-  return res.data;
+export async function getMyCartApi(): Promise<CartDto> {
+  return http.get<CartDto>("/cart/me");
 }
 
-export async function addToCartApi(productVariantId: string, quantity: number) {
-  const res = await api.post("/cart/items", {
+export async function addToCartApi(productVariantId: string, quantity: number): Promise<CartDto> {
+  return http.post<CartDto>("/cart/items", {
     productVariantId,
     quantity,
   });
-  return res.data;
 }
 
-export async function updateCartItemApi(cartItemId: string, quantity: number) {
-  const res = await api.put(`/cart/items/${cartItemId}`, {
+export async function updateCartItemApi(cartItemId: string, quantity: number): Promise<CartDto> {
+  return http.put<CartDto>(`/cart/items/${cartItemId}`, {
     quantity,
   });
-  return res.data;
 }
 
-export async function removeCartItemApi(cartItemId: string) {
-  const res = await api.delete(`/cart/items/${cartItemId}`);
-  return res.data;
+export async function increaseCartItemApi(cartItemId: string, quantity = 1): Promise<CartDto> {
+  return http.patch<CartDto>(`/cart/items/${cartItemId}/increase`, null, {
+    params: { quantity },
+  });
 }
 
-export async function clearCartApi() {
-  const res = await api.delete("/cart/clear");
-  return res.data;
+export async function removeCartItemApi(cartItemId: string): Promise<CartDto> {
+  return http.delete<CartDto>(`/cart/items/${cartItemId}`);
+}
+
+export async function clearCartApi(): Promise<CartDto> {
+  return http.delete<CartDto>("/cart/clear");
 }

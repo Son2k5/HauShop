@@ -1,14 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { productService } from "../services/productService";
 import type { ProductDto } from "../@types/product.type";
+import { cachePolicy } from "../lib/cachePolicy";
 import { queryKeys } from "../lib/queryKeys";
 
 export function useProductBySlug(slug: string | undefined) {
   const result = useQuery<ProductDto, Error>({
     queryKey: slug ? queryKeys.products.detailBySlug(slug) : ["products", "detail", "slug", "empty"],
-    queryFn: () => productService.getBySlug(slug!),
+    queryFn: ({ signal }) => productService.getBySlug(slug!, signal),
     enabled: !!slug,
-    staleTime: 2 * 60 * 1000,
+    staleTime: cachePolicy.productDetail.staleTime,
+    gcTime: cachePolicy.productDetail.gcTime,
   });
 
   return {
@@ -22,9 +24,10 @@ export function useProductBySlug(slug: string | undefined) {
 export function useProductById(id: string | undefined) {
   const result = useQuery<ProductDto, Error>({
     queryKey: id ? queryKeys.products.detailById(id) : ["products", "detail", "id", "empty"],
-    queryFn: () => productService.getById(id!),
+    queryFn: ({ signal }) => productService.getById(id!, signal),
     enabled: !!id,
-    staleTime: 2 * 60 * 1000,
+    staleTime: cachePolicy.productDetail.staleTime,
+    gcTime: cachePolicy.productDetail.gcTime,
   });
 
   return {

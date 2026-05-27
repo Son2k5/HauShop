@@ -1,8 +1,7 @@
-using api.data;
 using api.DTOs.product;
+using api.services.interfaces.category;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace api.controllers.category
 {
@@ -10,11 +9,11 @@ namespace api.controllers.category
     [Route("api/category")]
     public class CategoryController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ICategoryService _categoryService;
 
-        public CategoryController(ApplicationDbContext context)
+        public CategoryController(ICategoryService categoryService)
         {
-            _context = context;
+            _categoryService = categoryService;
         }
 
         [HttpGet]
@@ -22,21 +21,7 @@ namespace api.controllers.category
         [ProducesResponseType(typeof(List<CategoryDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<List<CategoryDto>>> GetAll(CancellationToken ct)
         {
-            var categories = await _context.Categories
-                .AsNoTracking()
-                .OrderBy(category => category.ParentId)
-                .ThenBy(category => category.Name)
-                .Select(category => new CategoryDto
-                {
-                    Id = category.Id,
-                    Name = category.Name,
-                    Slug = category.Slug,
-                    ParentId = category.ParentId,
-                    IsActive = category.IsActive,
-                })
-                .ToListAsync(ct);
-
-            return Ok(categories);
+            return Ok(await _categoryService.GetAllAsync(ct));
         }
 
         [HttpGet("active")]
@@ -44,20 +29,7 @@ namespace api.controllers.category
         [ProducesResponseType(typeof(List<CategorySummaryDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<List<CategorySummaryDto>>> GetActive(CancellationToken ct)
         {
-            var categories = await _context.Categories
-                .AsNoTracking()
-                .Where(category => category.IsActive)
-                .OrderBy(category => category.ParentId)
-                .ThenBy(category => category.Name)
-                .Select(category => new CategorySummaryDto
-                {
-                    Id = category.Id,
-                    Name = category.Name,
-                    Slug = category.Slug,
-                })
-                .ToListAsync(ct);
-
-            return Ok(categories);
+            return Ok(await _categoryService.GetActiveAsync(ct));
         }
     }
 }

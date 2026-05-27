@@ -42,4 +42,11 @@ namespace api.DTOs.chat
     {
         public string? Subject { get; set; }
     }
+
+    public class AiChatResultDto
+    {
+        public ChatMessageDto AssistantMessage { get; set; } = new();
+        public bool RequiresHuman { get; set; }
+        public string Intent { get; set; } = "General";
+    }
 }

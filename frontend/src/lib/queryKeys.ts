@@ -28,6 +28,18 @@ export const queryKeys = {
     detailById: (id: string) => ["products", "detail", "id", id] as const,
     suggestions: (search: string) => ["products", "suggestions", search] as const,
   },
+  categories: {
+    all: ["categories", "all"] as const,
+    active: ["categories", "active"] as const,
+  },
+  cart: {
+    me: ["cart", "me"] as const,
+  },
+  orders: {
+    mineRoot: ["orders", "mine"] as const,
+    mine: (page: number, pageSize: number) => ["orders", "mine", page, pageSize] as const,
+    detail: (orderId: string) => ["orders", "detail", orderId] as const,
+  },
   wishlist: {
     ids: (userId: string) => ["wishlist", "ids", userId] as const,
     items: (userId: string) => ["wishlist", "items", userId] as const,

@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthActions } from "../../hooks/useAuthActions";
 import type { ApiError, UserDto } from "../../@types/auth.type";
+import { ROUTES } from "../../lib/routes";
 
 const SLIDES = [
   {
@@ -106,7 +107,7 @@ const SignUp = () => {
       const user: UserDto = await register({ firstName, lastName, email, phoneNumber: phone, password });
       setSuccessMsg(`Hello dear ${firstName}, Welcome you to HAUSHOP! Your account has been created successfully.`);
       setFirstName(""); setLastName(""); setEmail(""); setPhone(""); setPassword("");
-      navigate(user.role === "Admin" ? "/admin" : "/", { replace: true });
+      navigate(user.role === "Admin" ? ROUTES.ADMIN : ROUTES.HOME, { replace: true });
     } catch (err) {
       const e = err as ApiError;
       if (e.errors && Object.keys(e.errors).length > 0) {
@@ -196,11 +197,11 @@ const SignUp = () => {
               {SLIDES[activeSlide].caption}
             </div>
             <div className="flex items-center gap-3">
-              <Link to="/signin" className="text-white text-[10px] font-bold hover:opacity-80 transition-opacity">
+              <Link to={ROUTES.SIGN_IN} className="text-white text-[10px] font-bold hover:opacity-80 transition-opacity">
                 Sign In
               </Link>
               <Link
-                to="/signin"
+                to={ROUTES.SIGN_IN}
                 className="px-3 py-1 rounded-full border border-white text-white text-[10px] font-bold hover:bg-white hover:text-black transition-all duration-300"
               >
                 Login
@@ -246,7 +247,7 @@ const SignUp = () => {
                 </svg>
                 <p className="text-green-700 font-medium text-sm">{successMsg}</p>
               </div>
-              <Link to="/signin">
+              <Link to={ROUTES.SIGN_IN}>
                 <button className="w-full h-12 bg-[#E14D3D] text-white rounded-xl text-sm font-bold hover:bg-black transition-colors duration-300">
                   Sign In
                 </button>
@@ -422,7 +423,7 @@ const SignUp = () => {
 
               <p className="text-center text-[11px] text-[#6B7280]" style={{ fontFamily: "Inter, sans-serif" }}>
                 Already have an account?{" "}
-                <Link to="/signin" className="text-[#E14D3D] font-semibold hover:underline">
+                <Link to={ROUTES.SIGN_IN} className="text-[#E14D3D] font-semibold hover:underline">
                   Sign in
                 </Link>
               </p>

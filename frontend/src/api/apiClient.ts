@@ -1,5 +1,7 @@
 import axios from 'axios';
 import type { InternalAxiosRequestConfig } from 'axios';
+import { API_BASE_URL } from '../lib/env';
+import { ROUTES } from '../lib/routes';
 
 
 function toCamelCase(obj: any): any {
@@ -30,7 +32,7 @@ function normalizeErrorPayload(data: any): any {
 
 
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7288/api',
+    baseURL: API_BASE_URL,
     withCredentials: true,
 });
 
@@ -119,11 +121,9 @@ api.interceptors.response.use(
             } catch (refreshError) {
                 processQueue(refreshError);
 
-                console.error('Refresh token failed');
-
                 //  KHÔNG loop nữa → redirect luôn
                 if (!originalRequest.skipAuthRedirect) {
-                    window.location.href = '/signin';
+                    window.location.href = ROUTES.SIGN_IN;
                 }
 
                 return Promise.reject(refreshError);

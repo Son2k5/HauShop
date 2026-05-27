@@ -28,10 +28,10 @@ export default {
       },
 
       fontFamily: {
-        bodyFont: ["DM Sans", "sans-serif"],
-        titleFont: ["Poppins", "sans-serif"],
-        roboto: ["Roboto", "sans-serif"],
-        inter: ["Inter", "sans-serif"],
+        bodyFont: ["Inter", "Segoe UI", "Arial", "sans-serif"],
+        titleFont: ["Inter", "Segoe UI", "Arial", "sans-serif"],
+        roboto: ["Segoe UI", "Arial", "sans-serif"],
+        inter: ["Inter", "Segoe UI", "Arial", "sans-serif"],
       },
 
       colors: {

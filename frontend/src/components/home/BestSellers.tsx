@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { useProducts } from "../../hooks/useProducts";
+import { useWishlistIds } from "../../hooks/useWishlist";
 import ProductCard from "../product/ProductCard";
 import ProductCardSkeleton from "../product/Productcardskeleton";
 import { useScrollReveal } from "../../hooks/useScrollReveal";
@@ -39,13 +40,17 @@ export default function BestSellers() {
   const [activeTab, setActiveTab] = useState<TabKey>("all");
   const { ref, visible } = useScrollReveal<HTMLDivElement>();
   const activeTabDef = TABS.find((tab) => tab.key === activeTab)!;
+  const { data: wishlistIds = [] } = useWishlistIds({ enabled: visible });
 
   const { items, isLoading, isError, error } = useProducts({
     isActive: true,
     sortBy: "created",
     sortOrder: "desc",
     pageSize: 8,
+    includeTotal: false,
     search: activeTabDef.search,
+  }, {
+    enabled: visible,
   });
 
   const allResultsPath = activeTabDef.search
@@ -117,7 +122,10 @@ export default function BestSellers() {
                   }`}
                   style={{ transitionDelay: `${index * 60}ms` }}
                 >
-                  <ProductCard product={product} />
+                    <ProductCard
+                      product={product}
+                      initialWished={wishlistIds.includes(product.id)}
+                    />
                 </div>
               ))}
         </div>

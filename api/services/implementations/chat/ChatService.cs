@@ -1,5 +1,6 @@
 using api.data;
 using api.DTOs.chat;
+using api.exceptions;
 using api.models.entities;
 using api.models.enums;
 using api.services.interfaces.chat;
@@ -18,19 +19,43 @@ namespace api.services.implementations.chat
 
         public async Task<ChatRoomDto> GetOrCreateSupportRoomAsync(string customerId, string? subject, CancellationToken ct = default)
         {
+            var trimmedSubject = string.IsNullOrWhiteSpace(subject) ? "Support chat" : subject.Trim();
+            return await GetOrCreateRoomAsync(customerId, trimmedSubject, ChatRoomType.Support, "Support", ct);
+        }
+
+        public async Task<ChatRoomDto> GetOrCreateAiRoomAsync(string customerId, CancellationToken ct = default)
+        {
+            return await GetOrCreateRoomAsync(customerId, "AI assistant", ChatRoomType.AiSupport, "AI", ct);
+        }
+
+        private async Task<ChatRoomDto> GetOrCreateRoomAsync(
+            string customerId,
+            string subject,
+            ChatRoomType roomType,
+            string roomPrefix,
+            CancellationToken ct = default)
+        {
             if (string.IsNullOrWhiteSpace(customerId))
             {
-                throw new UnauthorizedAccessException("User is not authenticated.");
+                throw new ApiAuthenticationException("User is not authenticated.");
             }
 
             var customer = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == customerId, ct)
                 ?? throw new KeyNotFoundException("Customer not found");
 
+            var trimmedSubject = subject.Trim();
+            if (trimmedSubject.Length > 500)
+            {
+                throw new ArgumentException("Subject must be 500 characters or fewer.");
+            }
+
             var existing = await _context.SupportTickets
                 .AsNoTracking()
                 .Include(t => t.Customer)
                 .Include(t => t.ChatRoom)
-                .Where(t => t.CustomerId == customerId && t.Status != SupportTicketStatus.Closed)
+                .Where(t => t.CustomerId == customerId
+                    && t.Status != SupportTicketStatus.Closed
+                    && t.ChatRoom.Type == roomType)
                 .OrderByDescending(t => t.Created)
                 .FirstOrDefaultAsync(ct);
 
@@ -39,18 +64,12 @@ namespace api.services.implementations.chat
                 return await MapRoomAsync(existing.ChatRoomId, customerId, false, ct);
             }
 
-            var trimmedSubject = string.IsNullOrWhiteSpace(subject) ? "Support chat" : subject.Trim();
-            if (trimmedSubject.Length > 500)
-            {
-                throw new ArgumentException("Subject must be 500 characters or fewer.");
-            }
-
             var room = new ChatRoom
             {
                 Id = Guid.NewGuid().ToString(),
-                Name = $"Support - {BuildFullName(customer)}",
+                Name = $"{roomPrefix} - {BuildFullName(customer)}",
                 IsPrivate = true,
-                Type = ChatRoomType.Support,
+                Type = roomType,
                 Created = DateTime.UtcNow
             };
 
@@ -61,7 +80,7 @@ namespace api.services.implementations.chat
                 ChatRoomId = room.Id,
                 Subject = trimmedSubject,
                 Status = SupportTicketStatus.Open,
-                Priority = SupportTicketPriority.Medium,
+                Priority = roomType == ChatRoomType.AiSupport ? SupportTicketPriority.Low : SupportTicketPriority.Medium,
                 Created = DateTime.UtcNow
             };
 
@@ -76,27 +95,83 @@ namespace api.services.implementations.chat
         {
             var query = _context.SupportTickets
                 .AsNoTracking()
-                .Include(t => t.Customer)
-                .Include(t => t.ChatRoom)
-                .AsQueryable();
+                .Where(t => t.ChatRoom.Type == ChatRoomType.Support && !t.Subject.StartsWith("AI"));
 
             if (!isAdmin)
             {
                 query = query.Where(t => t.CustomerId == userId);
             }
 
-            var tickets = await query
+            var rows = await query
                 .OrderByDescending(t => t.ChatRoom.Messages.Max(m => (DateTime?)m.Created) ?? t.Created)
                 .Take(100)
+                .Select(t => new
+                {
+                    t.ChatRoomId,
+                    RoomName = t.ChatRoom.Name,
+                    RoomType = t.ChatRoom.Type,
+                    t.CustomerId,
+                    CustomerFirstName = t.Customer.FirstName,
+                    CustomerLastName = t.Customer.LastName,
+                    CustomerEmail = t.Customer.Email,
+                    t.AssignedToId,
+                    t.Status,
+                    t.Priority,
+                    t.Created,
+                    t.ClosedAt,
+                    UnreadCount = t.ChatRoom.Messages.Count(m => !m.IsRead && m.SenderId != userId),
+                    LastMessage = t.ChatRoom.Messages
+                        .OrderByDescending(m => m.Created)
+                        .Select(m => new
+                        {
+                            m.Id,
+                            m.ChatRoomId,
+                            m.SenderId,
+                            SenderFirstName = m.Sender.FirstName,
+                            SenderLastName = m.Sender.LastName,
+                            SenderEmail = m.Sender.Email,
+                            SenderRole = m.Sender.Role,
+                            m.Message,
+                            m.MessageType,
+                            m.IsRead,
+                            m.ReadAt,
+                            m.Created
+                        })
+                        .FirstOrDefault()
+                })
                 .ToListAsync(ct);
 
-            var rooms = new List<ChatRoomDto>();
-            foreach (var ticket in tickets)
+            return rows.Select(row => new ChatRoomDto
             {
-                rooms.Add(await MapTicketAsync(ticket, userId, isAdmin, ct));
-            }
-
-            return rooms;
+                Id = row.ChatRoomId,
+                Name = row.RoomName,
+                Type = row.RoomType.ToString(),
+                CustomerId = row.CustomerId,
+                CustomerName = BuildFullName(row.CustomerFirstName, row.CustomerLastName, row.CustomerEmail),
+                CustomerEmail = row.CustomerEmail,
+                AssignedToId = row.AssignedToId,
+                Status = row.Status.ToString(),
+                Priority = row.Priority.ToString(),
+                UnreadCount = row.UnreadCount,
+                LastMessage = row.LastMessage is null ? null : new ChatMessageDto
+                {
+                    Id = row.LastMessage.Id,
+                    ChatRoomId = row.LastMessage.ChatRoomId,
+                    SenderId = row.LastMessage.SenderId,
+                    SenderName = BuildFullName(
+                        row.LastMessage.SenderFirstName,
+                        row.LastMessage.SenderLastName,
+                        row.LastMessage.SenderEmail),
+                    SenderRole = row.LastMessage.SenderRole.ToString(),
+                    Message = row.LastMessage.Message,
+                    MessageType = row.LastMessage.MessageType.ToString(),
+                    IsRead = row.LastMessage.IsRead,
+                    ReadAt = row.LastMessage.ReadAt,
+                    Created = row.LastMessage.Created
+                },
+                Created = row.Created,
+                ClosedAt = row.ClosedAt
+            }).ToList();
         }
 
         public async Task<IReadOnlyList<ChatMessageDto>> GetMessagesAsync(string roomId, string userId, bool isAdmin, int take = 50, CancellationToken ct = default)
@@ -175,6 +250,112 @@ namespace api.services.implementations.chat
             return MapMessage(chatMessage);
         }
 
+        public async Task<ChatMessageDto> SendAiCustomerMessageAsync(string roomId, string senderId, string message, string messageType = "Text", CancellationToken ct = default)
+        {
+            await EnsureCanAccessRoomAsync(roomId, senderId, false, ct);
+
+            var normalizedMessage = message?.Trim();
+            if (string.IsNullOrWhiteSpace(normalizedMessage))
+            {
+                throw new ArgumentException("Message is required.");
+            }
+
+            if (normalizedMessage.Length > 5000)
+            {
+                throw new ArgumentException("Message must be 5000 characters or fewer.");
+            }
+
+            if (!Enum.TryParse<ChatMessageType>(messageType, true, out var parsedType))
+            {
+                throw new ArgumentException("Message type is invalid.");
+            }
+
+            var room = await _context.ChatRooms.FirstOrDefaultAsync(r => r.Id == roomId, ct)
+                ?? throw new KeyNotFoundException("Chat room not found");
+
+            if (room.Type != ChatRoomType.AiSupport)
+            {
+                throw new InvalidOperationException("Only AI chat rooms are supported.");
+            }
+
+            var sender = await _context.Users.FirstOrDefaultAsync(u => u.Id == senderId, ct)
+                ?? throw new KeyNotFoundException("Sender not found");
+
+            var chatMessage = new ChatMessage
+            {
+                Id = Guid.NewGuid().ToString(),
+                ChatRoomId = roomId,
+                SenderId = senderId,
+                Message = normalizedMessage,
+                MessageType = parsedType,
+                IsRead = false,
+                Created = DateTime.UtcNow
+            };
+
+            _context.ChatMessages.Add(chatMessage);
+            await _context.SaveChangesAsync(ct);
+
+            chatMessage.Sender = sender;
+            return MapMessage(chatMessage);
+        }
+
+        public async Task<ChatMessageDto> SendAssistantMessageAsync(string roomId, string message, CancellationToken ct = default)
+        {
+            var ticket = await _context.SupportTickets
+                .Include(t => t.ChatRoom)
+                .FirstOrDefaultAsync(t => t.ChatRoomId == roomId && t.Status != SupportTicketStatus.Closed, ct)
+                ?? throw new KeyNotFoundException("Support ticket not found");
+
+            if (ticket.ChatRoom.Type != ChatRoomType.AiSupport)
+            {
+                throw new InvalidOperationException("Assistant messages can only be sent to AI chat rooms.");
+            }
+
+            var assistant = await GetOrCreateAssistantUserAsync(ct);
+            var normalizedMessage = message?.Trim();
+            if (string.IsNullOrWhiteSpace(normalizedMessage))
+            {
+                throw new ArgumentException("Message is required.");
+            }
+
+            if (normalizedMessage.Length > 5000)
+            {
+                normalizedMessage = normalizedMessage[..5000];
+            }
+
+            var chatMessage = new ChatMessage
+            {
+                Id = Guid.NewGuid().ToString(),
+                ChatRoomId = roomId,
+                SenderId = assistant.Id,
+                Message = normalizedMessage,
+                MessageType = ChatMessageType.Text,
+                IsRead = false,
+                Created = DateTime.UtcNow
+            };
+
+            if (ticket.Status == SupportTicketStatus.Open)
+            {
+                ticket.Status = SupportTicketStatus.InProgress;
+            }
+
+            _context.ChatMessages.Add(chatMessage);
+            await _context.SaveChangesAsync(ct);
+
+            chatMessage.Sender = assistant;
+            return MapMessage(chatMessage);
+        }
+
+        public async Task EscalateToHumanAsync(string roomId, CancellationToken ct = default)
+        {
+            var ticket = await _context.SupportTickets.FirstOrDefaultAsync(t => t.ChatRoomId == roomId, ct)
+                ?? throw new KeyNotFoundException("Support ticket not found");
+
+            ticket.Status = SupportTicketStatus.Waiting;
+            ticket.Priority = SupportTicketPriority.High;
+            await _context.SaveChangesAsync(ct);
+        }
+
         public async Task MarkAsReadAsync(string roomId, string readerId, bool isAdmin, CancellationToken ct = default)
         {
             await EnsureCanAccessRoomAsync(roomId, readerId, isAdmin, ct);
@@ -207,7 +388,7 @@ namespace api.services.implementations.chat
 
             if (string.IsNullOrWhiteSpace(userId))
             {
-                throw new UnauthorizedAccessException("User is not authenticated.");
+                throw new ApiAuthenticationException("User is not authenticated.");
             }
 
             var ticket = await _context.SupportTickets
@@ -217,7 +398,7 @@ namespace api.services.implementations.chat
 
             if (!isAdmin && ticket.CustomerId != userId)
             {
-                throw new UnauthorizedAccessException("You cannot access this chat room.");
+                throw new ForbiddenAccessException("You cannot access this chat room.");
             }
 
             if (ticket.Status == SupportTicketStatus.Closed)
@@ -286,10 +467,41 @@ namespace api.services.implementations.chat
             };
         }
 
-        private static string BuildFullName(User user)
+        private static string BuildFullName(string? firstName, string? lastName, string email)
         {
-            var fullName = $"{user.FirstName} {user.LastName}".Trim();
-            return string.IsNullOrWhiteSpace(fullName) ? user.Email : fullName;
+            var fullName = $"{firstName} {lastName}".Trim();
+            return string.IsNullOrWhiteSpace(fullName) ? email : fullName;
+        }
+
+        private static string BuildFullName(User user) =>
+            BuildFullName(user.FirstName, user.LastName, user.Email);
+
+        private async Task<User> GetOrCreateAssistantUserAsync(CancellationToken ct)
+        {
+            const string assistantId = "hau-ai-assistant";
+            var assistant = await _context.Users.FirstOrDefaultAsync(u => u.Id == assistantId, ct);
+            if (assistant is not null)
+            {
+                return assistant;
+            }
+
+            assistant = new User
+            {
+                Id = assistantId,
+                Email = "ai-assistant@haushop.local",
+                PhoneNumber = string.Empty,
+                FirstName = "HauShop AI",
+                LastName = string.Empty,
+                PasswordHash = string.Empty,
+                Provider = Provider.Local,
+                Role = Role.Admin,
+                IsOnline = true,
+                Created = DateTime.UtcNow
+            };
+
+            _context.Users.Add(assistant);
+            await _context.SaveChangesAsync(ct);
+            return assistant;
         }
     }
 }

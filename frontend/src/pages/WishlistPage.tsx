@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import ProductCard from "../components/product/ProductCard";
 import { useToast } from "../context/toastContext";
 import { useToggleWishlist, useWishlistItems } from "../hooks/useWishlist";
+import { logger } from "../lib/logger";
 
 export default function WishlistPage() {
   const { showToast } = useToast();
@@ -18,7 +19,7 @@ export default function WishlistPage() {
       await toggleWishlist.mutateAsync({ productId, wished: true });
       showToast("Đã xóa khỏi wishlist", "success");
     } catch (error) {
-      console.error("Remove wishlist item failed:", error);
+      logger.error("Remove wishlist item failed", error);
       showToast("Không thể xóa sản phẩm", "error");
     } finally {
       setRemovingProductId(null);
@@ -99,7 +100,7 @@ export default function WishlistPage() {
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {items.map((item) => (
               <div key={item.id}>
-                <ProductCard product={item.product} />
+                <ProductCard product={item.product} initialWished />
                 <button
                   onClick={() => handleRemove(item.productId)}
                   disabled={removingProductId === item.productId}

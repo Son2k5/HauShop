@@ -64,6 +64,38 @@ namespace api.controllers.cart
             return Ok(result);
         }
 
+        [HttpPatch("items/{cartItemId}/increase")]
+        public async Task<IActionResult> IncreaseItemQuantity(
+            [FromRoute] string cartItemId,
+            [FromQuery] int quantity,
+            CancellationToken ct)
+        {
+            var userId = TryGetUserId();
+            if (userId == null)
+                return Unauthorized(new { message = "KhÃ´ng xÃ¡c Ä‘á»‹nh Ä‘Æ°á»£c ngÆ°á»i dÃ¹ng." });
+
+            var result = await _cartService.IncreaseItemQuantityAsync(
+                userId,
+                cartItemId,
+                quantity <= 0 ? 1 : quantity,
+                ct);
+
+            return Ok(result);
+        }
+
+        [HttpPost("merge-guest")]
+        public async Task<IActionResult> MergeGuestCart(
+            [FromBody] MergeGuestCartDto dto,
+            CancellationToken ct)
+        {
+            var userId = TryGetUserId();
+            if (userId == null)
+                return Unauthorized(new { message = "KhÃ´ng xÃ¡c Ä‘á»‹nh Ä‘Æ°á»£c ngÆ°á»i dÃ¹ng." });
+
+            var result = await _cartService.MergeGuestCartAsync(userId, dto, ct);
+            return Ok(result);
+        }
+
         [HttpDelete("items/{cartItemId}")]
         public async Task<IActionResult> RemoveItem(
             [FromRoute] string cartItemId,

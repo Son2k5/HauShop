@@ -1,11 +1,16 @@
+using System.Diagnostics;
+using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
 using api.DTOs.product;
+using api.infrastructure.redis;
 using api.mappings;
 using api.models.entities;
 using api.repositories.interfaces;
+using api.services.interfaces.caching;
 using api.services.interfaces.cloud;
 using api.services.interfaces.product;
-using System.Text.RegularExpressions;
-using System.Threading;
+using Microsoft.Extensions.Options;
 
 namespace api.services.implementations.product
 {
@@ -13,59 +18,150 @@ namespace api.services.implementations.product
     {
         private readonly IProductRepository _repo;
         private readonly ICloudinaryService _cloudinary;
+        private readonly IRedisCacheService _cache;
+        private readonly RedisOptions _redisOptions;
         private readonly ILogger<ProductService> _logger;
 
         public ProductService(
             IProductRepository repo,
             ICloudinaryService cloudinary,
+            IRedisCacheService cache,
+            IOptions<RedisOptions> redisOptions,
             ILogger<ProductService> logger)
         {
             _repo = repo;
             _cloudinary = cloudinary;
+            _cache = cache;
+            _redisOptions = redisOptions.Value;
             _logger = logger;
         }
-
-        // ── Read ─────────────────────────────────────────────────────────────────
 
         public async Task<PagedProductDto> GetProductsAsync(
             ProductQueryDto query,
             CancellationToken ct = default)
         {
-            // Repo đã project thẳng sang DTO — không cần map lại
-            // Repo đã tự clamp Page và PageSize
-            var (items, total) = await _repo.GetPagedAsync(query, ct);
+            var cacheKey = RedisCacheKeys.ProductList(query);
+            var stopwatch = Stopwatch.StartNew();
 
-            return new PagedProductDto
+            if (ShouldBypassProductListCache(query))
             {
-                Items = items,
-                Total = total,
-                Page = query.Page,
-                PageSize = query.PageSize,
-            };
+                var uncachedResult = await LoadProductsFromRepositoryAsync(query, ct);
+                stopwatch.Stop();
+
+                if (stopwatch.ElapsedMilliseconds > 500)
+                {
+                    _logger.LogInformation(
+                        "Uncached product search completed in {ElapsedMs}ms. Search={Search} Page={Page} PageSize={PageSize} IncludeTotal={IncludeTotal}",
+                        stopwatch.ElapsedMilliseconds,
+                        query.Search,
+                        query.Page,
+                        query.PageSize,
+                        query.IncludeTotal);
+                }
+
+                return uncachedResult;
+            }
+
+            var result = await _cache.GetOrSetAsync(
+                cacheKey,
+                token => LoadProductsFromRepositoryAsync(query, token),
+                TimeSpan.FromMinutes(_redisOptions.ProductListTtlMinutes),
+                ct: ct);
+
+            stopwatch.Stop();
+            if (stopwatch.ElapsedMilliseconds > 500)
+            {
+                _logger.LogInformation(
+                    "Product search completed in {ElapsedMs}ms. Search={Search} Page={Page} PageSize={PageSize} IncludeTotal={IncludeTotal}",
+                    stopwatch.ElapsedMilliseconds,
+                    query.Search,
+                    query.Page,
+                    query.PageSize,
+                    query.IncludeTotal);
+            }
+
+            return result;
+        }
+
+        private async Task<PagedProductDto> LoadProductsFromRepositoryAsync(
+            ProductQueryDto query,
+            CancellationToken ct)
+        {
+            var dbStopwatch = Stopwatch.StartNew();
+            PagedProductDto value;
+
+            if (IsLatestHomepageQuery(query))
+            {
+                var items = await _repo.GetLatestActiveSummariesAsync(query.PageSize, ct);
+                value = new PagedProductDto
+                {
+                    Items = items,
+                    Total = 0,
+                    Page = 1,
+                    PageSize = Math.Clamp(query.PageSize, 1, 100),
+                    HasNextPage = false,
+                };
+            }
+            else
+            {
+                var (items, total, hasNextPage) = await _repo.GetPagedAsync(query, ct);
+
+                value = new PagedProductDto
+                {
+                    Items = items,
+                    Total = total,
+                    Page = Math.Max(query.Page, 1),
+                    PageSize = Math.Clamp(query.PageSize, 1, 100),
+                    HasNextPage = hasNextPage,
+                };
+            }
+
+            dbStopwatch.Stop();
+            _logger.LogInformation(
+                "Product search loaded from MySQL in {ElapsedMs}ms. Search={Search} Page={Page} PageSize={PageSize} IncludeTotal={IncludeTotal}",
+                dbStopwatch.ElapsedMilliseconds,
+                query.Search,
+                query.Page,
+                query.PageSize,
+                query.IncludeTotal);
+
+            return value;
         }
 
         public async Task<ProductDto> GetByIdAsync(string id, CancellationToken ct = default)
         {
-            var product = await _repo.GetByIdWithIncludesAsync(id, ct)
-                ?? throw new KeyNotFoundException($"Không tìm thấy sản phẩm: {id}");
+            return await _cache.GetOrSetAsync(
+                RedisCacheKeys.ProductDetail(id),
+                async token =>
+                {
+                    var product = await _repo.GetByIdWithIncludesAsync(id, token)
+                        ?? throw new KeyNotFoundException($"Product not found: {id}");
 
-            return ProductMapping.MapToDto(product);
+                    return ProductMapping.MapToDto(product);
+                },
+                TimeSpan.FromMinutes(_redisOptions.ProductDetailTtlMinutes),
+                ct: ct);
         }
 
         public async Task<ProductDto> GetBySlugAsync(string slug, CancellationToken ct = default)
         {
-            var product = await _repo.GetBySlugAsync(slug, ct)
-                ?? throw new KeyNotFoundException($"Không tìm thấy sản phẩm: {slug}");
+            return await _cache.GetOrSetAsync(
+                RedisCacheKeys.ProductSlug(slug),
+                async token =>
+                {
+                    var product = await _repo.GetBySlugAsync(slug, token)
+                        ?? throw new KeyNotFoundException($"Product not found: {slug}");
 
-            return ProductMapping.MapToDto(product);
+                    return ProductMapping.MapToDto(product);
+                },
+                TimeSpan.FromMinutes(_redisOptions.ProductDetailTtlMinutes),
+                ct: ct);
         }
-
-        // ── Create ───────────────────────────────────────────────────────────────
 
         public async Task<ProductDto> CreateAsync(CreateProductDto dto, CancellationToken ct = default)
         {
             if (await _repo.ExistsSkuAsync(dto.Sku, ct: ct))
-                throw new InvalidOperationException($"SKU '{dto.Sku}' đã tồn tại");
+                throw new InvalidOperationException($"SKU '{dto.Sku}' already exists");
 
             var slug = BuildSlug(dto.Slug ?? dto.Name);
             if (await _repo.ExistsSlugAsync(slug, ct: ct))
@@ -89,35 +185,36 @@ namespace api.services.implementations.product
             };
 
             _repo.Add(product);
-            await _repo.SaveChangesAsync();
+            await _repo.SaveChangesAsync(ct);
 
-            // SyncCategories có transaction nội bộ — gọi riêng sau SaveChanges
             if (dto.CategoryIds?.Count > 0 == true)
                 await _repo.SyncCategoriesAsync(product.Id, dto.CategoryIds, ct);
+
+            var createdProduct = await _repo.GetByIdWithIncludesAsync(product.Id, ct)
+                ?? throw new InvalidOperationException("Failed to retrieve created product");
+
+            await InvalidateProductCollectionsAsync(ct);
 
             _logger.LogInformation("Product created: {Id} | {Sku} | {Name}",
                 product.Id, product.Sku, product.Name);
 
-            var createdProduct = await _repo.GetByIdWithIncludesAsync(product.Id, ct)
-                ?? throw new InvalidOperationException("Failed to retrieve created product");
             return ProductMapping.MapToDto(createdProduct);
         }
-
-        // ── Update ───────────────────────────────────────────────────────────────
 
         public async Task<ProductDto> UpdateAsync(
             string id,
             UpdateProductDto dto,
             CancellationToken ct = default)
         {
-            // GetByIdAsync (generic, không include) đủ để update scalar fields
             var product = await _repo.GetByIdAsync(id, ct)
-                ?? throw new KeyNotFoundException($"Không tìm thấy sản phẩm: {id}");
+                ?? throw new KeyNotFoundException($"Product not found: {id}");
+
+            var oldSlug = product.Slug;
 
             if (dto.Sku != null && dto.Sku != product.Sku)
             {
                 if (await _repo.ExistsSkuAsync(dto.Sku, id, ct))
-                    throw new InvalidOperationException($"SKU '{dto.Sku}' đã tồn tại");
+                    throw new InvalidOperationException($"SKU '{dto.Sku}' already exists");
                 product.Sku = dto.Sku.Trim();
             }
 
@@ -125,7 +222,6 @@ namespace api.services.implementations.product
             {
                 product.Name = dto.Name.Trim();
 
-                // Tự sinh slug mới khi name thay đổi, trừ khi dto.Slug được truyền tường minh
                 if (dto.Slug == null)
                 {
                     var autoSlug = BuildSlug(product.Name);
@@ -139,7 +235,7 @@ namespace api.services.implementations.product
             {
                 var newSlug = BuildSlug(dto.Slug);
                 if (newSlug != product.Slug && await _repo.ExistsSlugAsync(newSlug, id, ct))
-                    throw new InvalidOperationException($"Slug '{newSlug}' đã tồn tại");
+                    throw new InvalidOperationException($"Slug '{newSlug}' already exists");
                 product.Slug = newSlug;
             }
 
@@ -149,13 +245,12 @@ namespace api.services.implementations.product
             if (dto.IsActive.HasValue) product.IsActive = dto.IsActive.Value;
             if (dto.Stock.HasValue) product.Stock = dto.Stock.Value;
 
-            // "null" string = xóa brand (tránh nullable conflict qua JSON)
             if (dto.BrandId != null)
                 product.BrandId = dto.BrandId == "null" ? null : dto.BrandId;
 
-            // Thay ảnh → xóa ảnh cũ trên Cloudinary sau khi DB update thành công
             var oldImageKey = product.ImageKey;
-            if (!string.IsNullOrEmpty(dto.ImageKey) && !string.Equals(dto.ImageKey, product.ImageKey, StringComparison.Ordinal))
+            if (!string.IsNullOrEmpty(dto.ImageKey) &&
+                !string.Equals(dto.ImageKey, product.ImageKey, StringComparison.Ordinal))
             {
                 product.ImageKey = dto.ImageKey;
                 product.ImageUrl = dto.ImageUrl ?? string.Empty;
@@ -163,10 +258,10 @@ namespace api.services.implementations.product
 
             product.Updated = DateTime.UtcNow;
             _repo.Update(product);
-            await _repo.SaveChangesAsync();
+            await _repo.SaveChangesAsync(ct);
 
-            // Xóa ảnh cũ sau khi DB update thành công
-            if (!string.IsNullOrEmpty(oldImageKey) && !string.Equals(oldImageKey, product.ImageKey, StringComparison.Ordinal))
+            if (!string.IsNullOrEmpty(oldImageKey) &&
+                !string.Equals(oldImageKey, product.ImageKey, StringComparison.Ordinal))
             {
                 try
                 {
@@ -182,27 +277,28 @@ namespace api.services.implementations.product
             if (dto.CategoryIds != null)
                 await _repo.SyncCategoriesAsync(id, dto.CategoryIds, ct);
 
-            _logger.LogInformation("Product updated: {Id} | {Name}", product.Id, product.Name);
-
             var updatedProduct = await _repo.GetByIdWithIncludesAsync(id, ct)
                 ?? throw new InvalidOperationException("Failed to retrieve updated product");
+
+            await InvalidateProductAsync(id, oldSlug, ct);
+            await InvalidateProductAsync(id, updatedProduct.Slug, ct);
+
+            _logger.LogInformation("Product updated: {Id} | {Name}", product.Id, product.Name);
+
             return ProductMapping.MapToDto(updatedProduct);
         }
-
-        // ── Delete ───────────────────────────────────────────────────────────────
 
         public async Task DeleteAsync(string id, CancellationToken ct = default)
         {
             var product = await _repo.GetByIdAsync(id, ct)
-                ?? throw new KeyNotFoundException($"Không tìm thấy sản phẩm: {id}");
+                ?? throw new KeyNotFoundException($"Product not found: {id}");
 
             var imageKey = product.ImageKey;
+            var slug = product.Slug;
 
             _repo.Delete(product);
-            await _repo.SaveChangesAsync();
+            await _repo.SaveChangesAsync(ct);
 
-            // Xóa ảnh Cloudinary sau khi DB commit thành công
-            // Nếu xóa Cloudinary fail, DB vẫn consistent (chỉ có ảnh orphan)
             if (!string.IsNullOrEmpty(imageKey))
             {
                 try
@@ -216,56 +312,89 @@ namespace api.services.implementations.product
                 }
             }
 
+            await InvalidateProductAsync(id, slug, ct);
+
             _logger.LogInformation("Product deleted: {Id}", id);
         }
-
-        // ── Toggle active ─────────────────────────────────────────────────────────
 
         public async Task<ProductDto> ToggleActiveAsync(string id, CancellationToken ct = default)
         {
             var product = await _repo.GetByIdAsync(id, ct)
-                ?? throw new KeyNotFoundException($"Không tìm thấy sản phẩm: {id}");
+                ?? throw new KeyNotFoundException($"Product not found: {id}");
 
             product.IsActive = !product.IsActive;
             product.Updated = DateTime.UtcNow;
 
             _repo.Update(product);
-            await _repo.SaveChangesAsync();
-
-            _logger.LogInformation("Product toggled: {Id} → IsActive={IsActive}",
-                product.Id, product.IsActive);
+            await _repo.SaveChangesAsync(ct);
 
             var toggledProduct = await _repo.GetByIdWithIncludesAsync(id, ct)
                 ?? throw new InvalidOperationException("Failed to retrieve toggled product");
+
+            await InvalidateProductAsync(id, toggledProduct.Slug, ct);
+
+            _logger.LogInformation("Product toggled: {Id} -> IsActive={IsActive}",
+                product.Id, product.IsActive);
+
             return ProductMapping.MapToDto(toggledProduct);
         }
 
-        // ── Slug builder (tiếng Việt) ─────────────────────────────────────────────
-
-        private static readonly Dictionary<string, string> VietnameseMap = new()
+        private async Task InvalidateProductAsync(string productId, string? slug, CancellationToken ct)
         {
-            {"à","a"},{"á","a"},{"ả","a"},{"ã","a"},{"ạ","a"},
-            {"ă","a"},{"ằ","a"},{"ắ","a"},{"ẳ","a"},{"ẵ","a"},{"ặ","a"},
-            {"â","a"},{"ầ","a"},{"ấ","a"},{"ẩ","a"},{"ẫ","a"},{"ậ","a"},
-            {"đ","d"},
-            {"è","e"},{"é","e"},{"ẻ","e"},{"ẽ","e"},{"ẹ","e"},
-            {"ê","e"},{"ề","e"},{"ế","e"},{"ể","e"},{"ễ","e"},{"ệ","e"},
-            {"ì","i"},{"í","i"},{"ỉ","i"},{"ĩ","i"},{"ị","i"},
-            {"ò","o"},{"ó","o"},{"ỏ","o"},{"õ","o"},{"ọ","o"},
-            {"ô","o"},{"ồ","o"},{"ố","o"},{"ổ","o"},{"ỗ","o"},{"ộ","o"},
-            {"ơ","o"},{"ờ","o"},{"ớ","o"},{"ở","o"},{"ỡ","o"},{"ợ","o"},
-            {"ù","u"},{"ú","u"},{"ủ","u"},{"ũ","u"},{"ụ","u"},
-            {"ư","u"},{"ừ","u"},{"ứ","u"},{"ử","u"},{"ữ","u"},{"ự","u"},
-            {"ỳ","y"},{"ý","y"},{"ỷ","y"},{"ỹ","y"},{"ỵ","y"},
-        };
+            await _cache.RemoveAsync(RedisCacheKeys.ProductDetail(productId), ct);
+
+            if (!string.IsNullOrWhiteSpace(slug))
+                await _cache.RemoveAsync(RedisCacheKeys.ProductSlug(slug), ct);
+
+            await InvalidateProductCollectionsAsync(ct);
+        }
+
+        private async Task InvalidateProductCollectionsAsync(CancellationToken ct)
+        {
+            await _cache.RemoveByPrefixAsync(RedisCacheKeys.ProductListPrefix, ct);
+            await _cache.RemoveByPrefixAsync(RedisCacheKeys.HomepagePrefix, ct);
+        }
+
+        private static bool ShouldBypassProductListCache(ProductQueryDto query)
+        {
+            return !string.IsNullOrWhiteSpace(query.Search)
+                && query.IncludeTotal == false
+                && query.Page <= 1
+                && query.PageSize <= 5;
+        }
+
+        private static bool IsLatestHomepageQuery(ProductQueryDto query)
+        {
+            return query.Page <= 1
+                && query.PageSize <= 12
+                && query.IncludeTotal == false
+                && query.IsActive == true
+                && string.IsNullOrWhiteSpace(query.Search)
+                && string.IsNullOrWhiteSpace(query.BrandId)
+                && string.IsNullOrWhiteSpace(query.CategoryId)
+                && !query.MinPrice.HasValue
+                && !query.MaxPrice.HasValue
+                && string.Equals(query.SortBy, "created", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(query.SortOrder, "desc", StringComparison.OrdinalIgnoreCase);
+        }
 
         private static string BuildSlug(string input)
         {
-            var s = input.Trim().ToLowerInvariant();
-            foreach (var kv in VietnameseMap) s = s.Replace(kv.Key, kv.Value);
-            s = Regex.Replace(s, @"[^a-z0-9\s-]", "");
-            s = Regex.Replace(s.Trim(), @"\s+", "-");
-            return s;
+            var normalized = input.Trim().ToLowerInvariant().Normalize(NormalizationForm.FormD);
+            var builder = new StringBuilder(normalized.Length);
+
+            foreach (var c in normalized)
+            {
+                var category = CharUnicodeInfo.GetUnicodeCategory(c);
+                if (category != UnicodeCategory.NonSpacingMark)
+                    builder.Append(c == 'đ' ? 'd' : c);
+            }
+
+            var slug = builder.ToString().Normalize(NormalizationForm.FormC);
+            slug = Regex.Replace(slug, @"[^a-z0-9\s-]", "");
+            slug = Regex.Replace(slug.Trim(), @"\s+", "-");
+            slug = Regex.Replace(slug, "-{2,}", "-");
+            return slug;
         }
     }
 }

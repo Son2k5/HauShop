@@ -35,14 +35,17 @@ namespace api.controllers.order
         }
 
         [HttpGet("my")]
-        [ProducesResponseType(typeof(List<OrderDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetMyOrders(CancellationToken ct)
+        [ProducesResponseType(typeof(PagedOrderDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetMyOrders(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            CancellationToken ct = default)
         {
             var userId = TryGetUserId();
             if (userId == null)
                 return Unauthorized(new { message = "Unauthorized" });
 
-            var result = await _orderService.GetMyOrdersAsync(userId, ct);
+            var result = await _orderService.GetMyOrdersAsync(userId, page, pageSize, ct);
             return Ok(result);
         }
 

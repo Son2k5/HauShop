@@ -5,8 +5,8 @@ COPY frontend/package*.json ./
 RUN npm install
 
 COPY frontend/ ./
-ARG VITE_API_BASE_URL=http://localhost:8080/api
-ARG VITE_SIGNALR_URL=http://localhost:8080/hubs/chat
+ARG VITE_API_BASE_URL=https://localhost:7288/api
+ARG VITE_SIGNALR_URL=https://localhost:7288/hubs/chat
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 ENV VITE_SIGNALR_URL=$VITE_SIGNALR_URL
 RUN npm run build

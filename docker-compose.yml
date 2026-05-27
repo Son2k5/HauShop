@@ -12,8 +12,34 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    networks:
+      - haushop-network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: haushop-redis
+    restart: unless-stopped
+    command:
+      - redis-server
+      - /usr/local/etc/redis/redis.conf
+      - --requirepass
+      - haushop_redis_password
+    expose:
+      - "6379"
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./infra/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - haushop-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "haushop_redis_password", "ping"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -27,32 +53,67 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: Server=mysql;Port=3306;Database=haushop;User=haushop;Password=haushop_password;
+      ASPNETCORE_URLS: "https://+:8443;http://+:8080"
+      ASPNETCORE_Kestrel__Certificates__Default__Path: /https/aspnetapp.pfx
+      ASPNETCORE_Kestrel__Certificates__Default__Password: haushop-local-dev
+      ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=haushop;User=haushop;Password=haushop_password;"
+      Database__ServerVersion: "8.4.0-mysql"
+      Database__ApplyMigrationsOnStartup: "false"
+      Database__MaxRetryCount: 2
+      Database__MaxRetryDelaySeconds: 5
+      Warmup__ProductSearch__Enabled: "false"
+      Warmup__ProductSearch__DelaySeconds: 30
+      Redis__Configuration: "redis:6379,password=haushop_redis_password,abortConnect=false,connectRetry=1,connectTimeout=1000,syncTimeout=1000,asyncTimeout=1000"
+      Redis__InstanceName: "haushop:"
+      Redis__ProductListTtlMinutes: 10
+      Redis__ProductDetailTtlMinutes: 30
+      Redis__CategoryTtlMinutes: 60
+      Redis__HomepageTtlMinutes: 5
+      Redis__CartTtlHours: 24
+      Redis__OtpTtlMinutes: 15
+      RateLimiting__Login__PermitLimit: 5
+      RateLimiting__Login__WindowSeconds: 300
       Jwt__Key: change-this-development-key-to-a-long-random-secret-with-at-least-sixty-four-characters-1234567890
       Jwt__Issuer: HauShopAPI
       Jwt__Audience: HauShopClient
       Cors__AllowedOrigins__0: http://localhost:5173
       Cors__AllowedOrigins__1: https://localhost:3000
-      AppUrl: http://localhost:5173
+      Google__RedirectUri: "https://localhost:7288/api/auth/google/callback"
+      Google__FrontendUrl: "http://localhost:5173"
+      VnPay__ReturnUrl: "https://localhost:7288/api/order/vnpay-return"
+      AppUrl: "http://localhost:5173"
+    volumes:
+      - ./api/certs:/https:ro
     ports:
       - "8080:8080"
+      - "7288:8443"
+    networks:
+      - haushop-network
 
   frontend:
     build:
       context: .
       dockerfile: frontend/Dockerfile
       args:
-        VITE_API_BASE_URL: http://localhost:8080/api
-        VITE_SIGNALR_URL: http://localhost:8080/hubs/chat
+        VITE_API_BASE_URL: "https://localhost:7288/api"
+        VITE_SIGNALR_URL: "https://localhost:7288/hubs/chat"
     container_name: haushop-frontend
     restart: unless-stopped
     depends_on:
       - api
     ports:
       - "5173:80"
+    networks:
+      - haushop-network
 
 volumes:
   mysql_data:
+  redis_data:
+
+networks:
+  haushop-network:
+    driver: bridge

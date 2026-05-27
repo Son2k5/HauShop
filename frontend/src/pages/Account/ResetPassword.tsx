@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { authService } from "../../services/authService";
 import { type ApiError } from "../../@types/auth.type";
+import { ROUTES } from "../../lib/routes";
 
 // ── OTP length ────────────────────────────────────────────────────
 const OTP_LENGTH = 6;
@@ -266,7 +267,7 @@ const ResetPassword = () => {
               {SLIDES[activeSlide].caption}
             </div>
             <div className="flex items-center gap-3">
-              <Link to="/signin" className="text-white text-[10px] font-bold hover:opacity-80 transition-opacity">Sign In</Link>
+              <Link to={ROUTES.SIGN_IN} className="text-white text-[10px] font-bold hover:opacity-80 transition-opacity">Sign In</Link>
               <Link to="/signup" className="px-3 py-1 rounded-full border border-white text-white text-[10px] font-bold hover:bg-white hover:text-black transition-all duration-300">Join Us</Link>
             </div>
           </div>
@@ -335,7 +336,7 @@ const ResetPassword = () => {
                   </p>
                 </div>
                 <button
-                  onClick={() => navigate("/signin", { replace: true })}
+                  onClick={() => navigate(ROUTES.SIGN_IN, { replace: true })}
                   className="w-full h-[52px] rounded-xl text-white text-sm font-bold tracking-wide hover:bg-black transition-colors duration-300 flex items-center justify-center gap-2"
                   style={{ background: "#E14D3D", boxShadow: "0px 10px 15px -3px rgba(225,77,61,0.20)", fontFamily: "Inter, sans-serif" }}
                 >

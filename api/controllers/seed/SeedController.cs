@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using api.models.enums;
 using api.services.implementations.seed;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace api.controllers.seed
@@ -10,6 +12,7 @@ namespace api.controllers.seed
     [ApiController]
     [Route("api/seed")]
     [Tags("Seed")]
+    [Authorize(Roles = nameof(Role.Admin))]
     public class SeedController : ControllerBase
     {
         private readonly SeedService _seedService;

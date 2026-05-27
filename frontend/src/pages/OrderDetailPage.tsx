@@ -97,8 +97,8 @@ export default function OrderDetailPage() {
         <h2 className="text-lg font-semibold mb-4">Sản phẩm</h2>
 
         <div className="space-y-4">
-          {order.items.map((item, idx) => (
-            <div key={idx} className="border-b border-gray-100 pb-4 last:border-none">
+          {order.items.map((item) => (
+            <div key={item.id} className="border-b border-gray-100 pb-4 last:border-none">
               <p className="font-medium">{item.productName}</p>
               <p className="text-sm text-lightText">
                 {item.variantSku ? `SKU: ${item.variantSku}` : ""}
@@ -142,8 +142,8 @@ export default function OrderDetailPage() {
         <h2 className="text-lg font-semibold mb-4">Thanh toán</h2>
 
         <div className="space-y-3">
-          {order.payments.map((payment, idx) => (
-            <div key={idx} className="text-sm border border-gray-100 rounded-lg p-3">
+          {order.payments.map((payment) => (
+            <div key={payment.id} className="text-sm border border-gray-100 rounded-lg p-3">
               <div className="flex justify-between mb-1">
                 <span className="font-medium">Phương thức:</span>
                 <span>{payment.method}</span>

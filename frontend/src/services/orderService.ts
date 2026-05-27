@@ -1,26 +1,25 @@
-import api from "../api/apiClient";
+import { http } from "../lib/http";
 import type {
   CheckoutResponseDto,
   CreateOrderDto,
   OrderDto,
+  PagedOrderDto,
 } from "../@types/order.type";
 
 export async function checkoutApi(dto: CreateOrderDto): Promise<CheckoutResponseDto> {
-  const res = await api.post("/order/checkout", dto);
-  return res.data;
+  return http.post<CheckoutResponseDto>("/order/checkout", dto);
 }
 
-export async function getMyOrdersApi(): Promise<OrderDto[]> {
-  const res = await api.get("/order/my");
-  return res.data;
+export async function getMyOrdersApi(page = 1, pageSize = 10): Promise<PagedOrderDto> {
+  return http.get<PagedOrderDto>("/order/my", {
+    params: { page, pageSize },
+  });
 }
 
 export async function getMyOrderByIdApi(orderId: string): Promise<OrderDto> {
-  const res = await api.get(`/order/${orderId}`);
-  return res.data;
+  return http.get<OrderDto>(`/order/${orderId}`);
 }
 
 export async function cancelMyOrderApi(orderId: string): Promise<OrderDto> {
-  const res = await api.patch(`/order/${orderId}/cancel`);
-  return res.data;
+  return http.patch<OrderDto>(`/order/${orderId}/cancel`);
 }

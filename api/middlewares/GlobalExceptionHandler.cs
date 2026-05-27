@@ -1,3 +1,4 @@
+using api.exceptions;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -25,8 +26,14 @@ namespace api.middleware
                 KeyNotFoundException
                     => (StatusCodes.Status404NotFound, exception.Message, null),
 
+                ApiAuthenticationException
+                    => (StatusCodes.Status401Unauthorized, "Unauthorized", null),
+
+                ForbiddenAccessException
+                    => (StatusCodes.Status403Forbidden, "Forbidden", null),
+
                 UnauthorizedAccessException
-                    => (StatusCodes.Status403Forbidden, "Forbidden", exception.Message),
+                    => (StatusCodes.Status403Forbidden, "Forbidden", null),
 
                 ArgumentException
                     => (StatusCodes.Status400BadRequest, exception.Message, null),
@@ -41,7 +48,7 @@ namespace api.middleware
                 OperationCanceledException
                     => (499, "Request cancelled", null),
 
-                _ => (StatusCodes.Status500InternalServerError, "Internal server error", exception.Message),
+                _ => (StatusCodes.Status500InternalServerError, "Internal server error", null),
             };
 
             if (statusCode >= 500)
@@ -59,18 +66,25 @@ namespace api.middleware
 
             context.Response.StatusCode = statusCode;
 
-            await context.Response.WriteAsJsonAsync(new ProblemDetails
+            var safeDetail = statusCode >= 500 ? null : detail;
+            var problem = new ProblemDetails
             {
                 Status = statusCode,
                 Title = title,
-                Detail = detail,
+                Detail = safeDetail,
                 Instance = context.Request.Path,
                 Extensions =
                 {
-                    ["message"] = detail ?? title,
                     ["traceId"] = traceId
                 }
-            }, ct);
+            };
+
+            if (statusCode < 500)
+            {
+                problem.Extensions["message"] = safeDetail ?? title;
+            }
+
+            await context.Response.WriteAsJsonAsync(problem, ct);
 
             return true;
         }

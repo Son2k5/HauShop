@@ -1,15 +1,20 @@
 using System.Text;
+using System.IdentityModel.Tokens.Jwt;
+using api.extensions;
 using api.data;
+using api.infrastructure.redis;
 using api.models.email;
 using api.repositories.implementations;
 using api.repositories.interfaces;
 using api.services.implementations.auth;
 using api.services.interfaces.auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using FluentValidation;
+using FluentValidation.AspNetCore;
 using api.validators;
 using api.validators.auth;
 using Microsoft.AspNetCore.Mvc;
@@ -39,6 +44,9 @@ using api.services.implementations.admin;
 using api.hubs;
 using api.services.implementations.chat;
 using api.services.interfaces.chat;
+using api.services.interfaces.category;
+using api.services.implementations.category;
+using StackExchange.Redis;
 
 
 // Load .env BEFORE creating builder
@@ -61,11 +69,14 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     });
+builder.Services.AddFluentValidationAutoValidation();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddSignalR();
+builder.Services.AddResponseCaching();
+builder.Services.AddRedisInfrastructure(builder.Configuration);
 
 // ===========================
 // SWAGGER WITH JWT
@@ -134,16 +145,20 @@ if (string.IsNullOrEmpty(connectionString))
     throw new InvalidOperationException("Connection string is missing. Check your .env file.");
 }
 
+var mysqlServerVersion = builder.Configuration["Database:ServerVersion"] ?? "8.4.0-mysql";
+var dbMaxRetryCount = builder.Configuration.GetValue<int?>("Database:MaxRetryCount") ?? 2;
+var dbMaxRetryDelaySeconds = builder.Configuration.GetValue<int?>("Database:MaxRetryDelaySeconds") ?? 5;
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseMySql(
         connectionString,
-        ServerVersion.AutoDetect(connectionString),
+        ServerVersion.Parse(mysqlServerVersion),
         mySqlOptions =>
         {
             mySqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(30),
+                maxRetryCount: dbMaxRetryCount,
+                maxRetryDelay: TimeSpan.FromSeconds(dbMaxRetryDelaySeconds),
                 errorNumbersToAdd: null
             );
         }
@@ -186,13 +201,17 @@ builder.Services.AddAuthentication(options =>
     {
         OnMessageReceived = context =>
         {
+            var endpoint = context.HttpContext.GetEndpoint();
+            var allowsAnonymous = endpoint?.Metadata.GetMetadata<IAllowAnonymous>() != null;
+            var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+
+            if (allowsAnonymous && string.IsNullOrEmpty(authHeader))
+                return Task.CompletedTask;
 
             var token = context.Request.Cookies["accessToken"];
 
-
             if (string.IsNullOrEmpty(token))
             {
-                var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
                 if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
                     token = authHeader["Bearer ".Length..].Trim();
             }
@@ -205,6 +224,14 @@ builder.Services.AddAuthentication(options =>
             if (context.Exception is SecurityTokenExpiredException)
                 context.Response.Headers.Append("Token-Expired", "true");
             return Task.CompletedTask;
+        },
+        OnTokenValidated = async context =>
+        {
+            var jti = context.Principal?.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
+            var blacklist = context.HttpContext.RequestServices.GetRequiredService<IJwtBlacklistService>();
+
+            if (await blacklist.IsBlacklistedAsync(jti, context.HttpContext.RequestAborted))
+                context.Fail("Token has been revoked");
         },
         OnChallenge = context =>
         {
@@ -246,6 +273,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
               .AllowAnyHeader()
+              .WithExposedHeaders("Server-Timing", "X-Product-Search-Ms")
               .AllowCredentials();
     });
 });
@@ -275,11 +303,11 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
             kvp => kvp.Key,
             kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray()
         );
-        return new BadRequestObjectResult(new
+        return new BadRequestObjectResult(new ValidationProblemDetails(errors)
         {
-            success = false,
-            message = "Validation failded",
-            errors = errors
+            Status = StatusCodes.Status400BadRequest,
+            Title = "Validation failed",
+            Instance = context.HttpContext.Request.Path
         });
     };
 });
@@ -302,8 +330,15 @@ builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductService, ProductService>();
+if (builder.Configuration.GetValue<bool>("Warmup:ProductSearch:Enabled"))
+{
+    builder.Services.AddHostedService<ProductSearchWarmupService>();
+}
+builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<SeedService>();
 builder.Services.AddScoped<ICartService, CartService>();
+builder.Services.AddScoped<ICartCacheService, CartCacheService>();
 builder.Services.AddScoped<ICartRepository, CartRepository>();
 builder.Services.AddScoped<IProductVariantRepository, ProductVariantRepository>();
 builder.Services.Configure<VnPayOptions>(
@@ -319,6 +354,10 @@ builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 builder.Services.AddScoped<IAdminManagementService, AdminManagementService>();
 builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddHttpClient<IAiChatService, AiChatService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 
 
 // ===========================
@@ -352,6 +391,8 @@ if (!app.Environment.IsDevelopment())
 app.UseStaticFiles();
 app.UseRouting();
 app.UseCors("AllowReactApp");
+app.UseResponseCaching();
+app.UseRedisInfrastructure();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
@@ -363,21 +404,55 @@ app.MapGet("/health", () => Results.Ok(new
     status = "Healthy"
 }));
 
-// ===========================
-// AUTO DATABASE MIGRATION
-// ===========================
-using (var scope = app.Services.CreateScope())
+app.MapGet("/health/redis", async (IConnectionMultiplexer redis) =>
 {
+    if (!redis.IsConnected)
+    {
+        return Results.Json(new
+        {
+            success = false,
+            status = "Redis disconnected"
+        }, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    try
+    {
+        var latency = await redis.GetDatabase().PingAsync();
+        return Results.Ok(new
+        {
+            success = true,
+            status = "Redis healthy",
+            latencyMs = latency.TotalMilliseconds
+        });
+    }
+    catch (Exception ex) when (ex is RedisException or RedisTimeoutException)
+    {
+        return Results.Json(new
+        {
+            success = false,
+            status = "Redis unhealthy",
+            error = ex.Message
+        }, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+});
+
+// ===========================
+// DATABASE MIGRATION
+// ===========================
+var applyMigrationsOnStartup = app.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup");
+if (applyMigrationsOnStartup)
+{
+    await using var scope = app.Services.CreateAsyncScope();
     var services = scope.ServiceProvider;
     try
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
         var logger = services.GetRequiredService<ILogger<Program>>();
 
-        if (context.Database.GetPendingMigrations().Any())
+        if ((await context.Database.GetPendingMigrationsAsync()).Any())
         {
             logger.LogInformation("Applying database migrations...");
-            context.Database.Migrate();
+            await context.Database.MigrateAsync();
             logger.LogInformation("Database migrations applied successfully");
         }
     }
@@ -386,6 +461,10 @@ using (var scope = app.Services.CreateScope())
         var logger = services.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "An error occurred while migrating the database");
     }
+}
+else
+{
+    app.Logger.LogInformation("Skipping database migrations on startup. Set Database:ApplyMigrationsOnStartup=true to enable.");
 }
 
 app.Run();

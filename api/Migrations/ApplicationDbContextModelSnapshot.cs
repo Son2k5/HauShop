@@ -73,6 +73,10 @@ namespace api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("City");
+
+                    b.HasIndex("Country");
+
                     b.HasIndex("UserId");
 
                     b.HasIndex("UserId", "IsDefault");
@@ -186,8 +190,6 @@ namespace api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("IsActive");
-
                     b.HasIndex("MerchantId")
                         .IsUnique();
 
@@ -195,6 +197,8 @@ namespace api.Migrations
 
                     b.HasIndex("Slug")
                         .IsUnique();
+
+                    b.HasIndex("MerchantId", "IsActive");
 
                     b.ToTable("Brands");
                 });
@@ -249,6 +253,7 @@ namespace api.Migrations
                         .HasColumnType("varchar(50)");
 
                     b.Property<string>("ProductVariantId")
+                        .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
 
                     b.Property<int>("Quantity")
@@ -261,6 +266,8 @@ namespace api.Migrations
                     b.HasIndex("ProductVariantId");
 
                     b.HasIndex("CartId", "ProductId");
+
+                    b.HasIndex("CartId", "ProductVariantId");
 
                     b.ToTable("CartItems", t =>
                         {
@@ -295,12 +302,12 @@ namespace api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("IsActive");
-
                     b.HasIndex("ParentId");
 
                     b.HasIndex("Slug")
                         .IsUnique();
+
+                    b.HasIndex("ParentId", "IsActive");
 
                     b.ToTable("Categories");
                 });
@@ -352,7 +359,11 @@ namespace api.Migrations
 
                     b.HasIndex("SenderId");
 
+                    b.HasIndex("ChatRoomId", "Created");
+
                     b.HasIndex("ChatRoomId", "IsRead");
+
+                    b.HasIndex("SenderId", "Created");
 
                     b.ToTable("ChatMessages");
                 });
@@ -388,6 +399,8 @@ namespace api.Migrations
                     b.HasIndex("Created");
 
                     b.HasIndex("Type");
+
+                    b.HasIndex("Type", "IsPrivate");
 
                     b.ToTable("ChatRooms");
                 });
@@ -438,11 +451,11 @@ namespace api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("IsActive");
+                    b.HasIndex("BrandName");
 
                     b.HasIndex("Name");
 
-                    b.HasIndex("Status");
+                    b.HasIndex("Status", "IsActive");
 
                     b.ToTable("Merchants");
                 });
@@ -455,7 +468,8 @@ namespace api.Migrations
 
                     b.Property<string>("AddressLine")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
 
                     b.Property<DateTime>("Created")
                         .ValueGeneratedOnAdd()
@@ -464,18 +478,23 @@ namespace api.Migrations
 
                     b.Property<string>("ReceiverName")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
 
                     b.Property<string>("ReceiverPhone")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
 
                     b.Property<string>("ShippingAddressId")
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
 
                     b.Property<decimal>("ShippingFee")
-                        .HasColumnType("decimal(65,30)");
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
 
                     b.Property<int>("Status")
                         .ValueGeneratedOnAdd()
@@ -483,7 +502,8 @@ namespace api.Migrations
                         .HasDefaultValue(0);
 
                     b.Property<decimal>("Subtotal")
-                        .HasColumnType("decimal(65,30)");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("Total")
                         .HasPrecision(18, 2)
@@ -503,12 +523,20 @@ namespace api.Migrations
 
                     b.HasIndex("ShippingAddressId");
 
-                    b.HasIndex("Status");
-
                     b.HasIndex("UserId");
+
+                    b.HasIndex("Status", "Created");
+
+                    b.HasIndex("UserId", "Created");
+
+                    b.HasIndex("UserId", "Status");
 
                     b.ToTable("Orders", t =>
                         {
+                            t.HasCheckConstraint("CK_Order_ShippingFee", "`ShippingFee` >= 0");
+
+                            t.HasCheckConstraint("CK_Order_Subtotal", "`Subtotal` >= 0");
+
                             t.HasCheckConstraint("CK_Order_Total", "`Total` >= 0");
                         });
                 });
@@ -572,6 +600,8 @@ namespace api.Migrations
 
                     b.HasIndex("ProductId");
 
+                    b.HasIndex("ProductId", "OrderId");
+
                     b.ToTable("OrderItems", t =>
                         {
                             t.HasCheckConstraint("CK_OrderItem_Price", "`Price` >= 0");
@@ -629,6 +659,8 @@ namespace api.Migrations
 
                     b.HasIndex("UserId", "IsUsed", "ExpiredAt");
 
+                    b.HasIndex("UserId", "Purpose", "IsUsed", "ExpiredAt");
+
                     b.ToTable("PasswordResetOtps");
                 });
 
@@ -643,7 +675,8 @@ namespace api.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("BankCode")
-                        .HasColumnType("longtext");
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
 
                     b.Property<DateTime>("Created")
                         .ValueGeneratedOnAdd()
@@ -661,19 +694,23 @@ namespace api.Migrations
                         .HasColumnType("varchar(50)");
 
                     b.Property<string>("OrderInfo")
-                        .HasColumnType("longtext");
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
 
                     b.Property<DateTime?>("PaidAt")
                         .HasColumnType("datetime");
 
                     b.Property<string>("Provider")
-                        .HasColumnType("longtext");
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
 
                     b.Property<string>("ProviderTransactionId")
-                        .HasColumnType("longtext");
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
 
                     b.Property<string>("ResponseCode")
-                        .HasColumnType("longtext");
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
 
                     b.Property<int>("Status")
                         .ValueGeneratedOnAdd()
@@ -690,11 +727,19 @@ namespace api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Created");
+
                     b.HasIndex("OrderId");
 
-                    b.HasIndex("Status");
+                    b.HasIndex("ProviderTransactionId");
 
                     b.HasIndex("TransactionNo");
+
+                    b.HasIndex("Method", "Status");
+
+                    b.HasIndex("OrderId", "Status");
+
+                    b.HasIndex("Status", "Created");
 
                     b.ToTable("Payments", t =>
                         {
@@ -786,8 +831,6 @@ namespace api.Migrations
 
                     b.HasIndex("BrandId");
 
-                    b.HasIndex("IsActive");
-
                     b.HasIndex("Name");
 
                     b.HasIndex("Sku")
@@ -797,6 +840,21 @@ namespace api.Migrations
                         .IsUnique();
 
                     b.HasIndex("Stock");
+
+                    b.HasIndex("BrandId", "IsActive");
+
+                    b.HasIndex("IsActive", "Created");
+
+                    b.HasIndex("IsActive", "Name");
+
+                    b.HasIndex("IsActive", "Price");
+
+                    b.HasIndex("IsActive", "Stock");
+
+                    b.HasIndex("BrandId", "IsActive", "Created");
+
+                    b.HasIndex("Name", "Sku", "Description")
+                        .HasAnnotation("MySql:FullTextIndex", true);
 
                     b.ToTable("Products", t =>
                         {
@@ -822,7 +880,7 @@ namespace api.Migrations
 
                     b.HasIndex("CategoryId");
 
-                    b.HasIndex("ProductId");
+                    b.HasIndex("CategoryId", "ProductId");
 
                     b.ToTable("ProductCategories");
                 });
@@ -895,14 +953,18 @@ namespace api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("IsActive");
-
                     b.HasIndex("ProductId");
 
                     b.HasIndex("Sku")
                         .IsUnique();
 
+                    b.HasIndex("ProductId", "Color");
+
                     b.HasIndex("ProductId", "IsActive");
+
+                    b.HasIndex("ProductId", "Size");
+
+                    b.HasIndex("ProductId", "Stock");
 
                     b.ToTable("productvariants", null, t =>
                         {
@@ -919,7 +981,9 @@ namespace api.Migrations
                         .HasColumnType("varchar(50)");
 
                     b.Property<DateTime>("Created")
-                        .HasColumnType("datetime");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<DateTime>("Expires")
                         .HasColumnType("datetime");
@@ -992,11 +1056,17 @@ namespace api.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.HasIndex("Status");
-
                     b.HasIndex("UserId");
 
                     b.HasIndex("ProductId", "UserId");
+
+                    b.HasIndex("Status", "Created");
+
+                    b.HasIndex("UserId", "Created");
+
+                    b.HasIndex("ProductId", "Status", "Created");
+
+                    b.HasIndex("ProductId", "Status", "Rating");
 
                     b.ToTable("Reviews", t =>
                         {
@@ -1046,6 +1116,10 @@ namespace api.Migrations
                     b.HasIndex("OrderId")
                         .IsUnique();
 
+                    b.HasIndex("TrackingNumber");
+
+                    b.HasIndex("Carrier", "Created");
+
                     b.ToTable("ShippingDetails");
                 });
 
@@ -1064,9 +1138,6 @@ namespace api.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
 
-                    b.Property<string>("ChatRoomId1")
-                        .HasColumnType("varchar(50)");
-
                     b.Property<DateTime?>("ClosedAt")
                         .HasColumnType("datetime");
 
@@ -1083,7 +1154,7 @@ namespace api.Migrations
                     b.Property<int>("Priority")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
-                        .HasDefaultValue(1);
+                        .HasDefaultValue(0);
 
                     b.Property<int>("Status")
                         .ValueGeneratedOnAdd()
@@ -1102,16 +1173,15 @@ namespace api.Migrations
                     b.HasIndex("ChatRoomId")
                         .IsUnique();
 
-                    b.HasIndex("ChatRoomId1")
-                        .IsUnique();
-
                     b.HasIndex("Created");
 
                     b.HasIndex("CustomerId");
 
                     b.HasIndex("Priority");
 
-                    b.HasIndex("Status");
+                    b.HasIndex("AssignedToId", "Status");
+
+                    b.HasIndex("CustomerId", "Status");
 
                     b.HasIndex("Status", "Priority");
 
@@ -1129,7 +1199,8 @@ namespace api.Migrations
                         .HasColumnType("varchar(500)");
 
                     b.Property<string>("AvatarPublicId")
-                        .HasColumnType("longtext");
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
 
                     b.Property<DateTime>("Created")
                         .ValueGeneratedOnAdd()
@@ -1205,11 +1276,11 @@ namespace api.Migrations
                     b.HasIndex("GoogleId")
                         .IsUnique();
 
-                    b.HasIndex("IsOnline");
-
                     b.HasIndex("MerchantId");
 
-                    b.HasIndex("Role");
+                    b.HasIndex("PhoneNumber");
+
+                    b.HasIndex("Role", "IsOnline");
 
                     b.ToTable("Users");
                 });
@@ -1246,6 +1317,8 @@ namespace api.Migrations
                     b.HasIndex("LastActivity");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "LastActivity");
 
                     b.ToTable("UserConnections");
                 });
@@ -1329,7 +1402,8 @@ namespace api.Migrations
 
                     b.HasOne("api.models.entities.ProductVariant", "ProductVariant")
                         .WithMany("CartItems")
-                        .HasForeignKey("ProductVariantId");
+                        .HasForeignKey("ProductVariantId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Cart");
 
@@ -1515,14 +1589,10 @@ namespace api.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("api.models.entities.ChatRoom", "ChatRoom")
-                        .WithOne()
+                        .WithOne("SupportTicket")
                         .HasForeignKey("api.models.entities.SupportTicket", "ChatRoomId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("api.models.entities.ChatRoom", null)
-                        .WithOne("SupportTicket")
-                        .HasForeignKey("api.models.entities.SupportTicket", "ChatRoomId1");
 
                     b.HasOne("api.models.entities.User", "Customer")
                         .WithMany("SupportTicketsAsCustomer")

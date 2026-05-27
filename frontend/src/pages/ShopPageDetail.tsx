@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useProductBySlug } from "../hooks/useProduct";
-import { useAppDispatch } from "../store/hooks";
-import { setCartFromServer } from "../store/cartSlice";
-import { addToCartApi, getMyCartApi } from "../services/cartService";
+import { useAddToCart } from "../hooks/useCart";
 import { useToast } from "../context/toastContext";
 import { formatPrice } from "../utils/formatPrice";
 import type { ProductVariantSummaryDto } from "../@types/product.type";
@@ -15,14 +13,16 @@ import {
   type ReviewDto,
 } from "../services/reviewService";
 import { queryKeys } from "../lib/queryKeys";
+import { logger } from "../lib/logger";
+import { ROUTES } from "../lib/routes";
 
 export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
   const { product, isLoading, isError, error } = useProductBySlug(slug);
   const { showToast } = useToast();
   const { isAuthenticated } = useAuth();
+  const addToCart = useAddToCart();
 
   const [selectedVariant, setSelectedVariant] =
     useState<ProductVariantSummaryDto | null>(null);
@@ -68,7 +68,7 @@ export default function ProductDetailPage() {
           {error ?? "Không tìm thấy sản phẩm"}
         </p>
         <button
-          onClick={() => navigate("/shop")}
+          onClick={() => navigate(ROUTES.SHOP)}
           className="btn-outline px-8 py-3 text-sm"
         >
           ← Quay lại Shop
@@ -88,6 +88,12 @@ export default function ProductDetailPage() {
   const mustChooseVariant = activeVariants.length > 1 && !selectedVariant;
 
   const handleAddToCart = async () => {
+    if (!isAuthenticated) {
+      showToast("Vui long dang nhap de them vao gio hang", "warning");
+      navigate(ROUTES.SIGN_IN);
+      return;
+    }
+
     if (!currentVariant) {
       showToast("Sản phẩm này chưa có phiên bản để thêm vào giỏ", "warning");
       return;
@@ -103,16 +109,16 @@ export default function ProductDetailPage() {
     try {
       setAdding(true);
 
-      await addToCartApi(currentVariant.id, qty);
-
-      const cart = await getMyCartApi();
-      dispatch(setCartFromServer(cart));
+      await addToCart.mutateAsync({
+        productVariantId: currentVariant.id,
+        quantity: qty,
+      });
 
       setAddedToCart(true);
       showToast(`Đã thêm "${product.name}" vào giỏ!`, "success");
       setTimeout(() => setAddedToCart(false), 2000);
     } catch (err) {
-      console.error("Add to cart failed:", err);
+      logger.error("Add to cart failed", err);
       showToast("Không thể thêm vào giỏ hàng", "error");
     } finally {
       setAdding(false);
@@ -121,7 +127,7 @@ export default function ProductDetailPage() {
 
   const handleBuyNow = async () => {
     await handleAddToCart();
-    navigate("/cart");
+    navigate(ROUTES.CART);
   };
 
   return (
@@ -132,7 +138,7 @@ export default function ProductDetailPage() {
             Home
           </Link>
           <span className="text-gray-300">/</span>
-          <Link to="/shop" className="hover:text-red-500 transition-colors">
+          <Link to={ROUTES.SHOP} className="hover:text-red-500 transition-colors">
             Shop
           </Link>
           <span className="text-gray-300">/</span>
@@ -364,7 +370,7 @@ export default function ProductDetailPage() {
           isAuthenticated={isAuthenticated}
           onRequireLogin={() => {
             showToast("Vui lòng đăng nhập để đánh giá sản phẩm", "warning");
-            navigate("/signin");
+            navigate(ROUTES.SIGN_IN);
           }}
         />
       </div>
@@ -421,7 +427,7 @@ function ReviewSection({
         content: content.trim() || undefined,
       });
     } catch (error: any) {
-      console.error("Create review failed:", error);
+      logger.error("Create review failed", error);
       showToast(error?.response?.data?.message ?? "Không thể gửi đánh giá", "error");
     }
   };

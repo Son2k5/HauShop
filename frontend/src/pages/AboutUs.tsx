@@ -56,25 +56,21 @@ const AboutUs = () => {
 
   const team = [
     {
-      name: 'Nguyễn Văn A',
-      position: 'Chief Executive Officer',
+      name: 'Đỗ Minh Sơn',
+      position: 'Leader/Dev',
       icon: 'lucide:crown',
     },
     {
-      name: 'Trần Thị B',
-      position: 'Marketing Director',
+      name: 'Đỗ Anh Khoa',
+      position: 'Dev/Tester',
       icon: 'lucide:megaphone',
     },
     {
       name: 'Lê Văn C',
-      position: 'Tech Director',
+      position: 'Dev/Design',
       icon: 'lucide:code-2',
     },
-    {
-      name: 'Phạm Thị D',
-      position: 'Sales Director',
-      icon: 'lucide:bar-chart-3',
-    },
+
   ];
 
   return (

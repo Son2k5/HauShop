@@ -70,6 +70,8 @@ namespace api.data
 
                 entity.HasIndex(e => e.UserId);
                 entity.HasIndex(e => new { e.UserId, e.IsDefault });
+                entity.HasIndex(e => e.City);
+                entity.HasIndex(e => e.Country);
             });
 
             // ============ BRAND ============
@@ -92,7 +94,7 @@ namespace api.data
 
                 entity.HasIndex(e => e.Slug).IsUnique();
                 entity.HasIndex(e => e.Name);
-                entity.HasIndex(e => e.IsActive);
+                entity.HasIndex(e => new { e.MerchantId, e.IsActive });
             });
 
             // ============ CART ============
@@ -118,6 +120,7 @@ namespace api.data
                 entity.Property(e => e.Id).HasMaxLength(50);
                 entity.Property(e => e.CartId).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.ProductId).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.ProductVariantId).HasMaxLength(50);
                 entity.Property(e => e.Quantity).IsRequired();
                 entity.Property(e => e.Price).HasPrecision(18, 2).IsRequired();
                 entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
@@ -131,10 +134,16 @@ namespace api.data
                     .WithMany(p => p.CartItems)
                     .HasForeignKey(e => e.ProductId)
                     .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.ProductVariant)
+                    .WithMany(pv => pv.CartItems)
+                    .HasForeignKey(e => e.ProductVariantId)
+                    .OnDelete(DeleteBehavior.SetNull);
 
                 entity.HasIndex(e => new { e.CartId, e.ProductId });
+                entity.HasIndex(e => new { e.CartId, e.ProductVariantId });
+                entity.HasIndex(e => e.ProductId);
+                entity.HasIndex(e => e.ProductVariantId);
 
-                // MySQL constraint syntax
                 entity.ToTable(t => t.HasCheckConstraint("CK_CartItem_Quantity", "`Quantity` > 0"));
             });
 
@@ -155,7 +164,7 @@ namespace api.data
 
                 entity.HasIndex(e => e.Slug).IsUnique();
                 entity.HasIndex(e => e.ParentId);
-                entity.HasIndex(e => e.IsActive);
+                entity.HasIndex(e => new { e.ParentId, e.IsActive });
             });
 
             // ============ CHAT MESSAGE ============
@@ -168,6 +177,7 @@ namespace api.data
                 entity.Property(e => e.Message).IsRequired().HasMaxLength(5000);
                 entity.Property(e => e.MessageType).IsRequired().HasDefaultValue(ChatMessageType.Text);
                 entity.Property(e => e.IsRead).HasDefaultValue(false);
+                entity.Property(e => e.ReadAt).HasColumnType("datetime");
                 entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                 entity.HasOne(e => e.ChatRoom)
@@ -184,6 +194,9 @@ namespace api.data
                 entity.HasIndex(e => e.SenderId);
                 entity.HasIndex(e => e.Created);
                 entity.HasIndex(e => new { e.ChatRoomId, e.IsRead });
+                entity.HasIndex(e => new { e.ChatRoomId, e.Created });
+                entity.HasIndex(e => new { e.SenderId, e.Created });
+
             });
 
             // ============ CHAT ROOM ============
@@ -198,6 +211,7 @@ namespace api.data
 
                 entity.HasIndex(e => e.Type);
                 entity.HasIndex(e => e.Created);
+                entity.HasIndex(e => new { e.Type, e.IsPrivate });
             });
 
             // ============ MERCHANT ============
@@ -212,10 +226,11 @@ namespace api.data
                 entity.Property(e => e.IsActive).HasDefaultValue(true);
                 entity.Property(e => e.Status).IsRequired().HasDefaultValue(MerchantStatus.WaitingApproval);
                 entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.Updated).HasColumnType("datetime");
 
                 entity.HasIndex(e => e.Name);
-                entity.HasIndex(e => e.Status);
-                entity.HasIndex(e => e.IsActive);
+                entity.HasIndex(e => new { e.Status, e.IsActive });
+                entity.HasIndex(e => e.BrandName);
             });
 
             // ============ ORDER ============
@@ -228,6 +243,13 @@ namespace api.data
                 entity.Property(e => e.Status).IsRequired().HasDefaultValue(OrderStatus.Pending);
                 entity.Property(e => e.ShippingAddressId).HasMaxLength(50);
                 entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.Updated).HasColumnType("datetime");
+
+                entity.Property(e => e.Subtotal).HasPrecision(18, 2).IsRequired();
+                entity.Property(e => e.ShippingFee).HasPrecision(18, 2).HasDefaultValue(0m);
+                entity.Property(e => e.ReceiverName).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.ReceiverPhone).IsRequired().HasMaxLength(20);
+                entity.Property(e => e.AddressLine).IsRequired().HasMaxLength(500);
 
                 entity.HasOne(e => e.User)
                     .WithMany(u => u.Orders)
@@ -240,10 +262,16 @@ namespace api.data
                     .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasIndex(e => e.UserId);
-                entity.HasIndex(e => e.Status);
                 entity.HasIndex(e => e.Created);
-
-                entity.ToTable(t => t.HasCheckConstraint("CK_Order_Total", "`Total` >= 0"));
+                entity.HasIndex(e => new { e.UserId, e.Status });
+                entity.HasIndex(e => new { e.UserId, e.Created });
+                entity.HasIndex(e => new { e.Status, e.Created });
+                entity.ToTable(t =>
+                {
+                    t.HasCheckConstraint("CK_Order_Total", "`Total` >= 0");
+                    t.HasCheckConstraint("CK_Order_Subtotal", "`Subtotal` >= 0");
+                    t.HasCheckConstraint("CK_Order_ShippingFee", "`ShippingFee` >= 0");
+                });
             });
 
             // ============ ORDER ITEM ============
@@ -275,7 +303,7 @@ namespace api.data
 
                 entity.HasIndex(e => e.OrderId);
                 entity.HasIndex(e => e.ProductId);
-
+                entity.HasIndex(e => new { e.ProductId, e.OrderId });
                 entity.ToTable(t =>
                 {
                     t.HasCheckConstraint("CK_OrderItem_Quantity", "`Quantity` > 0");
@@ -296,6 +324,14 @@ namespace api.data
                 entity.Property(e => e.Status).IsRequired().HasDefaultValue(PaymentStatus.Pending);
                 entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                entity.Property(e => e.Provider).HasMaxLength(50);
+                entity.Property(e => e.ProviderTransactionId).HasMaxLength(200);
+                entity.Property(e => e.ResponseCode).HasMaxLength(50);
+                entity.Property(e => e.BankCode).HasMaxLength(50);
+                entity.Property(e => e.OrderInfo).HasMaxLength(500);
+                entity.Property(e => e.PaidAt).HasColumnType("datetime");
+                entity.Property(e => e.Updated).HasColumnType("datetime");
+
                 entity.HasOne(e => e.Order)
                     .WithMany(o => o.Payments)
                     .HasForeignKey(e => e.OrderId)
@@ -303,8 +339,11 @@ namespace api.data
 
                 entity.HasIndex(e => e.OrderId);
                 entity.HasIndex(e => e.TransactionNo);
-                entity.HasIndex(e => e.Status);
-
+                entity.HasIndex(e => e.Created);
+                entity.HasIndex(e => new { e.OrderId, e.Status });
+                entity.HasIndex(e => new { e.Method, e.Status });
+                entity.HasIndex(e => new { e.Status, e.Created });
+                entity.HasIndex(e => e.ProviderTransactionId);
                 entity.ToTable(t => t.HasCheckConstraint("CK_Payment_Amount", "`Amount` > 0"));
             });
 
@@ -324,11 +363,11 @@ namespace api.data
                 entity.Property(e => e.IsActive).HasDefaultValue(true);
                 entity.Property(e => e.BrandId).HasMaxLength(50);
                 entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                // Tồn kho và Rating
+                entity.Property(e => e.Updated).HasColumnType("datetime");
                 entity.Property(e => e.Stock).HasDefaultValue(0);
                 entity.Property(e => e.AverageRating).HasPrecision(3, 2).HasDefaultValue(0);
                 entity.Property(e => e.ReviewCount).HasDefaultValue(0);
+
 
                 entity.HasOne(e => e.Brand)
                     .WithMany(b => b.Products)
@@ -339,15 +378,26 @@ namespace api.data
                 entity.HasIndex(e => e.Slug).IsUnique();
                 entity.HasIndex(e => e.Name);
                 entity.HasIndex(e => e.BrandId);
-                entity.HasIndex(e => e.IsActive);
-
-                entity.ToTable(t => t.HasCheckConstraint("CK_Product_Price", "`Price` >= 0"));
-                entity.ToTable(t => t.HasCheckConstraint("CK_Product_Stock", "`Stock` >= 0"));
-                entity.ToTable(t => t.HasCheckConstraint("CK_Product_AverageRating", "`AverageRating` >= 0 AND `AverageRating` <= 5"));
-
                 entity.HasIndex(e => e.Stock);
                 entity.HasIndex(e => e.AverageRating);
+                entity.HasIndex(e => new { e.BrandId, e.IsActive });
+                entity.HasIndex(e => new { e.IsActive, e.Price });
+                entity.HasIndex(e => new { e.IsActive, e.Created });
+                entity.HasIndex(e => new { e.IsActive, e.Stock });
+                entity.HasIndex(e => new { e.BrandId, e.IsActive, e.Created });
+                entity.HasIndex(e => new { e.IsActive, e.Name });
+                entity.HasIndex(e => new { e.Name, e.Sku, e.Description }).IsFullText();
+
+                entity.ToTable(t =>
+                {
+                    t.HasCheckConstraint("CK_Product_Price", "`Price` >= 0");
+                    t.HasCheckConstraint("CK_Product_Stock", "`Stock` >= 0");
+                    t.HasCheckConstraint("CK_Product_AverageRating", "`AverageRating` >= 0 AND `AverageRating` <= 5");
+                });
             });
+
+
+
             modelBuilder.Entity<ProductVariant>(entity =>
             {
                 entity.ToTable("productvariants");
@@ -374,8 +424,10 @@ namespace api.data
 
                 entity.HasIndex(e => e.Sku).IsUnique();
                 entity.HasIndex(e => e.ProductId);
-                entity.HasIndex(e => e.IsActive);
                 entity.HasIndex(e => new { e.ProductId, e.IsActive });
+                entity.HasIndex(e => new { e.ProductId, e.Color });
+                entity.HasIndex(e => new { e.ProductId, e.Size });
+                entity.HasIndex(e => new { e.ProductId, e.Stock });
 
                 entity.ToTable(t =>
                 {
@@ -401,8 +453,8 @@ namespace api.data
                     .HasForeignKey(e => e.CategoryId)
                     .OnDelete(DeleteBehavior.Cascade);
 
-                entity.HasIndex(e => e.ProductId);
                 entity.HasIndex(e => e.CategoryId);
+                entity.HasIndex(e => new { e.CategoryId, e.ProductId });
             });
 
             // ============ REVIEW ============
@@ -416,6 +468,7 @@ namespace api.data
                 entity.Property(e => e.Content).HasMaxLength(2000);
                 entity.Property(e => e.Status).IsRequired().HasDefaultValue(ReviewStatus.WaitingApproval);
                 entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.Updated).HasColumnType("datetime");
 
                 entity.HasOne(e => e.Product)
                     .WithMany(p => p.Reviews)
@@ -429,8 +482,11 @@ namespace api.data
 
                 entity.HasIndex(e => e.ProductId);
                 entity.HasIndex(e => e.UserId);
-                entity.HasIndex(e => e.Status);
                 entity.HasIndex(e => new { e.ProductId, e.UserId });
+                entity.HasIndex(e => new { e.ProductId, e.Status, e.Rating });
+                entity.HasIndex(e => new { e.ProductId, e.Status, e.Created });
+                entity.HasIndex(e => new { e.UserId, e.Created });
+                entity.HasIndex(e => new { e.Status, e.Created });
 
                 entity.ToTable(t => t.HasCheckConstraint("CK_Review_Rating", "`Rating` >= 1 AND `Rating` <= 5"));
             });
@@ -445,8 +501,9 @@ namespace api.data
                 entity.Property(e => e.ChatRoomId).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.Subject).IsRequired().HasMaxLength(500);
                 entity.Property(e => e.Status).IsRequired().HasDefaultValue(SupportTicketStatus.Open);
-                entity.Property(e => e.Priority).IsRequired().HasDefaultValue(SupportTicketPriority.Medium).HasConversion<int>();
+                entity.Property(e => e.Priority).IsRequired().HasDefaultValue(SupportTicketPriority.Low).HasConversion<int>();
                 entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.ClosedAt).HasColumnType("datetime");
 
                 entity.HasOne(st => st.Customer)
                     .WithMany(u => u.SupportTicketsAsCustomer)
@@ -459,16 +516,17 @@ namespace api.data
                     .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(st => st.ChatRoom)
-                    .WithOne()
+                    .WithOne(cr => cr.SupportTicket)
                     .HasForeignKey<SupportTicket>(st => st.ChatRoomId)
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasIndex(e => e.CustomerId);
                 entity.HasIndex(e => e.AssignedToId);
-                entity.HasIndex(e => e.Status);
                 entity.HasIndex(e => e.Priority);
                 entity.HasIndex(e => e.Created);
                 entity.HasIndex(e => new { e.Status, e.Priority });
+                entity.HasIndex(e => new { e.AssignedToId, e.Status });
+                entity.HasIndex(e => new { e.CustomerId, e.Status });
             });
 
             // ============ USER ============
@@ -489,6 +547,9 @@ namespace api.data
                 entity.Property(e => e.Role).IsRequired().HasDefaultValue(Role.Member).HasConversion<int>().HasSentinel(Role.Member);
                 entity.Property(e => e.IsOnline).HasDefaultValue(false);
                 entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.AvatarPublicId).HasMaxLength(200);
+                entity.Property(e => e.LastSeen).HasColumnType("datetime");
+                entity.Property(e => e.Updated).HasColumnType("datetime");
 
                 entity.HasOne(e => e.Merchant)
                     .WithMany()
@@ -510,8 +571,9 @@ namespace api.data
                 entity.HasIndex(e => e.Email).IsUnique();
                 entity.HasIndex(e => e.GoogleId).IsUnique();
                 entity.HasIndex(e => e.FacebookId).IsUnique();
-                entity.HasIndex(e => e.Role);
-                entity.HasIndex(e => e.IsOnline);
+                entity.HasIndex(e => e.MerchantId);
+                entity.HasIndex(e => new { e.Role, e.IsOnline });
+                entity.HasIndex(e => e.PhoneNumber);
             });
 
             // ============ USER CONNECTION ============
@@ -531,6 +593,7 @@ namespace api.data
                 entity.HasIndex(e => e.UserId);
                 entity.HasIndex(e => e.ConnectionId).IsUnique();
                 entity.HasIndex(e => e.LastActivity);
+                entity.HasIndex(e => new { e.UserId, e.LastActivity });
             });
 
             // ============ ADMIN SETTINGS ============
@@ -547,6 +610,8 @@ namespace api.data
                 entity.Property(e => e.EnableInventoryAlerts).HasDefaultValue(true);
                 entity.Property(e => e.EnableWeeklySummary).HasDefaultValue(false);
                 entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.Updated).HasColumnType("datetime");
+
             });
 
             // ============ WISHLIST ============
@@ -569,7 +634,11 @@ namespace api.data
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasIndex(e => new { e.UserId, e.ProductId }).IsUnique();
+                entity.HasIndex(e => e.ProductId);
             });
+
+
+
             modelBuilder.Entity<RefreshToken>(entity =>
             {
                 entity.HasKey(rt => rt.Id);
@@ -593,6 +662,9 @@ namespace api.data
                     .IsUnique();
 
                 entity.HasIndex(rt => rt.Expires);
+                entity.Property(rt => rt.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(rt => rt.RevokedAt).HasColumnType("datetime");
+
 
                 entity.HasIndex(rt => new { rt.UserId, rt.IsRevoked, rt.Expires });
             });
@@ -605,13 +677,18 @@ namespace api.data
                 entity.Property(e => e.TrackingNumber).HasMaxLength(100);
                 entity.Property(e => e.Carrier).HasMaxLength(100);
                 entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.Method).IsRequired().HasConversion<int>();
+                entity.Property(e => e.EstimatedDelivery).HasColumnType("datetime");
+                entity.Property(e => e.Updated).HasColumnType("datetime");
 
                 entity.HasOne(e => e.Order)
-                    .WithOne(o => o.ShippingDetail) // Thêm navigation ngược trong Order
+                    .WithOne(o => o.ShippingDetail)
                     .HasForeignKey<ShippingDetail>(e => e.OrderId)
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasIndex(e => e.OrderId).IsUnique();
+                entity.HasIndex(e => e.TrackingNumber);
+                entity.HasIndex(e => new { e.Carrier, e.Created });
             });
             // ============ PASSWORD RESET OTP ============
             modelBuilder.Entity<PasswordResetOtp>(entity =>
@@ -635,6 +712,7 @@ namespace api.data
                 entity.HasIndex(e => e.ExpiredAt);
                 entity.HasIndex(e => new { e.UserId, e.IsUsed, e.ExpiredAt });
                 entity.HasIndex(e => e.CreatedAt);
+                entity.HasIndex(e => new { e.UserId, e.Purpose, e.IsUsed, e.ExpiredAt });
             });
 
         }

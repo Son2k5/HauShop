@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using api.exceptions;
 using api.services.interfaces.auth;
 
 namespace api.controllers
@@ -63,6 +64,11 @@ namespace api.controllers
                 SetRefreshTokenCookie(result.RefreshToken);
 
                 return Redirect($"{frontendUrl}/");
+            }
+            catch (ApiAuthenticationException ex)
+            {
+                _logger.LogWarning(ex, "Google callback authentication failed");
+                return Redirect($"{frontendUrl}/signin?error=auth_failed");
             }
             catch (Exception ex)
             {

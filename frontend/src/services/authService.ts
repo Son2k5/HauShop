@@ -1,4 +1,5 @@
-import api from "../api/apiClient";
+import { API_ORIGIN } from "../lib/env";
+import { http } from "../lib/http";
 import type {
     RegisterDto,
     LoginDto,
@@ -7,6 +8,7 @@ import type {
     ChangePasswordDto,
     AuthResponse
 } from "../@types/auth.type";
+
 
 // Helper để extract error từ Axios error
 function extractError(error: any): string {
@@ -21,8 +23,7 @@ function extractError(error: any): string {
 export const authService = {
     register: async (dto: RegisterDto) => {
         try {
-            const res = await api.post<AuthResponse>("/auth/register", dto);
-            return res.data;
+            return await http.post<AuthResponse>("/auth/register", dto);
         } catch (error: any) {
             throw new Error(extractError(error));
         }
@@ -30,39 +31,38 @@ export const authService = {
 
     login: async (dto: LoginDto) => {
         try {
-            const res = await api.post<AuthResponse>("/auth/login", dto);
-            return res.data;
+            return await http.post<AuthResponse>("/auth/login", dto);
         } catch (error: any) {
             throw new Error(extractError(error));
         }
     },
 
     logout: () => 
-        api.post("/auth/logout").then(res => res.data),
+        http.post("/auth/logout"),
 
     refreshToken: () => 
-        api.post("/auth/refresh-token").then(res => res.data),
+        http.post("/auth/refresh-token"),
 
     resetPassword: (dto: ResetPasswordDto) => 
-        api.post("/auth/reset-password", dto).then(res => res.data),
+        http.post("/auth/reset-password", dto),
 
     forgotPassword: (dto: ForgotPasswordDto) => 
-        api.post("/auth/forgot-password", dto).then(res => res.data),
+        http.post("/auth/forgot-password", dto),
 
     changePassword: (dto: ChangePasswordDto) => 
-        api.post("/auth/change-password", dto).then(res => res.data),
+        http.post("/auth/change-password", dto),
 
     revokeToken: () => 
-        api.post("/auth/revoke-token").then(res => res.data),
+        http.post("/auth/revoke-token"),
 
     getCurrentUser: async () => {
-        const res = await api.get("/auth/me", { skipAuthRedirect: true } as any);
-        if (res.data?.user) return res.data.user;
-        if (res.data?.id || res.data?.email) return res.data;
+        const data = await http.get<any>("/auth/me", { skipAuthRedirect: true });
+        if (data?.user) return data.user;
+        if (data?.id || data?.email) return data;
         throw new Error("Invalid response structure from /auth/me");
     },
 
     loginWithGoogle: () => {
-        window.location.href = "https://localhost:7288/api/auth/google";
+        window.location.href = `${API_ORIGIN}/api/auth/google`;
     }
 };
