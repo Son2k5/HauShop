@@ -1,4 +1,5 @@
 using api.exceptions;
+using api.common;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -24,31 +25,30 @@ namespace api.middleware
             var (statusCode, title, detail) = exception switch
             {
                 KeyNotFoundException
-                    => (StatusCodes.Status404NotFound, exception.Message, null),
+                    => (StatusCodes.Status404NotFound, ClientErrorMessages.NotFoundTitle, ClientErrorMessages.NotFoundDetail),
 
                 ApiAuthenticationException
-                    => (StatusCodes.Status401Unauthorized, "Unauthorized", null),
+                    => (StatusCodes.Status401Unauthorized, ClientErrorMessages.UnauthorizedTitle, ClientErrorMessages.UnauthorizedDetail),
 
                 ForbiddenAccessException
-                    => (StatusCodes.Status403Forbidden, "Forbidden", null),
+                    => (StatusCodes.Status403Forbidden, ClientErrorMessages.ForbiddenTitle, ClientErrorMessages.ForbiddenDetail),
 
                 UnauthorizedAccessException
-                    => (StatusCodes.Status403Forbidden, "Forbidden", null),
+                    => (StatusCodes.Status403Forbidden, ClientErrorMessages.ForbiddenTitle, ClientErrorMessages.ForbiddenDetail),
 
                 ArgumentException
-                    => (StatusCodes.Status400BadRequest, exception.Message, null),
+                    => (StatusCodes.Status400BadRequest, ClientErrorMessages.InvalidRequestTitle, ClientErrorMessages.InvalidRequestDetail),
 
-                ValidationException valEx
-                    => (StatusCodes.Status400BadRequest, "Validation failed",
-                        string.Join("; ", valEx.Errors.Select(e => e.ErrorMessage))),
+                ValidationException
+                    => (StatusCodes.Status400BadRequest, ClientErrorMessages.InvalidRequestTitle, ClientErrorMessages.InvalidRequestDetail),
 
                 InvalidOperationException
-                    => (StatusCodes.Status400BadRequest, exception.Message, null),
+                    => (StatusCodes.Status400BadRequest, ClientErrorMessages.CannotProcessTitle, ClientErrorMessages.CannotProcessDetail),
 
                 OperationCanceledException
-                    => (499, "Request cancelled", null),
+                    => (499, ClientErrorMessages.RequestCancelledTitle, null),
 
-                _ => (StatusCodes.Status500InternalServerError, "Internal server error", null),
+                _ => (StatusCodes.Status500InternalServerError, ClientErrorMessages.ServerErrorTitle, ClientErrorMessages.ServerErrorDetail),
             };
 
             if (statusCode >= 500)
@@ -79,9 +79,13 @@ namespace api.middleware
                 }
             };
 
-            if (statusCode < 500)
+            if (exception is ValidationException validationException)
             {
-                problem.Extensions["message"] = safeDetail ?? title;
+                problem.Extensions["errors"] = validationException.Errors
+                    .GroupBy(error => string.IsNullOrWhiteSpace(error.PropertyName) ? "request" : error.PropertyName)
+                    .ToDictionary(
+                        group => group.Key,
+                        group => group.Select(_ => ClientErrorMessages.FieldInvalid).Distinct().ToArray());
             }
 
             await context.Response.WriteAsJsonAsync(problem, ct);

@@ -41,12 +41,6 @@ namespace api.services.implementations.cart
 
         public async Task<CartDto> AddItemAsync(string userId, AddCartItemDto dto, CancellationToken ct = default)
         {
-            if (string.IsNullOrWhiteSpace(dto.ProductVariantId))
-                throw new InvalidOperationException("ProductVariantId is required");
-
-            if (dto.Quantity <= 0)
-                throw new InvalidOperationException("Quantity must be greater than zero");
-
             var cart = await EnsureCartExistsAsync(userId, ct);
 
             var variant = await _productVariantRepository.GetActiveByIdAsync(dto.ProductVariantId, ct)
@@ -120,9 +114,6 @@ namespace api.services.implementations.cart
         {
             if (string.IsNullOrWhiteSpace(cartItemId))
                 throw new InvalidOperationException("CartItemId is invalid");
-
-            if (dto.Quantity <= 0)
-                throw new InvalidOperationException("Quantity must be greater than zero");
 
             var item = await GetUserCartItemAsync(userId, cartItemId, ct)
                 ?? throw new KeyNotFoundException("Cart item was not found");

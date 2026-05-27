@@ -1,6 +1,6 @@
 import { Icon } from "@iconify/react";
 import { startTransition, useEffect, useMemo, useState } from "react";
-import type { Role } from "../../@types/auth.type";
+import { Roles, type Role } from "../../@types/enums.type";
 import { useAdminUser, useAdminUsers, useUpdateAdminUserRole } from "../../hooks/useAdmin";
 import { useDebounce } from "../../hooks/useDebounce";
 import { formatPrice } from "../../utils/formatPrice";
@@ -19,7 +19,7 @@ import {
   roleBadgeClass,
 } from "./adminShared";
 
-const roleOptions: Array<Role | ""> = ["", "Admin", "Merchant", "Member"];
+const roleOptions: Array<Role | ""> = ["", Roles.Admin, Roles.Merchant, Roles.Member];
 
 export default function AdminUsersPage() {
   const [search, setSearch] = useState("");

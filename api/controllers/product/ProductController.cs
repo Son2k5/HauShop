@@ -4,6 +4,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using api.DTOs.product;
+using api.extensions;
 using api.services.interfaces.product;
 
 namespace api.controllers.product
@@ -31,10 +32,8 @@ namespace api.controllers.product
         }
 
         // ════════════════════════════════════════════════════════════════════════
-        // POST /api/product/search
-        // Body: { search, brandId, categoryId, minPrice, maxPrice, isActive,
-        //         sortBy: "created|price|name", sortOrder: "asc|desc",
-        //         page: 1, pageSize: 20 }
+        // GET /api/product?search=&brandId=&categoryId=&minPrice=&maxPrice=&isActive=
+        //     &sortBy=created|price|name&sortOrder=asc|desc&page=1&pageSize=20
         // ════════════════════════════════════════════════════════════════════════
         [HttpGet]
         [AllowAnonymous]
@@ -51,13 +50,6 @@ namespace api.controllers.product
         public Task<IActionResult> SearchGet(
             [FromQuery] ProductQueryDto query,
             CancellationToken ct) => SearchProductsAsync(query, "GET /api/product/search", ct);
-
-        [HttpPost("search")]
-        [AllowAnonymous]
-        [ProducesResponseType(typeof(PagedProductDto), StatusCodes.Status200OK)]
-        public Task<IActionResult> Search(
-            [FromBody] ProductQueryDto? query,
-            CancellationToken ct) => SearchProductsAsync(query ?? new ProductQueryDto(), "POST /api/product/search", ct);
 
         private async Task<IActionResult> SearchProductsAsync(
             ProductQueryDto query,
@@ -128,7 +120,7 @@ namespace api.controllers.product
         {
             var validation = await _createValidator.ValidateAsync(dto, ct);
             if (!validation.IsValid)
-                return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
+                return ValidationProblem(new ValidationProblemDetails(validation.ToClientSafeDictionary()));
 
             var product = await _service.CreateAsync(dto, ct);
             return StatusCode(StatusCodes.Status201Created, product);
@@ -149,7 +141,7 @@ namespace api.controllers.product
         {
             var validation = await _updateValidator.ValidateAsync(dto, ct);
             if (!validation.IsValid)
-                return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
+                return ValidationProblem(new ValidationProblemDetails(validation.ToClientSafeDictionary()));
 
             var product = await _service.UpdateAsync(id, dto, ct);
             return Ok(product);
@@ -161,12 +153,12 @@ namespace api.controllers.product
         // ════════════════════════════════════════════════════════════════════════
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin,Merchant")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(string id, CancellationToken ct)
         {
             await _service.DeleteAsync(id, ct);
-            return Ok(new { message = "Xóa sản phẩm thành công" });
+            return NoContent();
         }
 
         // ════════════════════════════════════════════════════════════════════════

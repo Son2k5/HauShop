@@ -30,12 +30,6 @@ namespace api.services.implementations.review
 
         public async Task<ReviewDto> CreateAsync(string userId, CreateReviewDto dto, CancellationToken ct = default)
         {
-            if (string.IsNullOrWhiteSpace(dto.ProductId))
-                throw new InvalidOperationException("ProductId là bắt buộc");
-
-            if (dto.Rating < 1 || dto.Rating > 5)
-                throw new InvalidOperationException("Rating phải từ 1 đến 5");
-
             var product = await _productRepository.GetByIdAsync(dto.ProductId, ct)
                 ?? throw new KeyNotFoundException($"Không tìm thấy sản phẩm: {dto.ProductId}");
 

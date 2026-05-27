@@ -1,12 +1,11 @@
 using System.Text.Json;
 using System.Threading;
-using api.infrastructure.redis;
 using api.services.interfaces.caching;
 using StackExchange.Redis;
 
 namespace api.services.implementations.caching;
 
-public sealed class RedisCacheService : IRedisCacheService
+public sealed class RedisCacheService : ICacheService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly TimeSpan FailureBackoff = TimeSpan.FromSeconds(15);
@@ -207,7 +206,7 @@ public sealed class RedisCacheService : IRedisCacheService
             if (!IsRedisAvailable(nameof(RemoveByPrefixAsync), prefix))
                 return;
 
-            var indexKey = RedisCacheKeys.CacheIndex(prefix);
+            var indexKey = CacheKeys.CacheIndex(prefix);
             var values = await _database.SetMembersAsync(indexKey);
             if (values.Length == 0)
                 return;
@@ -266,8 +265,8 @@ public sealed class RedisCacheService : IRedisCacheService
 
     private async Task TrackKeyAsync(string key, TimeSpan? ttl)
     {
-        var prefix = RedisCacheKeys.GetIndexPrefix(key);
-        var indexKey = RedisCacheKeys.CacheIndex(prefix);
+        var prefix = CacheKeys.GetIndexPrefix(key);
+        var indexKey = CacheKeys.CacheIndex(prefix);
         await _database.SetAddAsync(indexKey, key);
         await _database.KeyExpireAsync(indexKey, (ttl ?? TimeSpan.FromDays(7)) + TimeSpan.FromDays(1));
     }

@@ -15,6 +15,10 @@ public static class RedisServiceCollectionExtensions
         IConfiguration configuration)
     {
         services.Configure<RedisOptions>(configuration.GetSection(RedisOptions.SectionName));
+        services.Configure<CacheOptions>(
+            configuration.GetSection("Cache").Exists()
+                ? configuration.GetSection("Cache")
+                : configuration.GetSection(RedisOptions.SectionName));
         services.Configure<RedisLoginRateLimitOptions>(configuration.GetSection("RateLimiting:Login"));
 
         var redisOptions = configuration.GetSection(RedisOptions.SectionName).Get<RedisOptions>()
@@ -41,8 +45,8 @@ public static class RedisServiceCollectionExtensions
             return redis;
         });
 
-        services.AddSingleton<IRedisCacheService, RedisCacheService>();
-        services.AddSingleton<IRedisEventBus, RedisEventBus>();
+        services.AddSingleton<ICacheService, RedisCacheService>();
+        services.AddSingleton<IEventBus, RedisEventBus>();
         services.AddSingleton<IAuthTokenCacheService, AuthTokenCacheService>();
         services.AddSingleton<IJwtBlacklistService, JwtBlacklistService>();
 

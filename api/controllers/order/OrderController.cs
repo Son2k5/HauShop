@@ -28,7 +28,7 @@ namespace api.controllers.order
         {
             var userId = TryGetUserId();
             if (userId == null)
-                return Unauthorized(new { message = "Unauthorized" });
+                return UnauthorizedProblem();
 
             var result = await _orderService.CheckoutAsync(userId, dto, HttpContext, ct);
             return Ok(result);
@@ -43,7 +43,7 @@ namespace api.controllers.order
         {
             var userId = TryGetUserId();
             if (userId == null)
-                return Unauthorized(new { message = "Unauthorized" });
+                return UnauthorizedProblem();
 
             var result = await _orderService.GetMyOrdersAsync(userId, page, pageSize, ct);
             return Ok(result);
@@ -55,7 +55,7 @@ namespace api.controllers.order
         {
             var userId = TryGetUserId();
             if (userId == null)
-                return Unauthorized(new { message = "Unauthorized" });
+                return UnauthorizedProblem();
 
             var result = await _orderService.GetMyOrderByIdAsync(userId, id, ct);
             return Ok(result);
@@ -67,7 +67,7 @@ namespace api.controllers.order
         {
             var userId = TryGetUserId();
             if (userId == null)
-                return Unauthorized(new { message = "Unauthorized" });
+                return UnauthorizedProblem();
 
             var result = await _orderService.CancelMyOrderAsync(userId, id, ct);
             return Ok(result);
@@ -97,5 +97,17 @@ namespace api.controllers.order
 
             return userId;
         }
+
+        private IActionResult UnauthorizedProblem() =>
+            Unauthorized(new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Unauthorized",
+                Instance = HttpContext.Request.Path,
+                Extensions =
+                {
+                    ["traceId"] = HttpContext.TraceIdentifier
+                }
+            });
     }
 }

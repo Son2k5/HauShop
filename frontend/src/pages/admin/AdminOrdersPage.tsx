@@ -1,6 +1,7 @@
 import { Icon } from "@iconify/react";
 import { startTransition, useEffect, useMemo, useState } from "react";
 import type { AdminUpdateOrderStatusDto } from "../../@types/admin.type";
+import { OrderStatuses } from "../../@types/enums.type";
 import { useAdminOrder, useAdminOrders, useUpdateAdminOrderStatus } from "../../hooks/useAdmin";
 import { useDebounce } from "../../hooks/useDebounce";
 import { formatPrice } from "../../utils/formatPrice";
@@ -19,21 +20,21 @@ import {
 
 const statuses: Array<AdminUpdateOrderStatusDto["status"] | ""> = [
   "",
-  "Pending",
-  "Processing",
-  "Shipping",
-  "Completed",
-  "Cancelled",
+  OrderStatuses.Pending,
+  OrderStatuses.Processing,
+  OrderStatuses.Shipping,
+  OrderStatuses.Completed,
+  OrderStatuses.Cancelled,
 ];
 
 const statusOptions = statuses.slice(1) as AdminUpdateOrderStatusDto["status"][];
 
 const validTransitions: Record<AdminUpdateOrderStatusDto["status"], AdminUpdateOrderStatusDto["status"][]> = {
-  Pending: ["Pending", "Processing", "Cancelled"],
-  Processing: ["Processing", "Shipping", "Cancelled"],
-  Shipping: ["Shipping", "Completed"],
-  Completed: ["Completed"],
-  Cancelled: ["Cancelled"],
+  Pending: [OrderStatuses.Pending, OrderStatuses.Processing, OrderStatuses.Cancelled],
+  Processing: [OrderStatuses.Processing, OrderStatuses.Shipping, OrderStatuses.Cancelled],
+  Shipping: [OrderStatuses.Shipping, OrderStatuses.Completed],
+  Completed: [OrderStatuses.Completed],
+  Cancelled: [OrderStatuses.Cancelled],
 };
 
 export default function AdminOrdersPage() {
@@ -41,7 +42,7 @@ export default function AdminOrdersPage() {
   const [status, setStatus] = useState<AdminUpdateOrderStatusDto["status"] | "">("");
   const [page, setPage] = useState(1);
   const [selectedOrderId, setSelectedOrderId] = useState<string>();
-  const [draftStatus, setDraftStatus] = useState<AdminUpdateOrderStatusDto["status"]>("Pending");
+  const [draftStatus, setDraftStatus] = useState<AdminUpdateOrderStatusDto["status"]>(OrderStatuses.Pending);
   const [formError, setFormError] = useState<string | null>(null);
 
   const debouncedSearch = useDebounce(search, 350);

@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json;
-using api.infrastructure.redis;
 using api.services.interfaces.caching;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
 namespace api.middlewares;
@@ -22,7 +22,7 @@ public sealed class RedisLoginRateLimitMiddleware
         _logger = logger;
     }
 
-    public async Task InvokeAsync(HttpContext context, IRedisCacheService cache)
+    public async Task InvokeAsync(HttpContext context, ICacheService cache)
     {
         if (!IsLoginRequest(context.Request))
         {
@@ -35,7 +35,7 @@ public sealed class RedisLoginRateLimitMiddleware
             var email = await TryReadEmailAsync(context.Request);
             var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
             var discriminator = $"{ip}:{email ?? "unknown"}";
-            var key = RedisCacheKeys.LoginRateLimit(discriminator);
+            var key = CacheKeys.LoginRateLimit(discriminator);
 
             var count = await cache.IncrementAsync(
                 key,
@@ -50,9 +50,12 @@ public sealed class RedisLoginRateLimitMiddleware
                 context.Response.Headers["Retry-After"] = _options.WindowSeconds.ToString();
                 context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
 
-                await context.Response.WriteAsJsonAsync(new
+                await context.Response.WriteAsJsonAsync(new ProblemDetails
                 {
-                    message = "Too many login attempts. Please try again later."
+                    Status = StatusCodes.Status429TooManyRequests,
+                    Title = "Too many login attempts",
+                    Detail = "Please try again later.",
+                    Instance = context.Request.Path
                 }, context.RequestAborted);
 
                 return;

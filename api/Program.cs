@@ -1,5 +1,6 @@
 using System.Text;
 using System.IdentityModel.Tokens.Jwt;
+using api.common;
 using api.extensions;
 using api.data;
 using api.infrastructure.redis;
@@ -15,8 +16,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using FluentValidation;
 using FluentValidation.AspNetCore;
-using api.validators;
-using api.validators.auth;
+using api.validators.order;
 using Microsoft.AspNetCore.Mvc;
 using CloudinaryDotNet;
 using api.services.implementations.cloud;
@@ -68,6 +68,7 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
         options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
     });
 builder.Services.AddFluentValidationAutoValidation();
 
@@ -237,13 +238,18 @@ builder.Services.AddAuthentication(options =>
         {
             context.HandleResponse();
             context.Response.StatusCode = 401;
-            context.Response.ContentType = "application/json";
-            var result = System.Text.Json.JsonSerializer.Serialize(new
+            context.Response.ContentType = "application/problem+json";
+            var problem = new ProblemDetails
             {
-                success = false,
-                message = "You are not authorized"
-            });
-            return context.Response.WriteAsync(result);
+                Status = StatusCodes.Status401Unauthorized,
+                Title = ClientErrorMessages.UnauthorizedTitle,
+                Instance = context.Request.Path,
+                Extensions =
+                {
+                    ["traceId"] = context.HttpContext.TraceIdentifier
+                }
+            };
+            return context.Response.WriteAsJsonAsync(problem);
         }
     };
 });
@@ -298,15 +304,20 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
     options.InvalidModelStateResponseFactory = context =>
     {
         var errors = context.ModelState
-        .Where(e => e.Value.Errors.Count > 0)
-        .ToDictionary(
-            kvp => kvp.Key,
-            kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray()
-        );
+            .Where(e => e.Value?.Errors.Count > 0)
+            .ToDictionary(
+                kvp => string.IsNullOrWhiteSpace(kvp.Key) ? "request" : kvp.Key,
+                kvp => kvp.Value!.Errors
+                    .Select(_ => ClientErrorMessages.FieldInvalid)
+                    .Distinct()
+                    .ToArray()
+            );
+
         return new BadRequestObjectResult(new ValidationProblemDetails(errors)
         {
             Status = StatusCodes.Status400BadRequest,
-            Title = "Validation failed",
+            Title = ClientErrorMessages.InvalidRequestTitle,
+            Detail = ClientErrorMessages.InvalidRequestDetail,
             Instance = context.HttpContext.Request.Path
         });
     };
@@ -323,8 +334,7 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
-builder.Services.AddValidatorsFromAssemblyContaining<RegisterDtoValidator>();
-builder.Services.AddValidatorsFromAssemblyContaining<LoginDtoValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<CreateOrderDtoValidator>();
 builder.Services.AddScoped<CloudinaryService>();
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IUserService, UserService>();

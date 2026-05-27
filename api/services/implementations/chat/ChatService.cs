@@ -44,15 +44,9 @@ namespace api.services.implementations.chat
                 ?? throw new KeyNotFoundException("Customer not found");
 
             var trimmedSubject = subject.Trim();
-            if (trimmedSubject.Length > 500)
-            {
-                throw new ArgumentException("Subject must be 500 characters or fewer.");
-            }
 
             var existing = await _context.SupportTickets
                 .AsNoTracking()
-                .Include(t => t.Customer)
-                .Include(t => t.ChatRoom)
                 .Where(t => t.CustomerId == customerId
                     && t.Status != SupportTicketStatus.Closed
                     && t.ChatRoom.Type == roomType)
@@ -195,20 +189,11 @@ namespace api.services.implementations.chat
         {
             await EnsureCanAccessRoomAsync(roomId, senderId, isAdmin, ct);
 
-            var normalizedMessage = message?.Trim();
-            if (string.IsNullOrWhiteSpace(normalizedMessage))
-            {
-                throw new ArgumentException("Message is required.");
-            }
-
-            if (normalizedMessage.Length > 5000)
-            {
-                throw new ArgumentException("Message must be 5000 characters or fewer.");
-            }
+            var normalizedMessage = message.Trim();
 
             if (!Enum.TryParse<ChatMessageType>(messageType, true, out var parsedType))
             {
-                throw new ArgumentException("Message type is invalid.");
+                throw new InvalidOperationException("Message type is invalid.");
             }
 
             var room = await _context.ChatRooms.FirstOrDefaultAsync(r => r.Id == roomId, ct)
@@ -254,20 +239,11 @@ namespace api.services.implementations.chat
         {
             await EnsureCanAccessRoomAsync(roomId, senderId, false, ct);
 
-            var normalizedMessage = message?.Trim();
-            if (string.IsNullOrWhiteSpace(normalizedMessage))
-            {
-                throw new ArgumentException("Message is required.");
-            }
-
-            if (normalizedMessage.Length > 5000)
-            {
-                throw new ArgumentException("Message must be 5000 characters or fewer.");
-            }
+            var normalizedMessage = message.Trim();
 
             if (!Enum.TryParse<ChatMessageType>(messageType, true, out var parsedType))
             {
-                throw new ArgumentException("Message type is invalid.");
+                throw new InvalidOperationException("Message type is invalid.");
             }
 
             var room = await _context.ChatRooms.FirstOrDefaultAsync(r => r.Id == roomId, ct)
@@ -315,7 +291,7 @@ namespace api.services.implementations.chat
             var normalizedMessage = message?.Trim();
             if (string.IsNullOrWhiteSpace(normalizedMessage))
             {
-                throw new ArgumentException("Message is required.");
+                throw new InvalidOperationException("Assistant message could not be created.");
             }
 
             if (normalizedMessage.Length > 5000)
@@ -409,44 +385,76 @@ namespace api.services.implementations.chat
 
         private async Task<ChatRoomDto> MapRoomAsync(string roomId, string userId, bool isAdmin, CancellationToken ct)
         {
-            var ticket = await _context.SupportTickets
+            var row = await _context.SupportTickets
                 .AsNoTracking()
-                .Include(t => t.Customer)
-                .Include(t => t.ChatRoom)
-                .FirstOrDefaultAsync(t => t.ChatRoomId == roomId, ct)
+                .Where(t => t.ChatRoomId == roomId)
+                .Select(t => new
+                {
+                    t.ChatRoomId,
+                    RoomName = t.ChatRoom.Name,
+                    RoomType = t.ChatRoom.Type,
+                    t.CustomerId,
+                    CustomerFirstName = t.Customer.FirstName,
+                    CustomerLastName = t.Customer.LastName,
+                    CustomerEmail = t.Customer.Email,
+                    t.AssignedToId,
+                    t.Status,
+                    t.Priority,
+                    t.Created,
+                    t.ClosedAt,
+                    UnreadCount = t.ChatRoom.Messages.Count(m => !m.IsRead && m.SenderId != userId),
+                    LastMessage = t.ChatRoom.Messages
+                        .OrderByDescending(m => m.Created)
+                        .Select(m => new
+                        {
+                            m.Id,
+                            m.ChatRoomId,
+                            m.SenderId,
+                            SenderFirstName = m.Sender.FirstName,
+                            SenderLastName = m.Sender.LastName,
+                            SenderEmail = m.Sender.Email,
+                            SenderRole = m.Sender.Role,
+                            m.Message,
+                            m.MessageType,
+                            m.IsRead,
+                            m.ReadAt,
+                            m.Created
+                        })
+                        .FirstOrDefault()
+                })
+                .FirstOrDefaultAsync(ct)
                 ?? throw new KeyNotFoundException("Support ticket not found");
-
-            return await MapTicketAsync(ticket, userId, isAdmin, ct);
-        }
-
-        private async Task<ChatRoomDto> MapTicketAsync(SupportTicket ticket, string userId, bool isAdmin, CancellationToken ct)
-        {
-            var lastMessage = await _context.ChatMessages
-                .AsNoTracking()
-                .Include(m => m.Sender)
-                .Where(m => m.ChatRoomId == ticket.ChatRoomId)
-                .OrderByDescending(m => m.Created)
-                .FirstOrDefaultAsync(ct);
-
-            var unreadCount = await _context.ChatMessages
-                .AsNoTracking()
-                .CountAsync(m => m.ChatRoomId == ticket.ChatRoomId && !m.IsRead && m.SenderId != userId, ct);
 
             return new ChatRoomDto
             {
-                Id = ticket.ChatRoomId,
-                Name = ticket.ChatRoom.Name,
-                Type = ticket.ChatRoom.Type.ToString(),
-                CustomerId = ticket.CustomerId,
-                CustomerName = BuildFullName(ticket.Customer),
-                CustomerEmail = ticket.Customer.Email,
-                AssignedToId = ticket.AssignedToId,
-                Status = ticket.Status.ToString(),
-                Priority = ticket.Priority.ToString(),
-                UnreadCount = unreadCount,
-                LastMessage = lastMessage is null ? null : MapMessage(lastMessage),
-                Created = ticket.Created,
-                ClosedAt = ticket.ClosedAt
+                Id = row.ChatRoomId,
+                Name = row.RoomName,
+                Type = row.RoomType.ToString(),
+                CustomerId = row.CustomerId,
+                CustomerName = BuildFullName(row.CustomerFirstName, row.CustomerLastName, row.CustomerEmail),
+                CustomerEmail = row.CustomerEmail,
+                AssignedToId = row.AssignedToId,
+                Status = row.Status.ToString(),
+                Priority = row.Priority.ToString(),
+                UnreadCount = row.UnreadCount,
+                LastMessage = row.LastMessage is null ? null : new ChatMessageDto
+                {
+                    Id = row.LastMessage.Id,
+                    ChatRoomId = row.LastMessage.ChatRoomId,
+                    SenderId = row.LastMessage.SenderId,
+                    SenderName = BuildFullName(
+                        row.LastMessage.SenderFirstName,
+                        row.LastMessage.SenderLastName,
+                        row.LastMessage.SenderEmail),
+                    SenderRole = row.LastMessage.SenderRole.ToString(),
+                    Message = row.LastMessage.Message,
+                    MessageType = row.LastMessage.MessageType.ToString(),
+                    IsRead = row.LastMessage.IsRead,
+                    ReadAt = row.LastMessage.ReadAt,
+                    Created = row.LastMessage.Created
+                },
+                Created = row.Created,
+                ClosedAt = row.ClosedAt
             };
         }
 

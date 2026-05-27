@@ -45,24 +45,11 @@ export const userService = {
     const formData = new FormData();
     formData.append("file", file);
 
-    try {
-      return await http.post<{ success: boolean; avatarUrl: string; user: UserDto }>(
-        "/user/avatar",
-        formData
-      );
-    } catch (error: any) {
-      const message = error.response?.data?.message || error.message || "Upload failed";
-      throw new Error(message);
-    }
+    return http.post<{ success: boolean; avatarUrl: string; user: UserDto }>("/user/avatar", formData);
   },
 
   async removeAvatar(): Promise<{ success: boolean; user: UserDto }> {
-    try {
-      return await http.delete<{ success: boolean; user: UserDto }>("/user/avatar");
-    } catch (error: any) {
-      const message = error.response?.data?.message || error.message || "Remove avatar failed";
-      throw new Error(message);
-    }
+    return http.delete<{ success: boolean; user: UserDto }>("/user/avatar");
   },
 
   async getAddresses(): Promise<AddressDto[]> {

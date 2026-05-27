@@ -1,6 +1,6 @@
 namespace api.services.interfaces.caching;
 
-public interface IRedisEventBus
+public interface IEventBus
 {
     Task PublishAsync<T>(string channel, T message, CancellationToken ct = default);
 

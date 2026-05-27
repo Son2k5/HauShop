@@ -3,7 +3,6 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using api.DTOs.product;
-using api.infrastructure.redis;
 using api.mappings;
 using api.models.entities;
 using api.repositories.interfaces;
@@ -18,21 +17,21 @@ namespace api.services.implementations.product
     {
         private readonly IProductRepository _repo;
         private readonly ICloudinaryService _cloudinary;
-        private readonly IRedisCacheService _cache;
-        private readonly RedisOptions _redisOptions;
+        private readonly ICacheService _cache;
+        private readonly CacheOptions _cacheOptions;
         private readonly ILogger<ProductService> _logger;
 
         public ProductService(
             IProductRepository repo,
             ICloudinaryService cloudinary,
-            IRedisCacheService cache,
-            IOptions<RedisOptions> redisOptions,
+            ICacheService cache,
+            IOptions<CacheOptions> cacheOptions,
             ILogger<ProductService> logger)
         {
             _repo = repo;
             _cloudinary = cloudinary;
             _cache = cache;
-            _redisOptions = redisOptions.Value;
+            _cacheOptions = cacheOptions.Value;
             _logger = logger;
         }
 
@@ -40,7 +39,7 @@ namespace api.services.implementations.product
             ProductQueryDto query,
             CancellationToken ct = default)
         {
-            var cacheKey = RedisCacheKeys.ProductList(query);
+            var cacheKey = CacheKeys.ProductList(query);
             var stopwatch = Stopwatch.StartNew();
 
             if (ShouldBypassProductListCache(query))
@@ -65,7 +64,7 @@ namespace api.services.implementations.product
             var result = await _cache.GetOrSetAsync(
                 cacheKey,
                 token => LoadProductsFromRepositoryAsync(query, token),
-                TimeSpan.FromMinutes(_redisOptions.ProductListTtlMinutes),
+                TimeSpan.FromMinutes(_cacheOptions.ProductListTtlMinutes),
                 ct: ct);
 
             stopwatch.Stop();
@@ -131,7 +130,7 @@ namespace api.services.implementations.product
         public async Task<ProductDto> GetByIdAsync(string id, CancellationToken ct = default)
         {
             return await _cache.GetOrSetAsync(
-                RedisCacheKeys.ProductDetail(id),
+                CacheKeys.ProductDetail(id),
                 async token =>
                 {
                     var product = await _repo.GetByIdWithIncludesAsync(id, token)
@@ -139,14 +138,14 @@ namespace api.services.implementations.product
 
                     return ProductMapping.MapToDto(product);
                 },
-                TimeSpan.FromMinutes(_redisOptions.ProductDetailTtlMinutes),
+                TimeSpan.FromMinutes(_cacheOptions.ProductDetailTtlMinutes),
                 ct: ct);
         }
 
         public async Task<ProductDto> GetBySlugAsync(string slug, CancellationToken ct = default)
         {
             return await _cache.GetOrSetAsync(
-                RedisCacheKeys.ProductSlug(slug),
+                CacheKeys.ProductSlug(slug),
                 async token =>
                 {
                     var product = await _repo.GetBySlugAsync(slug, token)
@@ -154,7 +153,7 @@ namespace api.services.implementations.product
 
                     return ProductMapping.MapToDto(product);
                 },
-                TimeSpan.FromMinutes(_redisOptions.ProductDetailTtlMinutes),
+                TimeSpan.FromMinutes(_cacheOptions.ProductDetailTtlMinutes),
                 ct: ct);
         }
 
@@ -341,18 +340,18 @@ namespace api.services.implementations.product
 
         private async Task InvalidateProductAsync(string productId, string? slug, CancellationToken ct)
         {
-            await _cache.RemoveAsync(RedisCacheKeys.ProductDetail(productId), ct);
+            await _cache.RemoveAsync(CacheKeys.ProductDetail(productId), ct);
 
             if (!string.IsNullOrWhiteSpace(slug))
-                await _cache.RemoveAsync(RedisCacheKeys.ProductSlug(slug), ct);
+                await _cache.RemoveAsync(CacheKeys.ProductSlug(slug), ct);
 
             await InvalidateProductCollectionsAsync(ct);
         }
 
         private async Task InvalidateProductCollectionsAsync(CancellationToken ct)
         {
-            await _cache.RemoveByPrefixAsync(RedisCacheKeys.ProductListPrefix, ct);
-            await _cache.RemoveByPrefixAsync(RedisCacheKeys.HomepagePrefix, ct);
+            await _cache.RemoveByPrefixAsync(CacheKeys.ProductListPrefix, ct);
+            await _cache.RemoveByPrefixAsync(CacheKeys.HomepagePrefix, ct);
         }
 
         private static bool ShouldBypassProductListCache(ProductQueryDto query)

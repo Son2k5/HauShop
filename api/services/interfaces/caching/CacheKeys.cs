@@ -1,11 +1,11 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using System.Globalization;
 using api.DTOs.product;
 
-namespace api.infrastructure.redis;
+namespace api.services.interfaces.caching;
 
-public static class RedisCacheKeys
+public static class CacheKeys
 {
     public const string AppPrefix = "haushop:v1";
 

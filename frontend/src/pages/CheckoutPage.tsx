@@ -12,6 +12,7 @@ import { queryKeys } from "../lib/queryKeys";
 import { logger } from "../lib/logger";
 import { useAuth } from "../hooks/useAuth";
 import { ROUTES, routeTo } from "../lib/routes";
+import { PaymentMethods, type PaymentMethod } from "../@types/enums.type";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ export default function CheckoutPage() {
   const [addresses, setAddresses] = useState<AddressDto[]>([]);
   const [addressesLoading, setAddressesLoading] = useState(true);
   const [shippingAddressId, setShippingAddressId] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<0 | 1>(0);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethods.COD);
   const shippingFee = 30000; // Backend sẽ tính phí ship dựa trên địa chỉ
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -100,7 +101,7 @@ export default function CheckoutPage() {
         note: note.trim() || undefined,
       });
 
-      if (paymentMethod === 0) {
+      if (paymentMethod === PaymentMethods.COD) {
         queryClient.removeQueries({ queryKey: queryKeys.cart.me });
         queryClient.setQueryData(queryKeys.orders.detail(res.order.id), res.order);
         await queryClient.invalidateQueries({ queryKey: queryKeys.orders.mineRoot });
@@ -209,8 +210,8 @@ export default function CheckoutPage() {
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="radio"
-                  checked={paymentMethod === 0}
-                  onChange={() => setPaymentMethod(0)}
+                  checked={paymentMethod === PaymentMethods.COD}
+                  onChange={() => setPaymentMethod(PaymentMethods.COD)}
                 />
                 <span>Thanh toán khi nhận hàng (COD)</span>
               </label>
@@ -218,8 +219,8 @@ export default function CheckoutPage() {
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="radio"
-                  checked={paymentMethod === 1}
-                  onChange={() => setPaymentMethod(1)}
+                  checked={paymentMethod === PaymentMethods.VNPay}
+                  onChange={() => setPaymentMethod(PaymentMethods.VNPay)}
                 />
                 <span>Thanh toán qua VNPay</span>
               </label>

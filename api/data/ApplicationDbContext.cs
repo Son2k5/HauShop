@@ -374,19 +374,17 @@ namespace api.data
                     .HasForeignKey(e => e.BrandId)
                     .OnDelete(DeleteBehavior.SetNull);
 
-                entity.HasIndex(e => e.Sku).IsUnique();
-                entity.HasIndex(e => e.Slug).IsUnique();
-                entity.HasIndex(e => e.Name);
-                entity.HasIndex(e => e.BrandId);
-                entity.HasIndex(e => e.Stock);
-                entity.HasIndex(e => e.AverageRating);
-                entity.HasIndex(e => new { e.BrandId, e.IsActive });
-                entity.HasIndex(e => new { e.IsActive, e.Price });
-                entity.HasIndex(e => new { e.IsActive, e.Created });
-                entity.HasIndex(e => new { e.IsActive, e.Stock });
-                entity.HasIndex(e => new { e.BrandId, e.IsActive, e.Created });
-                entity.HasIndex(e => new { e.IsActive, e.Name });
-                entity.HasIndex(e => new { e.Name, e.Sku, e.Description }).IsFullText();
+                entity.HasIndex(e => e.Sku).IsUnique().HasDatabaseName("UX_Products_Sku");
+                entity.HasIndex(e => e.Slug).IsUnique().HasDatabaseName("UX_Products_Slug");
+                entity.HasIndex(e => new { e.IsActive, e.Created })
+                    .HasDatabaseName("IX_Products_Active_Created");
+                entity.HasIndex(e => new { e.BrandId, e.IsActive, e.Created })
+                    .HasDatabaseName("IX_Products_Brand_Active_Created");
+                entity.HasIndex(e => new { e.IsActive, e.Price })
+                    .HasDatabaseName("IX_Products_Active_Price");
+                entity.HasIndex(e => new { e.Name, e.Sku, e.Description })
+                    .IsFullText()
+                    .HasDatabaseName("FT_Products_Name_Sku_Description");
 
                 entity.ToTable(t =>
                 {

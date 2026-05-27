@@ -1,5 +1,4 @@
 using System.IdentityModel.Tokens.Jwt;
-using api.infrastructure.redis;
 using api.services.interfaces.auth;
 using api.services.interfaces.caching;
 
@@ -7,10 +6,10 @@ namespace api.services.implementations.auth;
 
 public sealed class JwtBlacklistService : IJwtBlacklistService
 {
-    private readonly IRedisCacheService _cache;
+    private readonly ICacheService _cache;
     private readonly ILogger<JwtBlacklistService> _logger;
 
-    public JwtBlacklistService(IRedisCacheService cache, ILogger<JwtBlacklistService> logger)
+    public JwtBlacklistService(ICacheService cache, ILogger<JwtBlacklistService> logger)
     {
         _cache = cache;
         _logger = logger;
@@ -42,7 +41,7 @@ public sealed class JwtBlacklistService : IJwtBlacklistService
 
     public Task BlacklistJtiAsync(string jti, TimeSpan ttl, CancellationToken ct = default)
     {
-        return _cache.SetAsync(RedisCacheKeys.JwtBlacklist(jti), true, ttl, ct: ct);
+        return _cache.SetAsync(CacheKeys.JwtBlacklist(jti), true, ttl, ct: ct);
     }
 
     public async Task<bool> IsBlacklistedAsync(string? jti, CancellationToken ct = default)
@@ -50,6 +49,6 @@ public sealed class JwtBlacklistService : IJwtBlacklistService
         if (string.IsNullOrWhiteSpace(jti))
             return false;
 
-        return await _cache.ExistsAsync(RedisCacheKeys.JwtBlacklist(jti), ct);
+        return await _cache.ExistsAsync(CacheKeys.JwtBlacklist(jti), ct);
     }
 }

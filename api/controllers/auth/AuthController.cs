@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using api.services.interfaces.auth;
 using api.DTOs.user;
+using api.extensions;
 using FluentValidation;
 
 namespace api.controllers
@@ -39,56 +40,48 @@ namespace api.controllers
 
         [HttpPost("register")]
         [AllowAnonymous]
-        [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
             var validationResult = await _registerValidator.ValidateAsync(dto);
             if (!validationResult.IsValid)
-                return ValidationProblem(new ValidationProblemDetails(validationResult.ToDictionary()));
+                return ValidationProblem(new ValidationProblemDetails(validationResult.ToClientSafeDictionary()));
 
             var result = await _authService.RegisterAsync(dto);
             if (!result.Succeeded)
-                return StatusCode(result.StatusCode, new ProblemDetails { Status = result.StatusCode, Title = result.Message });
+                return AuthProblem(result);
 
             SetAccessTokenCookie(result.Value!.AccessToken);
             SetRefreshTokenCookie(result.Value!.RefreshToken);
 
-            return StatusCode(StatusCodes.Status201Created, new
-            {
-                message = "Registration successful",
-                user = result.Value!.User
-            });
+            return StatusCode(StatusCodes.Status201Created, result.Value!.User);
         }
 
         [HttpPost("login")]
         [AllowAnonymous]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
             var validationResult = await _loginValidator.ValidateAsync(dto);
             if (!validationResult.IsValid)
-                return ValidationProblem(new ValidationProblemDetails(validationResult.ToDictionary()));
+                return ValidationProblem(new ValidationProblemDetails(validationResult.ToClientSafeDictionary()));
 
             var result = await _authService.LoginAsync(dto);
             if (!result.Succeeded)
-                return StatusCode(result.StatusCode, new ProblemDetails { Status = result.StatusCode, Title = result.Message });
+                return AuthProblem(result);
 
             SetAccessTokenCookie(result.Value!.AccessToken);
             SetRefreshTokenCookie(result.Value!.RefreshToken);
 
-            return Ok(new
-            {
-                message = "Login successful",
-                user = result.Value!.User
-            });
+            return Ok(result.Value!.User);
         }
 
         [HttpPost("refresh-token")]
         [AllowAnonymous]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> RefreshToken()
         {
@@ -105,43 +98,43 @@ namespace api.controllers
 
             var result = await _authService.RefreshTokenAsync(refreshToken);
             if (!result.Succeeded)
-                return StatusCode(result.StatusCode, new ProblemDetails { Status = result.StatusCode, Title = result.Message });
+                return AuthProblem(result);
 
             SetAccessTokenCookie(result.Value!.AccessToken);
             SetRefreshTokenCookie(result.Value!.RefreshToken);
 
-            return Ok(new { message = "Token refreshed successfully" });
+            return NoContent();
         }
 
         [HttpPost("forgot-password")]
         [AllowAnonymous]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
         {
             var result = await _authService.ForgotPasswordAsync(dto.Email);
             if (!result.Succeeded)
-                return StatusCode(result.StatusCode, new ProblemDetails { Status = result.StatusCode, Title = result.Message });
+                return AuthProblem(result);
 
-            // Luôn trả thông điệp giống nhau để tránh user enumeration
-            return Ok(new { message = "If the email exists, an OTP has been sent" });
+            // Always return the same status to avoid user enumeration.
+            return NoContent();
         }
 
         [HttpPost("reset-password")]
         [AllowAnonymous]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
         {
             var result = await _authService.ResetPasswordAsync(dto);
             if (!result.Succeeded)
-                return StatusCode(result.StatusCode, new ProblemDetails { Status = result.StatusCode, Title = result.Message });
+                return AuthProblem(result);
 
-            return Ok(new { message = "Password reset successfully" });
+            return NoContent();
         }
 
         [HttpPost("logout")]
         [Authorize]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<IActionResult> Logout()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -158,12 +151,12 @@ namespace api.controllers
 
             DeleteTokenCookies();
 
-            return Ok(new { message = "Logged out successfully" });
+            return NoContent();
         }
 
         [HttpGet("me")]
         [Authorize]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetCurrentUser()
         {
@@ -173,14 +166,14 @@ namespace api.controllers
 
             var result = await _authService.GetCurrentUserAsync(userId);
             if (!result.Succeeded)
-                return StatusCode(result.StatusCode, new ProblemDetails { Status = result.StatusCode, Title = result.Message });
+                return AuthProblem(result);
 
-            return Ok(new { message = "User found", user = result.Value });
+            return Ok(result.Value);
         }
 
         [HttpPost("change-password")]
         [Authorize]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -189,14 +182,14 @@ namespace api.controllers
 
             var result = await _authService.ChangePasswordAsync(dto, userId);
             if (!result.Succeeded)
-                return StatusCode(result.StatusCode, new ProblemDetails { Status = result.StatusCode, Title = result.Message });
+                return AuthProblem(result);
 
-            return Ok(new { message = "Password changed successfully" });
+            return NoContent();
         }
 
         [HttpPost("revoke-token")]
         [Authorize]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<IActionResult> RevokeToken()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -209,12 +202,30 @@ namespace api.controllers
 
             var result = await _authService.RevokeRefreshTokenAsync(userId, refreshToken);
             if (!result.Succeeded)
-                return StatusCode(result.StatusCode, new ProblemDetails { Status = result.StatusCode, Title = result.Message });
+                return AuthProblem(result);
 
-            return Ok(new { message = "Token revoked successfully" });
+            return NoContent();
         }
 
         // HELPER METHODS
+
+        private IActionResult AuthProblem(AuthResult result) =>
+            StatusCode(result.StatusCode, CreateProblemDetails(result.StatusCode, result.Message));
+
+        private IActionResult AuthProblem<T>(AuthResult<T> result) =>
+            StatusCode(result.StatusCode, CreateProblemDetails(result.StatusCode, result.Message));
+
+        private ProblemDetails CreateProblemDetails(int statusCode, string message) =>
+            new()
+            {
+                Status = statusCode,
+                Title = message,
+                Instance = HttpContext.Request.Path,
+                Extensions =
+                {
+                    ["traceId"] = HttpContext.TraceIdentifier
+                }
+            };
 
         private void SetAccessTokenCookie(string token)
         {

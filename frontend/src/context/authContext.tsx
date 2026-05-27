@@ -233,14 +233,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: 'LOADING' });
         try {
             const authService = await loadAuthService();
-            const response = await authService.login(dto);
+            const user = await authService.login(dto);
             // Xử lý cả trường hợp backend trả về PascalCase và camelCase
-            const user = response.user || (response as any).User;
-
-            if (!user) {
-                throw new Error('User data not found in response');
-            }
-
             removeAccountScopedQueries();
             storage.save(user);
             dispatch({ type: 'SET_USER', payload: user });
@@ -256,14 +250,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: 'LOADING' });
         try {
             const authService = await loadAuthService();
-            const response = await authService.register(dto);
+            const user = await authService.register(dto);
             // Xử lý cả trường hợp backend trả về PascalCase và camelCase
-            const user = response.user || (response as any).User;
-
-            if (!user) {
-                throw new Error('User data not found in response');
-            }
-
             removeAccountScopedQueries();
             storage.save(user);
             dispatch({ type: 'SET_USER', payload: user });

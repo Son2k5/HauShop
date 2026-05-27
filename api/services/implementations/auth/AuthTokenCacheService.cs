@@ -1,4 +1,3 @@
-using api.infrastructure.redis;
 using api.services.interfaces.auth;
 using api.services.interfaces.caching;
 using StackExchange.Redis;
@@ -9,12 +8,12 @@ public sealed class AuthTokenCacheService : IAuthTokenCacheService
 {
     private readonly IConnectionMultiplexer _redis;
     private readonly IDatabase _database;
-    private readonly IRedisCacheService _cache;
+    private readonly ICacheService _cache;
     private readonly ILogger<AuthTokenCacheService> _logger;
 
     public AuthTokenCacheService(
         IConnectionMultiplexer redis,
-        IRedisCacheService cache,
+        ICacheService cache,
         ILogger<AuthTokenCacheService> logger)
     {
         _redis = redis;
@@ -35,8 +34,8 @@ public sealed class AuthTokenCacheService : IAuthTokenCacheService
             if (!IsRedisAvailable(nameof(StoreRefreshTokenAsync)))
                 return;
 
-            var tokenKey = RedisCacheKeys.RefreshToken(tokenHash);
-            var userSetKey = RedisCacheKeys.RefreshTokensByUser(userId);
+            var tokenKey = CacheKeys.RefreshToken(tokenHash);
+            var userSetKey = CacheKeys.RefreshTokensByUser(userId);
 
             await _database.StringSetAsync(tokenKey, userId, ttl);
             await _database.SetAddAsync(userSetKey, tokenKey);
@@ -56,7 +55,7 @@ public sealed class AuthTokenCacheService : IAuthTokenCacheService
             if (!IsRedisAvailable(nameof(GetRefreshTokenUserIdAsync)))
                 return null;
 
-            var userId = await _database.StringGetAsync(RedisCacheKeys.RefreshToken(tokenHash));
+            var userId = await _database.StringGetAsync(CacheKeys.RefreshToken(tokenHash));
             return userId.IsNullOrEmpty ? null : userId.ToString();
         }
         catch (Exception ex) when (ex is RedisException or RedisTimeoutException)
@@ -74,13 +73,13 @@ public sealed class AuthTokenCacheService : IAuthTokenCacheService
             if (!IsRedisAvailable(nameof(RemoveRefreshTokenAsync)))
                 return;
 
-            var tokenKey = RedisCacheKeys.RefreshToken(tokenHash);
+            var tokenKey = CacheKeys.RefreshToken(tokenHash);
             var userId = await _database.StringGetAsync(tokenKey);
 
             await _database.KeyDeleteAsync(tokenKey);
 
             if (!userId.IsNullOrEmpty)
-                await _database.SetRemoveAsync(RedisCacheKeys.RefreshTokensByUser(userId.ToString()), tokenKey);
+                await _database.SetRemoveAsync(CacheKeys.RefreshTokensByUser(userId.ToString()), tokenKey);
         }
         catch (Exception ex) when (ex is RedisException or RedisTimeoutException)
         {
@@ -96,7 +95,7 @@ public sealed class AuthTokenCacheService : IAuthTokenCacheService
             if (!IsRedisAvailable(nameof(RemoveAllUserRefreshTokensAsync)))
                 return;
 
-            var userSetKey = RedisCacheKeys.RefreshTokensByUser(userId);
+            var userSetKey = CacheKeys.RefreshTokensByUser(userId);
             var tokenKeys = await _database.SetMembersAsync(userSetKey);
             if (tokenKeys.Length > 0)
             {
@@ -121,17 +120,17 @@ public sealed class AuthTokenCacheService : IAuthTokenCacheService
         TimeSpan ttl,
         CancellationToken ct = default)
     {
-        return _cache.SetAsync(RedisCacheKeys.PasswordResetOtp(userId), otpHash, ttl, ct: ct);
+        return _cache.SetAsync(CacheKeys.PasswordResetOtp(userId), otpHash, ttl, ct: ct);
     }
 
     public Task<string?> GetPasswordResetOtpHashAsync(string userId, CancellationToken ct = default)
     {
-        return _cache.GetAsync<string>(RedisCacheKeys.PasswordResetOtp(userId), ct);
+        return _cache.GetAsync<string>(CacheKeys.PasswordResetOtp(userId), ct);
     }
 
     public Task RemovePasswordResetOtpAsync(string userId, CancellationToken ct = default)
     {
-        return _cache.RemoveAsync(RedisCacheKeys.PasswordResetOtp(userId), ct);
+        return _cache.RemoveAsync(CacheKeys.PasswordResetOtp(userId), ct);
     }
 
     private bool IsRedisAvailable(string operation)

@@ -1,4 +1,4 @@
-import type { Role } from "./auth.type";
+import type { OrderStatus, PaymentStatus, Role } from "./enums.type";
 
 export interface LowStockProductDto {
   id: string;
@@ -12,7 +12,7 @@ export interface RecentOrderDto {
   id: string;
   customerName: string;
   totalAmount: number;
-  status: string;
+  status: OrderStatus;
   created: string;
 }
 
@@ -26,7 +26,7 @@ export interface AdminDashboardDto {
   todayRevenue: number;
   monthRevenue: number;
   pendingReviews: number;
-  orderStatusCounts: Record<string, number>;
+  orderStatusCounts: Partial<Record<OrderStatus, number>>;
   lowStockProducts: LowStockProductDto[];
   recentOrders: RecentOrderDto[];
 }
@@ -77,8 +77,8 @@ export interface AdminOrderListItemDto {
   receiverName: string;
   receiverPhone: string;
   total: number;
-  status: string;
-  paymentStatus: string;
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
   itemCount: number;
   created: string;
   updated?: string | null;
@@ -107,15 +107,15 @@ export interface AdminOrderDetailDto {
   subtotal: number;
   shippingFee: number;
   total: number;
-  status: string;
-  paymentStatus: string;
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
   created: string;
   updated?: string | null;
   items: AdminOrderItemDto[];
 }
 
 export interface AdminUpdateOrderStatusDto {
-  status: "Pending" | "Processing" | "Shipping" | "Completed" | "Cancelled";
+  status: OrderStatus;
 }
 
 export interface AdminInventoryOverviewDto {

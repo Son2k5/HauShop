@@ -42,29 +42,17 @@ export type AdminProductFilters = {
   pageSize?: number;
 };
 
-function buildQuery(params: Record<string, string | number | boolean | undefined | null>) {
-  const query = new URLSearchParams();
-
-  for (const [key, value] of Object.entries(params)) {
-    if (value === undefined || value === null || value === "") continue;
-    query.set(key, String(value));
-  }
-
-  const serialized = query.toString();
-  return serialized ? `?${serialized}` : "";
-}
-
 export const adminService = {
   getDashboard(lowStockThreshold = 5, recentOrdersLimit = 5) {
-    return http.get<AdminDashboardDto>(
-      `/admin/dashboard${buildQuery({ lowStockThreshold, recentOrdersLimit })}`
-    );
+    return http.get<AdminDashboardDto>("/admin/dashboard", {
+      params: { lowStockThreshold, recentOrdersLimit },
+    });
   },
 
   getUsers(filters: AdminUserFilters = {}) {
-    return http.get<AdminPagedResultDto<AdminUserListItemDto>>(
-      `/admin/users${buildQuery(filters)}`
-    );
+    return http.get<AdminPagedResultDto<AdminUserListItemDto>>("/admin/users", {
+      params: filters,
+    });
   },
 
   getUserById(userId: string) {
@@ -80,9 +68,9 @@ export const adminService = {
   },
 
   getOrders(filters: AdminOrderFilters = {}) {
-    return http.get<AdminPagedResultDto<AdminOrderListItemDto>>(
-      `/admin/orders${buildQuery(filters)}`
-    );
+    return http.get<AdminPagedResultDto<AdminOrderListItemDto>>("/admin/orders", {
+      params: filters,
+    });
   },
 
   getOrderById(orderId: string) {
@@ -94,9 +82,9 @@ export const adminService = {
   },
 
   getProducts(filters: AdminProductFilters = {}) {
-    return http.get<AdminPagedResultDto<ProductSummaryDto>>(
-      `/admin/products${buildQuery(filters)}`
-    );
+    return http.get<AdminPagedResultDto<ProductSummaryDto>>("/admin/products", {
+      params: filters,
+    });
   },
 
   getProductById(productId: string) {
@@ -120,9 +108,9 @@ export const adminService = {
   },
 
   getInventoryOverview(lowStockThreshold = 5) {
-    return http.get<AdminInventoryOverviewDto>(
-      `/admin/inventory/overview${buildQuery({ lowStockThreshold })}`
-    );
+    return http.get<AdminInventoryOverviewDto>("/admin/inventory/overview", {
+      params: { lowStockThreshold },
+    });
   },
 
   updateInventory(productId: string, dto: AdminUpdateInventoryDto) {

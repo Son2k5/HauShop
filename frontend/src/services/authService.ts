@@ -6,36 +6,15 @@ import type {
     ForgotPasswordDto,
     ResetPasswordDto,
     ChangePasswordDto,
-    AuthResponse
+    UserDto
 } from "../@types/auth.type";
 
-
-// Helper để extract error từ Axios error
-function extractError(error: any): string {
-    if (error.response?.data?.errors) {
-        // FluentValidation errors - object với key là field, value là array messages
-        const errors = error.response.data.errors;
-        return Object.values(errors).flat().join(', ');
-    }
-    return error.response?.data?.message || error.message || 'An error occurred';
-}
-
 export const authService = {
-    register: async (dto: RegisterDto) => {
-        try {
-            return await http.post<AuthResponse>("/auth/register", dto);
-        } catch (error: any) {
-            throw new Error(extractError(error));
-        }
-    },
+    register: (dto: RegisterDto) =>
+        http.post<UserDto>("/auth/register", dto),
 
-    login: async (dto: LoginDto) => {
-        try {
-            return await http.post<AuthResponse>("/auth/login", dto);
-        } catch (error: any) {
-            throw new Error(extractError(error));
-        }
-    },
+    login: (dto: LoginDto) =>
+        http.post<UserDto>("/auth/login", dto),
 
     logout: () => 
         http.post("/auth/logout"),
@@ -55,12 +34,8 @@ export const authService = {
     revokeToken: () => 
         http.post("/auth/revoke-token"),
 
-    getCurrentUser: async () => {
-        const data = await http.get<any>("/auth/me", { skipAuthRedirect: true });
-        if (data?.user) return data.user;
-        if (data?.id || data?.email) return data;
-        throw new Error("Invalid response structure from /auth/me");
-    },
+    getCurrentUser: () =>
+        http.get<UserDto>("/auth/me", { skipAuthRedirect: true }),
 
     loginWithGoogle: () => {
         window.location.href = `${API_ORIGIN}/api/auth/google`;

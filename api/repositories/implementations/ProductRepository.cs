@@ -36,16 +36,28 @@ namespace api.repositories.implementations
                     IsActive = p.IsActive,
                     BrandId = p.BrandId,
                     BrandName = p.Brand != null ? p.Brand.Name : null,
-                    MinVariantPrice = p.Price,
-                    TotalStock = p.Stock,
+                    MinVariantPrice = p.ProductVariants.Where(v => v.IsActive).Min(v => (decimal?)v.Price) ?? p.Price,
+                    TotalStock = p.ProductVariants.Where(v => v.IsActive).Sum(v => v.Stock),
+                    DefaultVariantId = p.ProductVariants
+                        .Where(v => v.IsActive && v.Stock > 0)
+                        .OrderBy(v => v.CreateAt)
+                        .Select(v => v.Id)
+                        .FirstOrDefault(),
                     Stock = p.Stock,
                     AverageRating = p.AverageRating,
                     ReviewCount = p.ReviewCount,
+                    Categories = p.ProductCategories
+                        .Where(pc => pc.Category != null)
+                        .Select(pc => new CategorySummaryDto
+                        {
+                            Id = pc.CategoryId,
+                            Name = pc.Category.Name,
+                            Slug = pc.Category.Slug,
+                        })
+                        .ToList(),
                     Created = p.Created,
                 })
                 .ToListAsync(ct);
-
-            await HydrateSummariesAsync(items, ct);
 
             return items;
         }
@@ -131,11 +143,25 @@ namespace api.repositories.implementations
                     IsActive = p.IsActive,
                     BrandId = p.BrandId,
                     BrandName = p.Brand != null ? p.Brand.Name : null,
-                    MinVariantPrice = p.Price,
-                    TotalStock = p.Stock,
+                    MinVariantPrice = p.ProductVariants.Where(v => v.IsActive).Min(v => (decimal?)v.Price) ?? p.Price,
+                    TotalStock = p.ProductVariants.Where(v => v.IsActive).Sum(v => v.Stock),
+                    DefaultVariantId = p.ProductVariants
+                        .Where(v => v.IsActive && v.Stock > 0)
+                        .OrderBy(v => v.CreateAt)
+                        .Select(v => v.Id)
+                        .FirstOrDefault(),
                     Stock = p.Stock,
                     AverageRating = p.AverageRating,
                     ReviewCount = p.ReviewCount,
+                    Categories = p.ProductCategories
+                        .Where(pc => pc.Category != null)
+                        .Select(pc => new CategorySummaryDto
+                        {
+                            Id = pc.CategoryId,
+                            Name = pc.Category.Name,
+                            Slug = pc.Category.Slug,
+                        })
+                        .ToList(),
                     Created = p.Created,
                 })
                 .ToListAsync(ct);
@@ -146,85 +172,7 @@ namespace api.repositories.implementations
                 items.RemoveAt(items.Count - 1);
             }
 
-            await HydrateSummariesAsync(items, ct);
-
             return (items, total, hasNextPage);
-        }
-
-        private async Task HydrateSummariesAsync(List<ProductSummaryDto> items, CancellationToken ct)
-        {
-            if (items.Count > 0)
-            {
-                var productIds = items.Select(p => p.Id).ToList();
-
-                var categories = await _context.ProductCategories
-                    .AsNoTracking()
-                    .Where(pc => productIds.Contains(pc.ProductId) && pc.Category != null)
-                    .Select(pc => new
-                    {
-                        pc.ProductId,
-                        Category = new CategorySummaryDto
-                        {
-                            Id = pc.CategoryId,
-                            Name = pc.Category.Name,
-                            Slug = pc.Category.Slug,
-                        }
-                    })
-                    .ToListAsync(ct);
-
-                var variantStats = await _context.ProductVariants
-                    .AsNoTracking()
-                    .Where(v => productIds.Contains(v.ProductId) && v.IsActive)
-                    .GroupBy(v => v.ProductId)
-                    .Select(g => new
-                    {
-                        ProductId = g.Key,
-                        MinPrice = g.Min(v => v.Price),
-                        TotalStock = g.Sum(v => v.Stock)
-                    })
-                    .ToListAsync(ct);
-
-                var defaultVariantIds = await _context.ProductVariants
-                    .AsNoTracking()
-                    .Where(v => productIds.Contains(v.ProductId) && v.IsActive && v.Stock > 0)
-                    .OrderBy(v => v.CreateAt)
-                    .Select(v => new
-                    {
-                        v.ProductId,
-                        v.Id
-                    })
-                    .ToListAsync(ct);
-
-                var categoriesByProduct = categories
-                    .GroupBy(c => c.ProductId)
-                    .ToDictionary(g => g.Key, g => g.Select(c => c.Category).ToList());
-
-                var variantStatsByProduct = variantStats
-                    .ToDictionary(v => v.ProductId);
-
-                var defaultVariantByProduct = defaultVariantIds
-                    .GroupBy(v => v.ProductId)
-                    .ToDictionary(g => g.Key, g => g.First().Id);
-
-                foreach (var item in items)
-                {
-                    if (categoriesByProduct.TryGetValue(item.Id, out var itemCategories))
-                    {
-                        item.Categories = itemCategories;
-                    }
-
-                    if (variantStatsByProduct.TryGetValue(item.Id, out var itemVariantStats))
-                    {
-                        item.MinVariantPrice = itemVariantStats.MinPrice;
-                        item.TotalStock = itemVariantStats.TotalStock;
-                    }
-
-                    if (defaultVariantByProduct.TryGetValue(item.Id, out var defaultVariantId))
-                    {
-                        item.DefaultVariantId = defaultVariantId;
-                    }
-                }
-            }
         }
 
         private static string EscapeLike(string value) =>

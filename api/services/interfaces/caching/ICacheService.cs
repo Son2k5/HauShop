@@ -1,6 +1,6 @@
 namespace api.services.interfaces.caching;
 
-public interface IRedisCacheService
+public interface ICacheService
 {
     Task<T?> GetAsync<T>(string key, CancellationToken ct = default);
 

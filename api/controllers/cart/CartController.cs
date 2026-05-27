@@ -27,7 +27,7 @@ namespace api.controllers.cart
         {
             var userId = TryGetUserId();
             if (userId == null)
-                return Unauthorized(new { message = "Không xác định được người dùng." });
+                return UnauthorizedProblem();
 
             var result = await _cartService.GetMyCartAsync(userId, ct);
             return Ok(result);
@@ -40,7 +40,7 @@ namespace api.controllers.cart
         {
             var userId = TryGetUserId();
             if (userId == null)
-                return Unauthorized(new { message = "Không xác định được người dùng." });
+                return UnauthorizedProblem();
 
             var result = await _cartService.AddItemAsync(userId, dto, ct);
 
@@ -58,7 +58,7 @@ namespace api.controllers.cart
         {
             var userId = TryGetUserId();
             if (userId == null)
-                return Unauthorized(new { message = "Không xác định được người dùng." });
+                return UnauthorizedProblem();
 
             var result = await _cartService.UpdateItemQuantityAsync(userId, cartItemId, dto, ct);
             return Ok(result);
@@ -72,7 +72,7 @@ namespace api.controllers.cart
         {
             var userId = TryGetUserId();
             if (userId == null)
-                return Unauthorized(new { message = "KhÃ´ng xÃ¡c Ä‘á»‹nh Ä‘Æ°á»£c ngÆ°á»i dÃ¹ng." });
+                return UnauthorizedProblem();
 
             var result = await _cartService.IncreaseItemQuantityAsync(
                 userId,
@@ -90,7 +90,7 @@ namespace api.controllers.cart
         {
             var userId = TryGetUserId();
             if (userId == null)
-                return Unauthorized(new { message = "KhÃ´ng xÃ¡c Ä‘á»‹nh Ä‘Æ°á»£c ngÆ°á»i dÃ¹ng." });
+                return UnauthorizedProblem();
 
             var result = await _cartService.MergeGuestCartAsync(userId, dto, ct);
             return Ok(result);
@@ -103,7 +103,7 @@ namespace api.controllers.cart
         {
             var userId = TryGetUserId();
             if (userId == null)
-                return Unauthorized(new { message = "Không xác định được người dùng." });
+                return UnauthorizedProblem();
 
             var result = await _cartService.RemoveItemAsync(userId, cartItemId, ct);
             return Ok(result);
@@ -114,7 +114,7 @@ namespace api.controllers.cart
         {
             var userId = TryGetUserId();
             if (userId == null)
-                return Unauthorized(new { message = "Không xác định được người dùng." });
+                return UnauthorizedProblem();
 
             var result = await _cartService.ClearCartAsync(userId, ct);
             return Ok(result);
@@ -135,5 +135,17 @@ namespace api.controllers.cart
 
             return userId;
         }
+
+        private IActionResult UnauthorizedProblem() =>
+            Unauthorized(new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Unauthorized",
+                Instance = HttpContext.Request.Path,
+                Extensions =
+                {
+                    ["traceId"] = HttpContext.TraceIdentifier
+                }
+            });
     }
 }

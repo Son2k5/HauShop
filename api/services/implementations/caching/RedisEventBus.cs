@@ -4,7 +4,7 @@ using StackExchange.Redis;
 
 namespace api.services.implementations.caching;
 
-public sealed class RedisEventBus : IRedisEventBus
+public sealed class RedisEventBus : IEventBus
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly IConnectionMultiplexer _redis;

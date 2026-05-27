@@ -8,6 +8,7 @@ public sealed class MergeGuestCartDtoValidator : AbstractValidator<MergeGuestCar
     public MergeGuestCartDtoValidator()
     {
         RuleFor(x => x.Items)
+            .Cascade(CascadeMode.Stop)
             .NotNull()
             .Must(items => items.Count <= 100)
             .WithMessage("Guest cart cannot contain more than 100 items.");

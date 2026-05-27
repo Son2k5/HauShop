@@ -64,22 +64,7 @@ namespace api.repositories.implementations
                     Total = o.Total,
                     Status = o.Status.ToString(),
                     Created = o.Created,
-                    Items = o.OrderItems
-                        .OrderBy(i => i.Created)
-                        .Select(i => new OrderItemDto
-                        {
-                            Id = i.Id,
-                            ProductId = i.ProductId,
-                            ProductVariantId = i.ProductVariantId,
-                            ProductName = i.ProductName,
-                            VariantSku = i.VariantSku,
-                            VariantSize = i.VariantSize,
-                            VariantColor = i.VariantColor,
-                            Quantity = i.Quantity,
-                            Price = i.Price,
-                            Total = i.Total
-                        })
-                        .ToList()
+                    ItemCount = o.OrderItems.Count
                 })
                 .ToListAsync(ct);
 

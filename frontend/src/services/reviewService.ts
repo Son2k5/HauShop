@@ -1,6 +1,5 @@
 import { http } from "../lib/http";
-
-export type ReviewStatus = 0 | 1 | 2;
+import type { ReviewStatus } from "../@types/enums.type";
 
 export interface ReviewDto {
   id: string;

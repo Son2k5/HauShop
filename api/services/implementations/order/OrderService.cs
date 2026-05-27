@@ -2,7 +2,6 @@ using api.data;
 using api.DTOs.order;
 using api.events;
 using api.exceptions;
-using api.infrastructure.redis;
 using api.mappings;
 using api.models.entities;
 using api.models.enums;
@@ -23,8 +22,8 @@ namespace api.services.implementations.order
         private readonly IProductVariantRepository _productVariantRepository;
         private readonly ApplicationDbContext _context;
         private readonly IVnPayService _vnPayService;
-        private readonly IRedisCacheService _cache;
-        private readonly IRedisEventBus _eventBus;
+        private readonly ICacheService _cache;
+        private readonly IEventBus _eventBus;
         private readonly ICartCacheService _cartCache;
         private readonly ILogger<OrderService> _logger;
 
@@ -34,8 +33,8 @@ namespace api.services.implementations.order
             IProductVariantRepository productVariantRepository,
             ApplicationDbContext context,
             IVnPayService vnPayService,
-            IRedisCacheService cache,
-            IRedisEventBus eventBus,
+            ICacheService cache,
+            IEventBus eventBus,
             ICartCacheService cartCache,
             ILogger<OrderService> logger)
         {
@@ -56,9 +55,6 @@ namespace api.services.implementations.order
             HttpContext httpContext,
             CancellationToken ct = default)
         {
-            if (string.IsNullOrWhiteSpace(dto.ShippingAddressId))
-                throw new InvalidOperationException("ShippingAddressId là bắt buộc");
-
             var address = await _context.Addresses
                 .AsNoTracking()
                 .FirstOrDefaultAsync(a => a.Id == dto.ShippingAddressId && a.UserId == userId, ct);
@@ -207,19 +203,17 @@ namespace api.services.implementations.order
                     throw new InvalidOperationException("Phương thức thanh toán không được hỗ trợ");
                 }
 
-                await _context.SaveChangesAsync(ct);
-
-                await UpdateProductStocksDirectAsync(
-                    order.OrderItems.Select(i => i.ProductId),
-                    ct);
-
-                await _context.SaveChangesAsync(ct);
-                await tx.CommitAsync(ct);
-
                 var affectedProductIds = order.OrderItems
                     .Select(i => i.ProductId)
                     .Distinct()
                     .ToList();
+
+                await _context.SaveChangesAsync(ct);
+
+                await UpdateProductStocksDirectAsync(affectedProductIds, ct);
+
+                await _context.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
 
                 await InvalidateProductCachesAsync(affectedProductIds, ct);
                 if (dto.PaymentMethod == PaymentMethod.COD)
@@ -235,8 +229,8 @@ namespace api.services.implementations.order
                     CreatedAtUtc = DateTime.UtcNow
                 };
 
-                await _eventBus.PublishAsync(RedisChannels.OrderCreated, orderEvent, ct);
-                await _eventBus.EnqueueAsync(RedisStreams.OrderEvents, orderEvent, ct);
+                await _eventBus.PublishAsync(EventTopics.OrderCreatedChannel, orderEvent, ct);
+                await _eventBus.EnqueueAsync(EventTopics.OrderEventsStream, orderEvent, ct);
 
                 var created = await _orderRepository.GetByIdWithIncludesAsync(order.Id, ct)
                     ?? throw new InvalidOperationException("Không thể tải lại order sau checkout");
@@ -327,17 +321,18 @@ namespace api.services.implementations.order
                 payment.Updated = DateTime.UtcNow;
             }
 
+            var affectedProductIds = order.OrderItems
+                .Select(i => i.ProductId)
+                .Distinct()
+                .ToList();
+
             await _context.SaveChangesAsync(ct);
 
-            await UpdateProductStocksDirectAsync(
-                order.OrderItems.Select(i => i.ProductId),
-                ct);
+            await UpdateProductStocksDirectAsync(affectedProductIds, ct);
 
             await _context.SaveChangesAsync(ct);
 
-            await InvalidateProductCachesAsync(
-                order.OrderItems.Select(i => i.ProductId).Distinct(),
-                ct);
+            await InvalidateProductCachesAsync(affectedProductIds, ct);
 
             var updated = await _orderRepository.GetByIdWithIncludesAsync(orderId, ct)
                 ?? throw new InvalidOperationException("Không thể tải lại đơn hàng sau khi hủy");
@@ -405,17 +400,18 @@ namespace api.services.implementations.order
                 }
             }
 
+            var affectedProductIds = order.OrderItems
+                .Select(i => i.ProductId)
+                .Distinct()
+                .ToList();
+
             await _context.SaveChangesAsync(ct);
 
-            await UpdateProductStocksDirectAsync(
-                order.OrderItems.Select(i => i.ProductId),
-                ct);
+            await UpdateProductStocksDirectAsync(affectedProductIds, ct);
 
             await _context.SaveChangesAsync(ct);
 
-            await InvalidateProductCachesAsync(
-                order.OrderItems.Select(i => i.ProductId).Distinct(),
-                ct);
+            await InvalidateProductCachesAsync(affectedProductIds, ct);
 
             if (responseCode == "00")
                 await _cartCache.RemoveUserCartAsync(order.UserId, ct);
@@ -430,12 +426,12 @@ namespace api.services.implementations.order
         {
             foreach (var productId in productIds)
             {
-                await _cache.RemoveAsync(RedisCacheKeys.ProductDetail(productId), ct);
+                await _cache.RemoveAsync(CacheKeys.ProductDetail(productId), ct);
             }
 
-            await _cache.RemoveByPrefixAsync(RedisCacheKeys.ProductListPrefix, ct);
-            await _cache.RemoveByPrefixAsync(RedisCacheKeys.ProductSlugPrefix, ct);
-            await _cache.RemoveByPrefixAsync(RedisCacheKeys.HomepagePrefix, ct);
+            await _cache.RemoveByPrefixAsync(CacheKeys.ProductListPrefix, ct);
+            await _cache.RemoveByPrefixAsync(CacheKeys.ProductSlugPrefix, ct);
+            await _cache.RemoveByPrefixAsync(CacheKeys.HomepagePrefix, ct);
         }
 
         private async Task UpdateProductStocksDirectAsync(IEnumerable<string> productIds, CancellationToken ct)

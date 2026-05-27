@@ -1,5 +1,7 @@
 using api.DTOs.admin;
 using api.DTOs.product;
+using api.common;
+using api.extensions;
 using api.services.interfaces.admin;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
@@ -69,9 +71,9 @@ namespace api.controllers.admin
                 var result = await _managementService.GetUserByIdAsync(userId, ct);
                 return Ok(result);
             }
-            catch (KeyNotFoundException ex)
+            catch (KeyNotFoundException)
             {
-                return NotFound(new { message = ex.Message });
+                return NotFound(new { message = ClientErrorMessages.NotFoundDetail });
             }
         }
 
@@ -89,13 +91,13 @@ namespace api.controllers.admin
                 var result = await _managementService.UpdateUserAsync(userId, dto, ct);
                 return Ok(result);
             }
-            catch (ArgumentException ex)
+            catch (ArgumentException)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new { message = ClientErrorMessages.InvalidRequestDetail });
             }
-            catch (KeyNotFoundException ex)
+            catch (KeyNotFoundException)
             {
-                return NotFound(new { message = ex.Message });
+                return NotFound(new { message = ClientErrorMessages.NotFoundDetail });
             }
         }
 
@@ -113,13 +115,13 @@ namespace api.controllers.admin
                 var result = await _managementService.UpdateUserRoleAsync(userId, dto, ct);
                 return Ok(result);
             }
-            catch (ArgumentException ex)
+            catch (ArgumentException)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new { message = ClientErrorMessages.InvalidRequestDetail });
             }
-            catch (KeyNotFoundException ex)
+            catch (KeyNotFoundException)
             {
-                return NotFound(new { message = ex.Message });
+                return NotFound(new { message = ClientErrorMessages.NotFoundDetail });
             }
         }
 
@@ -146,9 +148,9 @@ namespace api.controllers.admin
                 var result = await _managementService.GetOrderByIdAsync(orderId, ct);
                 return Ok(result);
             }
-            catch (KeyNotFoundException ex)
+            catch (KeyNotFoundException)
             {
-                return NotFound(new { message = ex.Message });
+                return NotFound(new { message = ClientErrorMessages.NotFoundDetail });
             }
         }
 
@@ -166,13 +168,13 @@ namespace api.controllers.admin
                 var result = await _managementService.UpdateOrderStatusAsync(orderId, dto, ct);
                 return Ok(result);
             }
-            catch (InvalidOperationException ex)
+            catch (InvalidOperationException)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new { message = ClientErrorMessages.CannotProcessDetail });
             }
-            catch (KeyNotFoundException ex)
+            catch (KeyNotFoundException)
             {
-                return NotFound(new { message = ex.Message });
+                return NotFound(new { message = ClientErrorMessages.NotFoundDetail });
             }
         }
 
@@ -199,9 +201,9 @@ namespace api.controllers.admin
                 var result = await _managementService.GetProductByIdAsync(productId, ct);
                 return Ok(result);
             }
-            catch (KeyNotFoundException ex)
+            catch (KeyNotFoundException)
             {
-                return NotFound(new { message = ex.Message });
+                return NotFound(new { message = ClientErrorMessages.NotFoundDetail });
             }
         }
 
@@ -215,7 +217,7 @@ namespace api.controllers.admin
             var validation = await _createProductValidator.ValidateAsync(dto, ct);
             if (!validation.IsValid)
             {
-                return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
+                return ValidationProblem(new ValidationProblemDetails(validation.ToClientSafeDictionary()));
             }
 
             try
@@ -223,13 +225,13 @@ namespace api.controllers.admin
                 var result = await _managementService.CreateProductAsync(dto, ct);
                 return StatusCode(StatusCodes.Status201Created, result);
             }
-            catch (ArgumentException ex)
+            catch (ArgumentException)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new { message = ClientErrorMessages.InvalidRequestDetail });
             }
-            catch (InvalidOperationException ex)
+            catch (InvalidOperationException)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new { message = ClientErrorMessages.CannotProcessDetail });
             }
         }
 
@@ -245,7 +247,7 @@ namespace api.controllers.admin
             var validation = await _updateProductValidator.ValidateAsync(dto, ct);
             if (!validation.IsValid)
             {
-                return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
+                return ValidationProblem(new ValidationProblemDetails(validation.ToClientSafeDictionary()));
             }
 
             try
@@ -253,17 +255,17 @@ namespace api.controllers.admin
                 var result = await _managementService.UpdateProductAsync(productId, dto, ct);
                 return Ok(result);
             }
-            catch (ArgumentException ex)
+            catch (ArgumentException)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new { message = ClientErrorMessages.InvalidRequestDetail });
             }
-            catch (InvalidOperationException ex)
+            catch (InvalidOperationException)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new { message = ClientErrorMessages.CannotProcessDetail });
             }
-            catch (KeyNotFoundException ex)
+            catch (KeyNotFoundException)
             {
-                return NotFound(new { message = ex.Message });
+                return NotFound(new { message = ClientErrorMessages.NotFoundDetail });
             }
         }
 
@@ -277,9 +279,9 @@ namespace api.controllers.admin
                 await _managementService.DeleteProductAsync(productId, ct);
                 return Ok(new { message = "Product deleted successfully" });
             }
-            catch (KeyNotFoundException ex)
+            catch (KeyNotFoundException)
             {
-                return NotFound(new { message = ex.Message });
+                return NotFound(new { message = ClientErrorMessages.NotFoundDetail });
             }
         }
 
@@ -293,9 +295,9 @@ namespace api.controllers.admin
                 var result = await _managementService.ToggleProductActiveAsync(productId, ct);
                 return Ok(result);
             }
-            catch (KeyNotFoundException ex)
+            catch (KeyNotFoundException)
             {
-                return NotFound(new { message = ex.Message });
+                return NotFound(new { message = ClientErrorMessages.NotFoundDetail });
             }
         }
 
@@ -313,13 +315,13 @@ namespace api.controllers.admin
                 var result = await _managementService.UpdateInventoryAsync(productId, dto, ct);
                 return Ok(result);
             }
-            catch (ArgumentException ex)
+            catch (ArgumentException)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new { message = ClientErrorMessages.InvalidRequestDetail });
             }
-            catch (KeyNotFoundException ex)
+            catch (KeyNotFoundException)
             {
-                return NotFound(new { message = ex.Message });
+                return NotFound(new { message = ClientErrorMessages.NotFoundDetail });
             }
         }
 
@@ -353,9 +355,9 @@ namespace api.controllers.admin
                 var result = await _managementService.UpdateSettingsAsync(dto, ct);
                 return Ok(result);
             }
-            catch (ArgumentException ex)
+            catch (ArgumentException)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new { message = ClientErrorMessages.InvalidRequestDetail });
             }
         }
     }

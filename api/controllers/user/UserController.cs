@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using System.Threading;
 using api.data;
+using api.common;
 using api.services.interfaces.cloud;
 using api.repositories.interfaces;
 using api.mappings;
@@ -43,11 +44,11 @@ namespace api.controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrWhiteSpace(userId))
-                return Unauthorized(new { message = "Unauthorized" });
+                return Unauthorized(new { message = ClientErrorMessages.UnauthorizedDetail });
 
             var user = await _userRepository.GetByIdAsync(userId, CancellationToken.None);
             if (user == null)
-                return NotFound(new { message = "User not found" });
+                return NotFound(new { message = ClientErrorMessages.NotFoundDetail });
 
             return Ok(new { user = UserMapper.MapToUserDto(user) });
         }
@@ -70,14 +71,14 @@ namespace api.controllers
 
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (string.IsNullOrWhiteSpace(userId))
-                    return Unauthorized(new { message = "Unauthorized" });
+                    return Unauthorized(new { message = ClientErrorMessages.UnauthorizedDetail });
 
                 if (file == null || file.Length == 0)
-                    return BadRequest(new { message = "No file provided" });
+                    return BadRequest(new { message = ClientErrorMessages.InvalidRequestDetail });
 
                 var user = await _userRepository.GetByIdAsync(userId, CancellationToken.None);
                 if (user == null)
-                    return NotFound(new { message = "User not found" });
+                    return NotFound(new { message = ClientErrorMessages.NotFoundDetail });
 
                 // Xóa avatar cũ trên Cloudinary (nếu có) trước khi upload mới
                 // Tránh để lại file rác trên cloud
@@ -96,7 +97,7 @@ namespace api.controllers
                 var uploadResult = await _cloudinaryService.UploadAvatarAsync(file, userId);
 
                 if (!uploadResult.Success)
-                    return BadRequest(new { message = uploadResult.Error ?? "Upload failed" });
+                    return BadRequest(new { message = ClientErrorMessages.CannotProcessDetail });
 
                 // Cập nhật DB
                 user.Avatar = uploadResult.Url;
@@ -113,14 +114,14 @@ namespace api.controllers
                     user = UserMapper.MapToUserDto(user)
                 });
             }
-            catch (ArgumentException ex)
+            catch (ArgumentException)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new { message = ClientErrorMessages.InvalidRequestDetail });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error uploading avatar for user");
-                return StatusCode(500, new { message = "Internal server error" });
+                return StatusCode(500, new { message = ClientErrorMessages.ServerErrorTitle });
             }
         }
 
@@ -136,11 +137,11 @@ namespace api.controllers
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (string.IsNullOrWhiteSpace(userId))
-                    return Unauthorized(new { message = "Unauthorized" });
+                    return Unauthorized(new { message = ClientErrorMessages.UnauthorizedDetail });
 
                 var user = await _userRepository.GetByIdAsync(userId, CancellationToken.None);
                 if (user == null)
-                    return NotFound(new { message = "User not found" });
+                    return NotFound(new { message = ClientErrorMessages.NotFoundDetail });
 
                 // Cập nhật thông tin
                 if (!string.IsNullOrWhiteSpace(dto.FirstName))
@@ -166,7 +167,7 @@ namespace api.controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating profile for user");
-                return StatusCode(500, new { message = "Internal server error" });
+                return StatusCode(500, new { message = ClientErrorMessages.ServerErrorTitle });
             }
         }
 
@@ -181,11 +182,11 @@ namespace api.controllers
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (string.IsNullOrWhiteSpace(userId))
-                    return Unauthorized(new { message = "Unauthorized" });
+                    return Unauthorized(new { message = ClientErrorMessages.UnauthorizedDetail });
 
                 var user = await _userRepository.GetByIdAsync(userId, CancellationToken.None);
                 if (user == null)
-                    return NotFound(new { message = "User not found" });
+                    return NotFound(new { message = ClientErrorMessages.NotFoundDetail });
 
                 // Xóa trên Cloudinary nếu có PublicId
                 if (!string.IsNullOrEmpty(user.AvatarPublicId))
@@ -217,7 +218,7 @@ namespace api.controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error removing avatar for user");
-                return StatusCode(500, new { message = "Internal server error" });
+                return StatusCode(500, new { message = ClientErrorMessages.ServerErrorTitle });
             }
         }
 
@@ -231,7 +232,7 @@ namespace api.controllers
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (string.IsNullOrWhiteSpace(userId))
-                    return Unauthorized(new { message = "Unauthorized" });
+                    return Unauthorized(new { message = ClientErrorMessages.UnauthorizedDetail });
 
                 var addresses = await _context.Addresses
                     .AsNoTracking()
@@ -257,7 +258,7 @@ namespace api.controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting addresses for user");
-                return StatusCode(500, new { message = "Internal server error" });
+                return StatusCode(500, new { message = ClientErrorMessages.ServerErrorTitle });
             }
         }
 
@@ -272,13 +273,7 @@ namespace api.controllers
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (string.IsNullOrWhiteSpace(userId))
-                    return Unauthorized(new { message = "Unauthorized" });
-
-                if (string.IsNullOrWhiteSpace(dto.AddressLine))
-                    return BadRequest(new { message = "Address line is required" });
-
-                if (string.IsNullOrWhiteSpace(dto.City))
-                    return BadRequest(new { message = "City is required" });
+                    return Unauthorized(new { message = ClientErrorMessages.UnauthorizedDetail });
 
                 var isFirstAddress = !await _context.Addresses
                     .AnyAsync(a => a.UserId == userId, CancellationToken.None);
@@ -332,7 +327,7 @@ namespace api.controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating address for user");
-                return StatusCode(500, new { message = "Internal server error" });
+                return StatusCode(500, new { message = ClientErrorMessages.ServerErrorTitle });
             }
         }
 
@@ -348,19 +343,13 @@ namespace api.controllers
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (string.IsNullOrWhiteSpace(userId))
-                    return Unauthorized(new { message = "Unauthorized" });
+                    return Unauthorized(new { message = ClientErrorMessages.UnauthorizedDetail });
 
                 var address = await _context.Addresses
                     .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId, CancellationToken.None);
 
                 if (address == null)
-                    return NotFound(new { message = "Address not found" });
-
-                if (string.IsNullOrWhiteSpace(dto.AddressLine))
-                    return BadRequest(new { message = "Address line is required" });
-
-                if (string.IsNullOrWhiteSpace(dto.City))
-                    return BadRequest(new { message = "City is required" });
+                    return NotFound(new { message = ClientErrorMessages.NotFoundDetail });
 
                 // If setting as default, unset other defaults
                 if (dto.IsDefault && !address.IsDefault)
@@ -405,7 +394,7 @@ namespace api.controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating address for user");
-                return StatusCode(500, new { message = "Internal server error" });
+                return StatusCode(500, new { message = ClientErrorMessages.ServerErrorTitle });
             }
         }
 
@@ -420,13 +409,13 @@ namespace api.controllers
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (string.IsNullOrWhiteSpace(userId))
-                    return Unauthorized(new { message = "Unauthorized" });
+                    return Unauthorized(new { message = ClientErrorMessages.UnauthorizedDetail });
 
                 var address = await _context.Addresses
                     .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId, CancellationToken.None);
 
                 if (address == null)
-                    return NotFound(new { message = "Address not found" });
+                    return NotFound(new { message = ClientErrorMessages.NotFoundDetail });
 
                 _context.Addresses.Remove(address);
                 await _context.SaveChangesAsync(CancellationToken.None);
@@ -451,7 +440,7 @@ namespace api.controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting address for user");
-                return StatusCode(500, new { message = "Internal server error" });
+                return StatusCode(500, new { message = ClientErrorMessages.ServerErrorTitle });
             }
         }
     }

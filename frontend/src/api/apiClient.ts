@@ -18,19 +18,6 @@ function toCamelCase(obj: any): any {
     return result;
 }
 
-function normalizeErrorPayload(data: any): any {
-    if (!data || typeof data !== 'object') return data;
-
-    const normalized = toCamelCase(data);
-    if (!normalized.message && normalized.title) {
-        normalized.message = normalized.detail
-            ? `${normalized.title}: ${normalized.detail}`
-            : normalized.title;
-    }
-    return normalized;
-}
-
-
 const api = axios.create({
     baseURL: API_BASE_URL,
     withCredentials: true,
@@ -88,7 +75,18 @@ api.interceptors.response.use(
         }
 
         if (error.response?.data) {
-            error.response.data = normalizeErrorPayload(error.response.data);
+            error.response.data = toCamelCase(error.response.data);
+
+            const data = error.response.data;
+            if (data?.errors && typeof data.errors === 'object') {
+                error.message = Object.values(data.errors).flat().join(', ');
+            } else if (data?.detail) {
+                error.message = `${data.title ?? 'Request failed'}: ${data.detail}`;
+            } else if (data?.title) {
+                error.message = data.title;
+            } else if (data?.message) {
+                error.message = data.message;
+            }
         }
 
         const is401 = error.response?.status === 401;
@@ -130,10 +128,6 @@ api.interceptors.response.use(
             } finally {
                 isRefreshing = false;
             }
-        }
-
-        if (error.response?.status === 500 && error.response?.data?.message) {
-            error.message = error.response.data.message;
         }
 
         return Promise.reject(error);

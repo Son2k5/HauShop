@@ -1,8 +1,11 @@
 using System.Security.Claims;
 using api.DTOs.chat;
+using api.common;
 using api.data;
+using api.exceptions;
 using api.models.entities;
 using api.services.interfaces.chat;
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -15,12 +18,21 @@ namespace api.hubs
         private readonly ApplicationDbContext _context;
         private readonly IChatService _chatService;
         private readonly IAiChatService _aiChatService;
+        private readonly IValidator<SendChatMessageDto> _sendMessageValidator;
+        private readonly ILogger<ChatHub> _logger;
 
-        public ChatHub(ApplicationDbContext context, IChatService chatService, IAiChatService aiChatService)
+        public ChatHub(
+            ApplicationDbContext context,
+            IChatService chatService,
+            IAiChatService aiChatService,
+            IValidator<SendChatMessageDto> sendMessageValidator,
+            ILogger<ChatHub> logger)
         {
             _context = context;
             _chatService = chatService;
             _aiChatService = aiChatService;
+            _sendMessageValidator = sendMessageValidator;
+            _logger = logger;
         }
 
         public override async Task OnConnectedAsync()
@@ -86,9 +98,20 @@ namespace api.hubs
 
         public async Task JoinRoom(string roomId)
         {
-            var userId = GetUserId();
-            await _chatService.EnsureCanAccessRoomAsync(roomId, userId, IsAdmin());
-            await Groups.AddToGroupAsync(Context.ConnectionId, RoomGroup(roomId));
+            try
+            {
+                var userId = GetUserId();
+                await _chatService.EnsureCanAccessRoomAsync(roomId, userId, IsAdmin(), Context.ConnectionAborted);
+                await Groups.AddToGroupAsync(Context.ConnectionId, RoomGroup(roomId), Context.ConnectionAborted);
+            }
+            catch (HubException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw CreateSafeHubException(ex);
+            }
         }
 
         public async Task LeaveRoom(string roomId)
@@ -98,52 +121,91 @@ namespace api.hubs
 
         public async Task SendMessage(SendChatMessageDto dto)
         {
-            var userId = GetUserId();
-            var message = await _chatService.SendMessageAsync(
-                dto.ChatRoomId,
-                userId,
-                IsAdmin(),
-                dto.Message,
-                dto.MessageType);
+            try
+            {
+                await ValidateSendMessageAsync(dto);
 
-            await Clients.Group(RoomGroup(dto.ChatRoomId)).SendAsync("ReceiveMessage", message);
-            await Clients.Group(AdminGroup).SendAsync("RoomUpdated", dto.ChatRoomId);
+                var userId = GetUserId();
+                var message = await _chatService.SendMessageAsync(
+                    dto.ChatRoomId,
+                    userId,
+                    IsAdmin(),
+                    dto.Message,
+                    dto.MessageType,
+                    Context.ConnectionAborted);
+
+                await Clients.Group(RoomGroup(dto.ChatRoomId)).SendAsync("ReceiveMessage", message, Context.ConnectionAborted);
+                await Clients.Group(AdminGroup).SendAsync("RoomUpdated", dto.ChatRoomId, Context.ConnectionAborted);
+            }
+            catch (HubException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw CreateSafeHubException(ex);
+            }
         }
 
         public async Task SendAiMessage(SendChatMessageDto dto)
         {
-            if (IsAdmin())
+            try
             {
-                throw new HubException("Admins cannot use AI customer chat.");
+                await ValidateSendMessageAsync(dto);
+
+                if (IsAdmin())
+                {
+                    throw new HubException(ClientErrorMessages.HubCannotProcessDetail);
+                }
+
+                var userId = GetUserId();
+                var message = await _chatService.SendAiCustomerMessageAsync(
+                    dto.ChatRoomId,
+                    userId,
+                    dto.Message,
+                    dto.MessageType,
+                    Context.ConnectionAborted);
+
+                await Clients.Group(RoomGroup(dto.ChatRoomId)).SendAsync("ReceiveMessage", message, Context.ConnectionAborted);
+
+                var aiResult = await _aiChatService.ReplyAsync(dto.ChatRoomId, userId, dto.Message, Context.ConnectionAborted);
+                await Clients.Group(RoomGroup(dto.ChatRoomId)).SendAsync("ReceiveMessage", aiResult.AssistantMessage, Context.ConnectionAborted);
             }
-
-            var userId = GetUserId();
-            var message = await _chatService.SendAiCustomerMessageAsync(
-                dto.ChatRoomId,
-                userId,
-                dto.Message,
-                dto.MessageType);
-
-            await Clients.Group(RoomGroup(dto.ChatRoomId)).SendAsync("ReceiveMessage", message);
-
-            var aiResult = await _aiChatService.ReplyAsync(dto.ChatRoomId, userId, dto.Message);
-            await Clients.Group(RoomGroup(dto.ChatRoomId)).SendAsync("ReceiveMessage", aiResult.AssistantMessage);
+            catch (HubException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw CreateSafeHubException(ex);
+            }
         }
 
         public async Task MarkAsRead(string roomId)
         {
-            await _chatService.MarkAsReadAsync(roomId, GetUserId(), IsAdmin());
-            await Clients.Group(RoomGroup(roomId)).SendAsync("MessagesRead", new
+            try
             {
-                chatRoomId = roomId,
-                readerId = GetUserId()
-            });
+                await _chatService.MarkAsReadAsync(roomId, GetUserId(), IsAdmin(), Context.ConnectionAborted);
+                await Clients.Group(RoomGroup(roomId)).SendAsync("MessagesRead", new
+                {
+                    chatRoomId = roomId,
+                    readerId = GetUserId()
+                }, Context.ConnectionAborted);
+            }
+            catch (HubException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw CreateSafeHubException(ex);
+            }
         }
 
         private string GetUserId()
         {
             return Context.User?.FindFirstValue(ClaimTypes.NameIdentifier)
-                ?? throw new HubException("Unauthorized");
+                ?? throw new HubException(ClientErrorMessages.UnauthorizedDetail);
         }
 
         private bool IsAdmin()
@@ -154,5 +216,53 @@ namespace api.hubs
         private const string AdminGroup = "admins";
         private static string UserGroup(string userId) => $"user:{userId}";
         private static string RoomGroup(string roomId) => $"room:{roomId}";
+
+        private async Task ValidateSendMessageAsync(SendChatMessageDto dto)
+        {
+            if (dto is null)
+            {
+                throw new HubException(ClientErrorMessages.HubValidationDetail);
+            }
+
+            var validation = await _sendMessageValidator.ValidateAsync(dto, Context.ConnectionAborted);
+            if (!validation.IsValid)
+            {
+                throw new HubException(ClientErrorMessages.HubValidationDetail);
+            }
+        }
+
+        private HubException CreateSafeHubException(Exception exception)
+        {
+            if (IsExpectedClientException(exception))
+            {
+                _logger.LogWarning(
+                    exception,
+                    "Handled hub exception at {HubMethod}. ConnectionId={ConnectionId}",
+                    Context.GetHttpContext()?.Request.Path,
+                    Context.ConnectionId);
+            }
+            else
+            {
+                _logger.LogError(
+                    exception,
+                    "Unhandled hub exception at {HubMethod}. ConnectionId={ConnectionId}",
+                    Context.GetHttpContext()?.Request.Path,
+                    Context.ConnectionId);
+            }
+
+            return new HubException(ClientErrorMessages.ToHubMessage(exception));
+        }
+
+        private static bool IsExpectedClientException(Exception exception)
+        {
+            return exception is ArgumentException
+                or InvalidOperationException
+                or KeyNotFoundException
+                or ApiAuthenticationException
+                or ForbiddenAccessException
+                or UnauthorizedAccessException
+                or ValidationException
+                or OperationCanceledException;
+        }
     }
 }

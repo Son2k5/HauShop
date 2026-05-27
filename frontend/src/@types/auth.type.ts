@@ -1,15 +1,8 @@
 
-export type Role = "Admin" | "Member" | "Merchant";
+export type { OtpPurpose, Provider, Role } from "./enums.type";
+import type { Provider, Role } from "./enums.type";
 
 // Provider.cs  →  Local=0 | Google=1
-export type Provider = "Local" | "Google";
-
-export type OtpPurpose =
-  | "ResetPassword"
-  | "EmailVerification"
-  | "PhoneVerification"
-  | "TwoFactorAuth"
-  | "LoginVerification";
 
 // ── Request DTOs ──────────────────────────────────────────────────
 export interface RegisterDto {
@@ -55,11 +48,6 @@ export interface UserDto {
   lastSeen: string | null;
   created: string;
 
-}
-
-export interface AuthResponse {
-  message: string;
-  user: UserDto;
 }
 
 export interface UpdateProfileDto {

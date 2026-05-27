@@ -1,5 +1,4 @@
 using api.DTOs.cart;
-using api.infrastructure.redis;
 using api.services.interfaces.caching;
 using api.services.interfaces.cart;
 using Microsoft.Extensions.Options;
@@ -8,32 +7,32 @@ namespace api.services.implementations.cart;
 
 public sealed class CartCacheService : ICartCacheService
 {
-    private readonly IRedisCacheService _cache;
-    private readonly RedisOptions _redisOptions;
+    private readonly ICacheService _cache;
+    private readonly CacheOptions _cacheOptions;
 
-    public CartCacheService(IRedisCacheService cache, IOptions<RedisOptions> redisOptions)
+    public CartCacheService(ICacheService cache, IOptions<CacheOptions> cacheOptions)
     {
         _cache = cache;
-        _redisOptions = redisOptions.Value;
+        _cacheOptions = cacheOptions.Value;
     }
 
     public Task<CartDto?> GetUserCartAsync(string userId, CancellationToken ct = default)
     {
-        return _cache.GetAsync<CartDto>(RedisCacheKeys.UserCart(userId), ct);
+        return _cache.GetAsync<CartDto>(CacheKeys.UserCart(userId), ct);
     }
 
     public Task SetUserCartAsync(string userId, CartDto cart, CancellationToken ct = default)
     {
         return _cache.SetAsync(
-            RedisCacheKeys.UserCart(userId),
+            CacheKeys.UserCart(userId),
             cart,
-            TimeSpan.FromHours(_redisOptions.CartTtlHours),
+            TimeSpan.FromHours(_cacheOptions.CartTtlHours),
             TimeSpan.FromHours(6),
             ct);
     }
 
     public Task RemoveUserCartAsync(string userId, CancellationToken ct = default)
     {
-        return _cache.RemoveAsync(RedisCacheKeys.UserCart(userId), ct);
+        return _cache.RemoveAsync(CacheKeys.UserCart(userId), ct);
     }
 }

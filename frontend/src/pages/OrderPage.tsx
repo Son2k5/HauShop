@@ -128,18 +128,7 @@ export default function MyOrdersPage() {
                 </div>
 
                 <div className="mt-4 text-sm text-lightText border-t border-gray-100 pt-4">
-                  <div className="flex flex-wrap gap-2">
-                    {order.items.slice(0, 3).map((item) => (
-                      <span key={item.id} className="bg-gray-50 px-2 py-1 rounded">
-                        {item.productName} x {item.quantity}
-                      </span>
-                    ))}
-                    {order.items.length > 3 && (
-                      <span className="text-gray-400">
-                        + {order.items.length - 3} san pham khac
-                      </span>
-                    )}
-                  </div>
+                  {order.itemCount} san pham
                 </div>
               </Link>
             ))}

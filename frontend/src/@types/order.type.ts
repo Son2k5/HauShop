@@ -1,4 +1,4 @@
-export type PaymentMethod = 0 | 1; // 0 = COD, 1 = VNPay
+import type { OrderStatus, PaymentMethod, PaymentStatus } from "./enums.type";
 
 export interface CreateOrderDto {
   shippingAddressId: string;
@@ -22,8 +22,8 @@ export interface OrderItemDto {
 
 export interface PaymentDto {
   id: string;
-  method: string;
-  status: string;
+  method: PaymentMethod;
+  status: PaymentStatus;
   amount: number;
   transactionNo: string;
   vnpTransactionId?: string | null;
@@ -37,7 +37,7 @@ export interface OrderDto {
   subtotal: number;
   shippingFee: number;
   total: number;
-  status: string;
+  status: OrderStatus;
   receiverName: string;
   receiverPhone: string;
   addressLine: string;
@@ -50,9 +50,9 @@ export interface OrderDto {
 export interface OrderSummaryDto {
   id: string;
   total: number;
-  status: string;
+  status: OrderStatus;
   created: string;
-  items: OrderItemDto[];
+  itemCount: number;
 }
 
 export interface PagedOrderDto {
