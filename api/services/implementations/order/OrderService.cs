@@ -8,6 +8,7 @@ using api.models.enums;
 using api.repositories.interfaces;
 using api.services.interfaces.caching;
 using api.services.interfaces.cart;
+using api.services.interfaces.notification;
 using api.services.interfaces.order;
 using api.services.interfaces.payment;
 using Microsoft.AspNetCore.Http;
@@ -25,6 +26,7 @@ namespace api.services.implementations.order
         private readonly ICacheService _cache;
         private readonly IEventBus _eventBus;
         private readonly ICartCacheService _cartCache;
+        private readonly INotificationService _notificationService;
         private readonly ILogger<OrderService> _logger;
 
         public OrderService(
@@ -36,6 +38,7 @@ namespace api.services.implementations.order
             ICacheService cache,
             IEventBus eventBus,
             ICartCacheService cartCache,
+            INotificationService notificationService,
             ILogger<OrderService> logger)
         {
             _cartRepository = cartRepository;
@@ -46,6 +49,7 @@ namespace api.services.implementations.order
             _cache = cache;
             _eventBus = eventBus;
             _cartCache = cartCache;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
@@ -231,6 +235,11 @@ namespace api.services.implementations.order
 
                 await _eventBus.PublishAsync(EventTopics.OrderCreatedChannel, orderEvent, ct);
                 await _eventBus.EnqueueAsync(EventTopics.OrderEventsStream, orderEvent, ct);
+                await TryNotifyAsync(
+                    token => _notificationService.NotifyOrderCreatedAsync(order.Id, token),
+                    order.Id,
+                    "order-created",
+                    ct);
 
                 var created = await _orderRepository.GetByIdWithIncludesAsync(order.Id, ct)
                     ?? throw new InvalidOperationException("Không thể tải lại order sau checkout");
@@ -294,6 +303,7 @@ namespace api.services.implementations.order
             if (order.Status != OrderStatus.Pending)
                 throw new InvalidOperationException("Chỉ có thể hủy đơn hàng ở trạng thái Pending");
 
+            var previousStatus = order.Status;
             order.Status = OrderStatus.Cancelled;
             order.Updated = DateTime.UtcNow;
 
@@ -333,6 +343,11 @@ namespace api.services.implementations.order
             await _context.SaveChangesAsync(ct);
 
             await InvalidateProductCachesAsync(affectedProductIds, ct);
+            await TryNotifyAsync(
+                token => _notificationService.NotifyOrderStatusChangedAsync(orderId, previousStatus, OrderStatus.Cancelled, token),
+                orderId,
+                "order-cancelled",
+                ct);
 
             var updated = await _orderRepository.GetByIdWithIncludesAsync(orderId, ct)
                 ?? throw new InvalidOperationException("Không thể tải lại đơn hàng sau khi hủy");
@@ -356,6 +371,7 @@ namespace api.services.implementations.order
                 ?? throw new KeyNotFoundException("Không tìm thấy payment tương ứng");
 
             var responseCode = query["vnp_ResponseCode"].ToString();
+            var previousStatus = order.Status;
 
             payment.ResponseCode = responseCode;
             payment.ProviderTransactionId = query["vnp_TransactionNo"].ToString();
@@ -414,7 +430,27 @@ namespace api.services.implementations.order
             await InvalidateProductCachesAsync(affectedProductIds, ct);
 
             if (responseCode == "00")
+            {
                 await _cartCache.RemoveUserCartAsync(order.UserId, ct);
+                await TryNotifyAsync(
+                    token => _notificationService.NotifyPaymentSucceededAsync(order.Id, token),
+                    order.Id,
+                    "payment-succeeded",
+                    ct);
+                await TryNotifyAsync(
+                    token => _notificationService.NotifyOrderStatusChangedAsync(order.Id, previousStatus, OrderStatus.Processing, token),
+                    order.Id,
+                    "order-processing",
+                    ct);
+            }
+            else
+            {
+                await TryNotifyAsync(
+                    token => _notificationService.NotifyOrderStatusChangedAsync(order.Id, previousStatus, OrderStatus.Cancelled, token),
+                    order.Id,
+                    "payment-failed-order-cancelled",
+                    ct);
+            }
 
             var updated = await _orderRepository.GetByIdWithIncludesAsync(order.Id, ct)
                 ?? throw new InvalidOperationException("Không thể tải lại đơn hàng sau callback");
@@ -462,6 +498,26 @@ namespace api.services.implementations.order
             {
                 product.Stock = totalsByProduct.GetValueOrDefault(product.Id, 0);
                 product.Updated = DateTime.UtcNow;
+            }
+        }
+
+        private async Task TryNotifyAsync(
+            Func<CancellationToken, Task> notify,
+            string orderId,
+            string action,
+            CancellationToken ct)
+        {
+            try
+            {
+                await notify(ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Order notification failed. Action={Action}, OrderId={OrderId}", action, orderId);
             }
         }
     }

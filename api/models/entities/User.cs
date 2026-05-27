@@ -36,6 +36,7 @@ namespace api.models.entities
         public ICollection<SupportTicket> SupportTicketsAsCustomer { get; set; }
         public ICollection<SupportTicket> SupportTicketsAssigned { get; set; }
         public ICollection<UserConnection> Connections { get; set; }
+        public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
         public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 
         public ICollection<PasswordResetOtp> PasswordResetOtps { get; set; } = new List<PasswordResetOtp>();

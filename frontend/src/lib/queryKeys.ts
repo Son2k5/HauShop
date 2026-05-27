@@ -40,6 +40,12 @@ export const queryKeys = {
     mine: (page: number, pageSize: number) => ["orders", "mine", page, pageSize] as const,
     detail: (orderId: string) => ["orders", "detail", orderId] as const,
   },
+  notifications: {
+    all: ["notifications"] as const,
+    list: (params: { type?: string; isRead?: boolean; page: number; pageSize: number }) =>
+      ["notifications", "list", params] as const,
+    unreadCount: (type?: string) => ["notifications", "unread-count", type ?? "all"] as const,
+  },
   wishlist: {
     ids: (userId: string) => ["wishlist", "ids", userId] as const,
     items: (userId: string) => ["wishlist", "items", userId] as const,

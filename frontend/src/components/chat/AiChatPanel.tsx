@@ -54,7 +54,7 @@ export default function AiChatPanel({ onClose }: Props) {
         setRoom(activeRoom);
         setMessages(history);
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Khong tai duoc AI chat.");
+        if (!cancelled) setError(e instanceof Error ? e.message : "Không tải được AI chat.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -98,7 +98,7 @@ export default function AiChatPanel({ onClose }: Props) {
     try {
       await sendAiMessage({ chatRoomId: room.id, message });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Khong gui duoc tin nhan cho AI.");
+      setError(e instanceof Error ? e.message : "Không gửi được tin nhắn cho AI.");
       setText(message);
     } finally {
       setIsSending(false);
@@ -116,14 +116,14 @@ export default function AiChatPanel({ onClose }: Props) {
         <div className="min-w-0">
           <p className="text-sm font-semibold">HauShop AI</p>
           <p className="text-xs text-white/80">
-            {status === "connected" ? "Tu van san pham, don hang va chinh sach" : "Dang ket noi..."}
+            {status === "connected" ? "Tư vấn sản phẩm, đơn hàng và chính sách" : "Đang kết nối..."}
           </p>
         </div>
         <button
           type="button"
           onClick={onClose}
           className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white/85 transition hover:bg-white/15 hover:text-white"
-          aria-label="Dong AI chat"
+          aria-label="Đóng AI chat"
         >
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18 18 6M6 6l12 12" />
@@ -133,10 +133,10 @@ export default function AiChatPanel({ onClose }: Props) {
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-slate-50 px-4 py-4">
         {loading ? (
-          <div className="m-auto text-sm text-slate-500">Dang tai AI chat...</div>
+          <div className="m-auto text-sm text-slate-500">Đang tải AI chat...</div>
         ) : messages.length === 0 ? (
           <div className="m-auto max-w-xs text-center text-sm leading-6 text-slate-500">
-            Hoi AI ve san pham, gia, mau, size, don hang, chinh sach, combo hoac doi tra.
+            Hỏi AI về sản phẩm, giá, màu, size, đơn hàng, chính sách, combo hoặc đổi trả.
           </div>
         ) : (
           messages.map((message) => {
@@ -164,7 +164,7 @@ export default function AiChatPanel({ onClose }: Props) {
         {isSending ? (
           <div className="flex justify-start">
             <div className="rounded-2xl rounded-bl-md border border-slate-100 bg-white px-3.5 py-2.5 text-sm text-slate-500 shadow-sm">
-              AI dang phan tich va tim du lieu...
+              AI đang phân tích và tìm dữ liệu...
             </div>
           </div>
         ) : null}
@@ -176,11 +176,11 @@ export default function AiChatPanel({ onClose }: Props) {
       <div className="border-t border-slate-100 bg-white px-3 pt-3">
         <div className="flex gap-2 overflow-x-auto pb-2 text-xs">
           {[
-            "Tu van ao khoac duoi 500k",
-            "Loc mau den size L",
+            "Tư vấn áo khoác dưới 500k",
+            "Lọc màu đen size L",
             "Kiem tra don hang cua toi",
-            "Chinh sach doi tra",
-            "Goi y combo",
+            "Chính sách đổi trả",
+            "Gợi ý combo",
           ].map((suggestion) => (
             <button
               key={suggestion}
@@ -206,14 +206,14 @@ export default function AiChatPanel({ onClose }: Props) {
           }}
           rows={1}
           maxLength={5000}
-          placeholder="Hoi AI HauShop..."
+          placeholder="Hỏi AI HauShop..."
           className="max-h-28 min-h-11 flex-1 resize-none rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-red-400 focus:ring-4 focus:ring-red-100"
         />
         <button
           type="submit"
           disabled={!canSend}
           className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-500 text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
-          aria-label="Gui tin nhan cho AI"
+          aria-label="Gửi tin nhắn cho AI"
         >
           <SendIcon />
         </button>

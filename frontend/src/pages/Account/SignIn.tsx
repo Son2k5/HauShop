@@ -42,8 +42,10 @@ const SignIn = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { login, loginWithGoogle } = useAuthActions();
+  const { login, loginWithGoogle, refreshUser } = useAuthActions();
   const from = (location.state as { from?: string })?.from ?? "/";
+  const googleError = searchParams.get("error");
+  const googleStatus = searchParams.get("google");
 
   const [activeSlide, setActiveSlide] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -69,9 +71,39 @@ const SignIn = () => {
   }, []);
 
   useEffect(() => {
-    const e = searchParams.get("error");
-    if (e) setServerErrMsg(GOOGLE_ERRORS[e] ?? "Google sign-in failed");
-  }, [searchParams]);
+    if (googleError) setServerErrMsg(GOOGLE_ERRORS[googleError] ?? "Google sign-in failed");
+  }, [googleError]);
+
+  useEffect(() => {
+    if (googleStatus !== "success") return;
+
+    let cancelled = false;
+
+    const completeGoogleLogin = async () => {
+      setLoading(true);
+      setServerErrMsg("");
+
+      try {
+        const user = await refreshUser();
+        if (cancelled) return;
+
+        if (!user) {
+          setServerErrMsg("Google sign-in failed. Please try again.");
+          return;
+        }
+
+        navigate(user.role === "Admin" ? ROUTES.ADMIN : from, { replace: true });
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void completeGoogleLogin();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [from, googleStatus, navigate, refreshUser]);
 
   useEffect(() => {
     const state = location.state as { passwordChanged?: boolean } | null;

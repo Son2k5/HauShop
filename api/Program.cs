@@ -46,6 +46,8 @@ using api.services.implementations.chat;
 using api.services.interfaces.chat;
 using api.services.interfaces.category;
 using api.services.implementations.category;
+using api.services.implementations.notification;
+using api.services.interfaces.notification;
 using StackExchange.Redis;
 
 
@@ -368,6 +370,7 @@ builder.Services.AddHttpClient<IAiChatService, AiChatService>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(30);
 });
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 
 // ===========================
@@ -407,6 +410,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHub<ChatHub>("/hubs/chat");
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.MapGet("/health", () => Results.Ok(new
 {

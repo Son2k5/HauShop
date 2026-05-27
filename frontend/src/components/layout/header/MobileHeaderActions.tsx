@@ -1,3 +1,4 @@
+import NotificationBell from "../../notification/NotificationBell";
 import { MenuIcon, SearchIcon } from "./HeaderIcons";
 
 type MobileHeaderActionsProps = {
@@ -21,6 +22,8 @@ export default function MobileHeaderActions({
         <SearchIcon />
         <span className="sr-only">{showSearchBar ? "Close search" : "Open search"}</span>
       </button>
+
+      <NotificationBell buttonClassName={iconButtonClass} dropdownAlign="right" />
 
       <button
         data-mobile-toggle

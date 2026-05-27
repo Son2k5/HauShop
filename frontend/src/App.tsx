@@ -6,6 +6,7 @@ import Header from "./components/layout/Header";
 import PromoBar from "./components/layout/Promobar";
 import HomePage from "./pages/HomePage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import NotificationRealtimeBridge from "./components/notification/NotificationRealtimeBridge";
 
 const Footer = lazy(() => import("./components/layout/Footer"));
 const SupportChatWidget = lazy(() => import("./components/chat/SupportChatWidget"));
@@ -24,6 +25,7 @@ const CartPage = lazy(() => import("./pages/CartPage"));
 const VnPayReturnPage = lazy(() => import("./pages/VnPayReturn"));
 const OrderDetailPage = lazy(() => import("./pages/OrderDetailPage"));
 const MyOrdersPage = lazy(() => import("./pages/OrderPage"));
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
 const WishlistPage = lazy(() => import("./pages/WishlistPage"));
 const SupportChatPage = lazy(() => import("./pages/SupportChatPage"));
@@ -179,6 +181,7 @@ function App() {
 
   return (
     <AuthProvider>
+      <NotificationRealtimeBridge />
       <Routes>
         <Route element={<StorefrontLayout />}>
           <Route path="/" element={<HomePage />} />
@@ -204,6 +207,14 @@ function App() {
           <Route path="/checkout" element={<SuspendedRoute><CheckoutPage /></SuspendedRoute>} />
           <Route path="/orders" element={<SuspendedRoute><MyOrdersPage /></SuspendedRoute>} />
           <Route path="/orders/:id" element={<SuspendedRoute><OrderDetailPage /></SuspendedRoute>} />
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute>
+                <SuspendedRoute><NotificationsPage /></SuspendedRoute>
+              </ProtectedRoute>
+            }
+          />
           <Route path="/support-chat" element={<SuspendedRoute><SupportChatPage /></SuspendedRoute>} />
           <Route path="/payment/vnpay-return" element={<SuspendedRoute><VnPayReturnPage /></SuspendedRoute>} />
           {!isAdminRoute ? <Route path="*" element={<SuspendedRoute><NotFound /></SuspendedRoute>} /> : null}
@@ -240,6 +251,14 @@ function App() {
             element={
               <Suspense fallback={<AdminPageFallback />}>
                 <AdminOrdersPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="notifications"
+            element={
+              <Suspense fallback={<AdminPageFallback />}>
+                <NotificationsPage />
               </Suspense>
             }
           />

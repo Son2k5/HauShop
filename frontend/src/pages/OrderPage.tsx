@@ -15,6 +15,14 @@ function getStatusLabel(status: string) {
       return "Hoan thanh";
     case "Cancelled":
       return "Da huy";
+    case "ReturnRequested":
+      return "Yeu cau hoan hang";
+    case "ReturnApproved":
+      return "Da duyet hoan hang";
+    case "Returned":
+      return "Da nhan hang hoan";
+    case "Refunded":
+      return "Da hoan tien";
     default:
       return status;
   }
@@ -32,6 +40,14 @@ function getStatusColor(status: string) {
       return "text-green-600 bg-green-50";
     case "Cancelled":
       return "text-red-600 bg-red-50";
+    case "ReturnRequested":
+      return "text-violet-700 bg-violet-50";
+    case "ReturnApproved":
+      return "text-indigo-700 bg-indigo-50";
+    case "Returned":
+      return "text-cyan-700 bg-cyan-50";
+    case "Refunded":
+      return "text-slate-700 bg-slate-100";
     default:
       return "text-gray-600 bg-gray-50";
   }

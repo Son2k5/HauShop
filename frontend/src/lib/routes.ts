@@ -7,6 +7,7 @@ export const ROUTES = {
   CART: "/cart",
   CHECKOUT: "/checkout",
   ORDERS: "/orders",
+  NOTIFICATIONS: "/notifications",
   PROFILE: "/profile",
   ADMIN: "/admin",
   WISHLIST: "/wishlist",
@@ -18,4 +19,5 @@ export const routeTo = {
     search ? `${ROUTES.SHOP}?search=${encodeURIComponent(search)}` : ROUTES.SHOP,
   order: (orderId: string) => `${ROUTES.ORDERS}/${orderId}`,
   adminSection: (section: string) => `${ROUTES.ADMIN}/${section}`,
+  adminOrder: (orderId: string) => `${ROUTES.ADMIN}/orders?orderId=${encodeURIComponent(orderId)}`,
 } as const;

@@ -7,6 +7,7 @@ using api.models.entities;
 using api.models.enums;
 using api.services.interfaces.admin;
 using api.services.interfaces.cloud;
+using api.services.interfaces.notification;
 using Microsoft.EntityFrameworkCore;
 
 namespace api.services.implementations.admin
@@ -15,6 +16,7 @@ namespace api.services.implementations.admin
     {
         private readonly ApplicationDbContext _context;
         private readonly ICloudinaryService _cloudinaryService;
+        private readonly INotificationService _notificationService;
         private readonly ILogger<AdminManagementService> _logger;
 
         private static readonly Dictionary<string, string> VietnameseMap = new()
@@ -37,10 +39,12 @@ namespace api.services.implementations.admin
         public AdminManagementService(
             ApplicationDbContext context,
             ICloudinaryService cloudinaryService,
+            INotificationService notificationService,
             ILogger<AdminManagementService> logger)
         {
             _context = context;
             _cloudinaryService = cloudinaryService;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
@@ -384,10 +388,12 @@ namespace api.services.implementations.admin
                     $"Cannot change order status from {order.Status} to {dto.Status}.");
             }
 
+            var previousStatus = order.Status;
             order.Status = dto.Status;
             order.Updated = DateTime.UtcNow;
 
             await _context.SaveChangesAsync(ct);
+            await TryNotifyOrderStatusChangedAsync(orderId, previousStatus, dto.Status, ct);
 
             return await GetOrderByIdAsync(orderId, ct);
         }
@@ -995,10 +1001,39 @@ namespace api.services.implementations.admin
                 OrderStatus.Pending => nextStatus is OrderStatus.Processing or OrderStatus.Cancelled,
                 OrderStatus.Processing => nextStatus is OrderStatus.Shipping or OrderStatus.Cancelled,
                 OrderStatus.Shipping => nextStatus == OrderStatus.Completed,
-                OrderStatus.Completed => false,
+                OrderStatus.Completed => nextStatus == OrderStatus.ReturnRequested,
+                OrderStatus.ReturnRequested => nextStatus == OrderStatus.ReturnApproved,
+                OrderStatus.ReturnApproved => nextStatus == OrderStatus.Returned,
+                OrderStatus.Returned => nextStatus == OrderStatus.Refunded,
                 OrderStatus.Cancelled => false,
+                OrderStatus.Refunded => false,
                 _ => false
             };
+        }
+
+        private async Task TryNotifyOrderStatusChangedAsync(
+            string orderId,
+            OrderStatus previousStatus,
+            OrderStatus nextStatus,
+            CancellationToken ct)
+        {
+            try
+            {
+                await _notificationService.NotifyOrderStatusChangedAsync(orderId, previousStatus, nextStatus, ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Order status notification failed. OrderId={OrderId}, PreviousStatus={PreviousStatus}, NextStatus={NextStatus}",
+                    orderId,
+                    previousStatus,
+                    nextStatus);
+            }
         }
     }
 }

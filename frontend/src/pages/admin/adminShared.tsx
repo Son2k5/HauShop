@@ -6,6 +6,7 @@ export const adminTitles: Record<string, { title: string }> = {
   "/admin": { title: "Tổng quan" },
   "/admin/users": { title: "Nhân sự" },
   "/admin/orders": { title: "Quản lý đơn hàng" },
+  "/admin/notifications": { title: "Thông báo" },
   "/admin/chat": { title: "Chat hỗ trợ" },
   "/admin/products": { title: "Quản lý sản phẩm" },
   "/admin/inventory": { title: "Quản lý tồn kho" },
@@ -31,6 +32,10 @@ export const orderStatusBadgeClass: Record<string, string> = {
   Shipping: "bg-sky-100 text-sky-800",
   Completed: "bg-emerald-100 text-emerald-800",
   Cancelled: "bg-red-100 text-red-700",
+  ReturnRequested: "bg-violet-100 text-violet-800",
+  ReturnApproved: "bg-indigo-100 text-indigo-800",
+  Returned: "bg-cyan-100 text-cyan-800",
+  Refunded: "bg-slate-200 text-slate-800",
 };
 
 export const paymentStatusBadgeClass: Record<string, string> = {
@@ -71,6 +76,10 @@ export function formatOrderStatusLabel(status: string) {
     Shipping: "Đang giao",
     Completed: "Hoàn thành",
     Cancelled: "Đã hủy",
+    ReturnRequested: "Yêu cầu hoàn hàng",
+    ReturnApproved: "Đã duyệt hoàn hàng",
+    Returned: "Đã nhận hàng hoàn",
+    Refunded: "Đã hoàn tiền",
   };
   return map[status] ?? status;
 }

@@ -3,6 +3,12 @@ import type { InternalAxiosRequestConfig } from 'axios';
 import { API_BASE_URL } from '../lib/env';
 import { ROUTES } from '../lib/routes';
 
+const USER_STORAGE_KEY = '_u';
+
+function clearCachedUser() {
+    localStorage.removeItem(USER_STORAGE_KEY);
+    window.dispatchEvent(new Event('auth:clear'));
+}
 
 function toCamelCase(obj: any): any {
     if (obj === null || typeof obj !== 'object') return obj;
@@ -118,9 +124,10 @@ api.interceptors.response.use(
                 return api(originalRequest);
             } catch (refreshError) {
                 processQueue(refreshError);
+                clearCachedUser();
 
                 //  KHÔNG loop nữa → redirect luôn
-                if (!originalRequest.skipAuthRedirect) {
+                if (!originalRequest.skipAuthRedirect && window.location.pathname !== ROUTES.SIGN_IN) {
                     window.location.href = ROUTES.SIGN_IN;
                 }
 

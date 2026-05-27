@@ -12,9 +12,22 @@ export const OrderStatuses = {
   Shipping: "Shipping",
   Completed: "Completed",
   Cancelled: "Cancelled",
+  ReturnRequested: "ReturnRequested",
+  ReturnApproved: "ReturnApproved",
+  Returned: "Returned",
+  Refunded: "Refunded",
 } as const;
 
 export type OrderStatus = (typeof OrderStatuses)[keyof typeof OrderStatuses];
+
+export const NotificationTypes = {
+  OrderStatus: "OrderStatus",
+  Payment: "Payment",
+  Return: "Return",
+  Refund: "Refund",
+} as const;
+
+export type NotificationType = (typeof NotificationTypes)[keyof typeof NotificationTypes];
 
 export const PaymentStatuses = {
   Pending: "Pending",

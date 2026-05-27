@@ -5,7 +5,7 @@ import type { CreateProductDto, ProductDto, ProductSummaryDto, UpdateProductDto 
 import { useDebounce } from "../../hooks/useDebounce";
 import { cachePolicy } from "../../lib/cachePolicy";
 import { queryKeys } from "../../lib/queryKeys";
-import { categoryService } from "../../services/categoryService";
+import { categoryService } from "../../services/CategoryService";
 import { adminService } from "../../services/adminService";
 import { uploadImages } from "../../services/productService";
 import { formatPrice } from "../../utils/formatPrice";

@@ -56,7 +56,8 @@ function removeAccountScopedQueries(): void {
                 scope === 'auth' ||
                 scope === 'admin' ||
                 scope === 'cart' ||
-                scope === 'orders'
+                scope === 'orders' ||
+                scope === 'notifications'
             );
         },
     });
@@ -128,6 +129,7 @@ function shouldBootstrapAuth(pathname: string): boolean {
         pathname.startsWith('/change-password') ||
         pathname.startsWith('/checkout') ||
         pathname.startsWith('/orders') ||
+        pathname.startsWith('/notifications') ||
         pathname.startsWith('/wishlist') ||
         pathname.startsWith('/support-chat') ||
         pathname.startsWith('/payment')
@@ -150,7 +152,7 @@ export interface AuthActionsValue {
     changePassword: (dto: ChangePasswordDto) => Promise<void>;
     updateAvatar: (file: File) => Promise<void>;
     removeAvatar: () => Promise<void>;
-    refreshUser: () => Promise<void>;
+    refreshUser: () => Promise<UserDto | null>;
     clearError: () => void;
 }
 
@@ -163,7 +165,7 @@ export interface AuthContextType extends State {
     changePassword: (dto: ChangePasswordDto) => Promise<void>;
     updateAvatar: (file: File) => Promise<void>;
     removeAvatar: () => Promise<void>;
-    refreshUser: () => Promise<void>;
+    refreshUser: () => Promise<UserDto | null>;
     clearError: () => void;
 }
 
@@ -217,14 +219,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Sync nhiều tab: nếu tab khác logout (xóa _u) thì tab này cũng sign out
     useEffect(() => {
+        const clearCurrentTab = () => {
+            removeAccountScopedQueries();
+            dispatch({ type: 'SIGN_OUT' });
+        };
+
         const handler = (e: StorageEvent) => {
             if (e.key === STORAGE_KEY && e.newValue === null) {
-                removeAccountScopedQueries();
-                dispatch({ type: 'SIGN_OUT' });
+                clearCurrentTab();
             }
         };
+
         window.addEventListener('storage', handler);
-        return () => window.removeEventListener('storage', handler);
+        window.addEventListener('auth:clear', clearCurrentTab);
+
+        return () => {
+            window.removeEventListener('storage', handler);
+            window.removeEventListener('auth:clear', clearCurrentTab);
+        };
     }, []);
 
     // ── Actions ───────────────────────────────────────────────────────────────
@@ -328,7 +340,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
      * Dùng khi component mount để đảm bảo data đồng bộ với DB.
      * Chỉ dispatch nếu user thực sự thay đổi để tránh render loop.
      */
-    const refreshUser = useCallback(async (): Promise<void> => {
+    const refreshUser = useCallback(async (): Promise<UserDto | null> => {
         try {
             const authService = await loadAuthService();
             const freshUser = await authService.getCurrentUser();
@@ -339,8 +351,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 storage.save(freshUser);
                 dispatch({ type: 'SET_USER', payload: freshUser });
             }
+            return freshUser;
         } catch {
-            // Nếu cookie hết hạn và refresh cũng fail → interceptor đã redirect /signin
+            // Nếu cookie hết hạn và refresh cũng fail, interceptor sẽ xử lý redirect /signin.
+            storage.clear();
+            removeAccountScopedQueries();
+            dispatch({ type: 'SIGN_OUT' });
+            return null;
         }
     }, []);
 

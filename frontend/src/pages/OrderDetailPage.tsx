@@ -17,8 +17,41 @@ function getStatusLabel(status: string) {
       return "Hoàn thành";
     case "Cancelled":
       return "Đã hủy";
+    case "ReturnRequested":
+      return "Yêu cầu hoàn hàng";
+    case "ReturnApproved":
+      return "Đã duyệt hoàn hàng";
+    case "Returned":
+      return "Đã nhận hàng hoàn";
+    case "Refunded":
+      return "Đã hoàn tiền";
     default:
       return status;
+  }
+}
+
+function getStatusColor(status: string) {
+  switch (status) {
+    case "Pending":
+      return "bg-yellow-50 text-yellow-700";
+    case "Processing":
+      return "bg-blue-50 text-blue-700";
+    case "Shipping":
+      return "bg-purple-50 text-purple-700";
+    case "Completed":
+      return "bg-green-50 text-green-700";
+    case "Cancelled":
+      return "bg-red-50 text-red-700";
+    case "ReturnRequested":
+      return "bg-violet-50 text-violet-700";
+    case "ReturnApproved":
+      return "bg-indigo-50 text-indigo-700";
+    case "Returned":
+      return "bg-cyan-50 text-cyan-700";
+    case "Refunded":
+      return "bg-slate-100 text-slate-700";
+    default:
+      return "bg-gray-100 text-gray-700";
   }
 }
 
@@ -89,7 +122,7 @@ export default function OrderDetailPage() {
 
         <div className="text-right">
           <p className="text-red-500 font-semibold text-xl">{formatPrice(order.total)}</p>
-          <p className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-gray-100">{getStatusLabel(order.status)}</p>
+          <p className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>{getStatusLabel(order.status)}</p>
         </div>
       </div>
 

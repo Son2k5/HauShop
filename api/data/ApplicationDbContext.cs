@@ -33,6 +33,7 @@ namespace api.data
         public DbSet<PasswordResetOtp> PasswordResetOtps { get; set; }
         public DbSet<ProductVariant> ProductVariants { get; set; }
         public DbSet<AdminSetting> AdminSettings { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -272,6 +273,37 @@ namespace api.data
                     t.HasCheckConstraint("CK_Order_Subtotal", "`Subtotal` >= 0");
                     t.HasCheckConstraint("CK_Order_ShippingFee", "`ShippingFee` >= 0");
                 });
+            });
+
+            // ============ NOTIFICATION ============
+            modelBuilder.Entity<Notification>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasMaxLength(50);
+                entity.Property(e => e.UserId).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Type).IsRequired().HasConversion<int>();
+                entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.Message).IsRequired().HasMaxLength(1000);
+                entity.Property(e => e.Link).HasMaxLength(500);
+                entity.Property(e => e.OrderId).HasMaxLength(50);
+                entity.Property(e => e.MetadataJson).HasColumnType("json");
+                entity.Property(e => e.IsRead).HasDefaultValue(false);
+                entity.Property(e => e.ReadAt).HasColumnType("datetime");
+                entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.HasOne(e => e.User)
+                    .WithMany(u => u.Notifications)
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => new { e.UserId, e.IsRead, e.Created })
+                    .HasDatabaseName("IX_Notifications_User_Read_Created");
+                entity.HasIndex(e => new { e.UserId, e.Type, e.Created })
+                    .HasDatabaseName("IX_Notifications_User_Type_Created");
+                entity.HasIndex(e => e.OrderId)
+                    .HasDatabaseName("IX_Notifications_OrderId");
+                entity.HasIndex(e => e.Created)
+                    .HasDatabaseName("IX_Notifications_Created");
             });
 
             // ============ ORDER ITEM ============

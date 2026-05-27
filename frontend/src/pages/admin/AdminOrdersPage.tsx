@@ -1,5 +1,6 @@
 import { Icon } from "@iconify/react";
 import { startTransition, useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import type { AdminUpdateOrderStatusDto } from "../../@types/admin.type";
 import { OrderStatuses } from "../../@types/enums.type";
 import { useAdminOrder, useAdminOrders, useUpdateAdminOrderStatus } from "../../hooks/useAdmin";
@@ -25,6 +26,10 @@ const statuses: Array<AdminUpdateOrderStatusDto["status"] | ""> = [
   OrderStatuses.Shipping,
   OrderStatuses.Completed,
   OrderStatuses.Cancelled,
+  OrderStatuses.ReturnRequested,
+  OrderStatuses.ReturnApproved,
+  OrderStatuses.Returned,
+  OrderStatuses.Refunded,
 ];
 
 const statusOptions = statuses.slice(1) as AdminUpdateOrderStatusDto["status"][];
@@ -33,11 +38,16 @@ const validTransitions: Record<AdminUpdateOrderStatusDto["status"], AdminUpdateO
   Pending: [OrderStatuses.Pending, OrderStatuses.Processing, OrderStatuses.Cancelled],
   Processing: [OrderStatuses.Processing, OrderStatuses.Shipping, OrderStatuses.Cancelled],
   Shipping: [OrderStatuses.Shipping, OrderStatuses.Completed],
-  Completed: [OrderStatuses.Completed],
+  Completed: [OrderStatuses.Completed, OrderStatuses.ReturnRequested],
   Cancelled: [OrderStatuses.Cancelled],
+  ReturnRequested: [OrderStatuses.ReturnRequested, OrderStatuses.ReturnApproved],
+  ReturnApproved: [OrderStatuses.ReturnApproved, OrderStatuses.Returned],
+  Returned: [OrderStatuses.Returned, OrderStatuses.Refunded],
+  Refunded: [OrderStatuses.Refunded],
 };
 
 export default function AdminOrdersPage() {
+  const location = useLocation();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<AdminUpdateOrderStatusDto["status"] | "">("");
   const [page, setPage] = useState(1);
@@ -60,6 +70,13 @@ export default function AdminOrdersPage() {
   const orderDetailQuery = useAdminOrder(selectedOrderId);
   const updateStatusMutation = useUpdateAdminOrderStatus();
   const orderDetail = orderDetailQuery.data;
+
+  useEffect(() => {
+    const orderId = new URLSearchParams(location.search).get("orderId");
+    if (orderId) {
+      setSelectedOrderId(orderId);
+    }
+  }, [location.search]);
 
   const stats = useMemo(() => {
     const items = ordersQuery.data?.items ?? [];
@@ -329,7 +346,7 @@ export default function AdminOrdersPage() {
                   </label>
 
                   <div className="mt-4 rounded-[18px] bg-sky-50 px-4 py-3 text-sm text-sky-700">
-                    Rule backend: Pending {"->"} Processing/Cancelled, Processing {"->"} Shipping/Cancelled, Shipping {"->"} Completed.
+                    Rule backend: Pending {"->"} Processing/Cancelled, Processing {"->"} Shipping/Cancelled, Shipping {"->"} Completed, Completed {"->"} ReturnRequested {"->"} ReturnApproved {"->"} Returned {"->"} Refunded.
                   </div>
 
                   {formError ? (

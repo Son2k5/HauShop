@@ -14,11 +14,12 @@ namespace api.controllers
         {
 
             var state = Guid.NewGuid().ToString("N");
+            bool isDev = _config.GetValue<string>("ASPNETCORE_ENVIRONMENT") == "Development";
 
             Response.Cookies.Append("oauth_state", state, new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,
+                Secure = !isDev,
                 SameSite = SameSiteMode.Lax,
                 Expires = DateTimeOffset.UtcNow.AddMinutes(10),
                 Path = "/"
@@ -63,7 +64,7 @@ namespace api.controllers
                 SetAccessTokenCookie(result.AccessToken);
                 SetRefreshTokenCookie(result.RefreshToken);
 
-                return Redirect($"{frontendUrl}/");
+                return Redirect($"{frontendUrl}/signin?google=success");
             }
             catch (ApiAuthenticationException ex)
             {

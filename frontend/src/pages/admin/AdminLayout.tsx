@@ -2,6 +2,7 @@ import { Icon } from "@iconify/react";
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
+import NotificationBell from "../../components/notification/NotificationBell";
 import { adminTitles, getInitials } from "./adminShared";
 
 const navItems = [
@@ -135,13 +136,11 @@ export default function AdminLayout() {
             </div>
 
             <div className="ml-auto flex items-center gap-2 sm:gap-3">
-              <button
-                type="button"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-500 transition hover:bg-sky-50 hover:text-blue-700"
-                aria-label="Thông báo"
-              >
-                <Icon icon="mdi:bell-outline" width={22} />
-              </button>
+              <NotificationBell
+                tone="admin"
+                allLink="/admin/notifications"
+                buttonClassName="relative inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-500 transition hover:bg-sky-50 hover:text-blue-700"
+              />
 
               <button
                 type="button"

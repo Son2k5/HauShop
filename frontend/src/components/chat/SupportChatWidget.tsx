@@ -63,7 +63,7 @@ function SignInPrompt({ activePanel, onClose }: { activePanel: Exclude<ActivePan
       <div className={["flex items-center justify-between px-4 py-4 text-white", isAi ? "bg-red-500" : "bg-slate-900"].join(" ")}>
         <div>
           <p className="text-sm font-semibold">{isAi ? "HauShop AI" : "Nhan vien HauShop"}</p>
-          <p className="text-xs text-white/80">{isAi ? "Tu van san pham va don hang" : "Chat realtime voi nhan vien"}</p>
+          <p className="text-xs text-white/80">{isAi ? "Tư vấn sản phẩm và đơn hàng" : "Chat realtime với nhân viên"}</p>
         </div>
         <button
           type="button"
@@ -80,12 +80,12 @@ function SignInPrompt({ activePanel, onClose }: { activePanel: Exclude<ActivePan
           {isAi ? <AiIcon /> : <SupportIcon />}
         </div>
         <h2 className="text-lg font-semibold text-gray-950">
-          {isAi ? "Dang nhap de chat voi HauShop AI" : "Dang nhap de chat voi nhan vien"}
+          {isAi ? "Đăng nhập để chat với HauShop AI" : "Đăng nhập để chat với nhân viên"}
         </h2>
         <p className="mt-2 max-w-xs text-sm leading-6 text-gray-500">
           {isAi
-            ? "Ban can dang nhap de AI ghi nho lich su chat va kiem tra don hang."
-            : "Ban can dang nhap de bat dau hoi thoai realtime voi bo phan ho tro."}
+            ? "Bạn cần đăng nhập để AI ghi nhớ lịch sử chat và kiểm tra đơn hàng."
+            : "Bạn cần đăng nhập để bắt đầu hội thoại realtime với bộ phận hỗ trợ."}
         </p>
         <button
           type="button"
@@ -164,7 +164,7 @@ export default function SupportChatWidget({ initialPanel }: SupportChatWidgetPro
       <div className="flex flex-col gap-3">
         <FloatingButton
           active={activePanel === "ai"}
-          label={activePanel === "ai" ? "Dong AI chat" : "Mo AI chat"}
+          label={activePanel === "ai" ? "Đóng AI chat" : "Mở AI chat"}
           tone="ai"
           onClick={() => setActivePanel((current) => (current === "ai" ? null : "ai"))}
         >
@@ -173,7 +173,7 @@ export default function SupportChatWidget({ initialPanel }: SupportChatWidgetPro
 
         <FloatingButton
           active={activePanel === "support"}
-          label={activePanel === "support" ? "Dong chat nhan vien" : "Mo chat nhan vien"}
+          label={activePanel === "support" ? "Đóng chat nhân viên" : "Mở chat nhân viên"}
           tone="support"
           onClick={() => setActivePanel((current) => (current === "support" ? null : "support"))}
         >
