@@ -34,10 +34,14 @@ export default function AdminChatPage() {
     void refreshRooms();
   }, [refreshRooms]);
 
+  const handleRoomUpdated = useCallback(() => {
+    void refreshRooms();
+  }, [refreshRooms]);
+
   const { status, joinRoom, leaveRoom, sendMessage, markAsRead } = useChatConnection({
     enabled: Boolean(user),
     onMessage: handleMessage,
-    onRoomUpdated: () => void refreshRooms(),
+    onRoomUpdated: handleRoomUpdated,
   });
 
   useEffect(() => {

@@ -15,9 +15,14 @@ namespace api.models.entities
 
         public string? TrackingNumber { get; set; }
         public string? Carrier { get; set; }
+        public string? CarrierCode { get; set; }
+        public string? CurrentLocation { get; set; }
+        public string? TrackingUrl { get; set; }
         public DateTime? EstimatedDelivery { get; set; }
+        public DateTime? DeliveredAt { get; set; }
 
         public DateTime Created { get; set; }
         public DateTime? Updated { get; set; }
+        public ICollection<ShippingTrackingEvent> TrackingEvents { get; set; } = new List<ShippingTrackingEvent>();
     }
 }

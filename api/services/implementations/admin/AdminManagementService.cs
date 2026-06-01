@@ -8,6 +8,7 @@ using api.models.enums;
 using api.services.interfaces.admin;
 using api.services.interfaces.cloud;
 using api.services.interfaces.notification;
+using api.services.interfaces.order;
 using Microsoft.EntityFrameworkCore;
 
 namespace api.services.implementations.admin
@@ -16,6 +17,7 @@ namespace api.services.implementations.admin
     {
         private readonly ApplicationDbContext _context;
         private readonly ICloudinaryService _cloudinaryService;
+        private readonly IOrderService _orderService;
         private readonly INotificationService _notificationService;
         private readonly ILogger<AdminManagementService> _logger;
 
@@ -39,11 +41,13 @@ namespace api.services.implementations.admin
         public AdminManagementService(
             ApplicationDbContext context,
             ICloudinaryService cloudinaryService,
+            IOrderService orderService,
             INotificationService notificationService,
             ILogger<AdminManagementService> logger)
         {
             _context = context;
             _cloudinaryService = cloudinaryService;
+            _orderService = orderService;
             _notificationService = notificationService;
             _logger = logger;
         }
@@ -334,6 +338,9 @@ namespace api.services.implementations.admin
                 .Include(o => o.User)
                 .Include(o => o.OrderItems)
                 .Include(o => o.Payments)
+                .Include(o => o.ShippingDetail)
+                    .ThenInclude(s => s!.TrackingEvents)
+                .Include(o => o.StatusHistories)
                 .FirstOrDefaultAsync(o => o.Id == orderId, ct)
                 ?? throw new KeyNotFoundException("Order not found");
 
@@ -370,7 +377,9 @@ namespace api.services.implementations.admin
                         Price = i.Price,
                         Total = i.Total
                     })
-                    .ToList()
+                    .ToList(),
+                Shipping = OrderMapping.MapToDto(order).Shipping,
+                StatusHistory = OrderMapping.MapToDto(order).StatusHistory
             };
         }
 
@@ -379,22 +388,7 @@ namespace api.services.implementations.admin
             AdminUpdateOrderStatusDto dto,
             CancellationToken ct = default)
         {
-            var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == orderId, ct)
-                ?? throw new KeyNotFoundException("Order not found");
-
-            if (!IsValidStatusTransition(order.Status, dto.Status))
-            {
-                throw new InvalidOperationException(
-                    $"Cannot change order status from {order.Status} to {dto.Status}.");
-            }
-
-            var previousStatus = order.Status;
-            order.Status = dto.Status;
-            order.Updated = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync(ct);
-            await TryNotifyOrderStatusChangedAsync(orderId, previousStatus, dto.Status, ct);
-
+            await _orderService.UpdateOrderStatusAsync(orderId, dto, null, false, ct);
             return await GetOrderByIdAsync(orderId, ct);
         }
 

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using api.data;
+using api.DTOs.chat;
 using api.DTOs.notification;
 using api.hubs;
 using api.models.entities;
@@ -148,8 +149,8 @@ namespace api.services.implementations.notification
                 order,
                 NotificationType.OrderStatus,
                 "Đơn hàng mới",
-                BuildOrderStatusMessage(order, OrderStatus.Pending, isNewOrder: true),
-                OrderStatus.Pending,
+                BuildOrderStatusMessage(order, order.Status, isNewOrder: true),
+                order.Status,
                 null,
                 ct);
         }
@@ -167,6 +168,85 @@ namespace api.services.implementations.notification
                 ct);
         }
 
+        public async Task NotifyChatMessageAsync(ChatMessageDto message, CancellationToken ct = default)
+        {
+            if (message is null ||
+                string.IsNullOrWhiteSpace(message.ChatRoomId) ||
+                string.IsNullOrWhiteSpace(message.SenderId))
+            {
+                return;
+            }
+
+            var ticket = await _context.SupportTickets
+                .AsNoTracking()
+                .Where(t => t.ChatRoomId == message.ChatRoomId &&
+                    t.Status != SupportTicketStatus.Closed &&
+                    t.ChatRoom.Type == ChatRoomType.Support)
+                .Select(t => new
+                {
+                    t.CustomerId,
+                    t.AssignedToId
+                })
+                .FirstOrDefaultAsync(ct);
+
+            if (ticket is null)
+            {
+                return;
+            }
+
+            var recipients = await ResolveChatRecipientsAsync(
+                ticket.CustomerId,
+                ticket.AssignedToId,
+                message.SenderId,
+                ct);
+
+            if (recipients.Count == 0)
+            {
+                return;
+            }
+
+            var now = DateTime.UtcNow;
+            var metadata = JsonSerializer.Serialize(new
+            {
+                chatRoomId = message.ChatRoomId,
+                messageId = message.Id,
+                senderId = message.SenderId
+            });
+
+            var senderIsCustomer = message.SenderId == ticket.CustomerId;
+            var title = senderIsCustomer ? "Tin nhan moi tu khach hang" : "Tin nhan moi tu HauShop";
+            var body = $"{message.SenderName}: {TruncateMessage(message.Message, 160)}";
+
+            var notifications = recipients
+                .GroupBy(recipient => recipient.UserId)
+                .Select(group => group.First())
+                .Select(recipient => new Notification
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    UserId = recipient.UserId,
+                    Type = NotificationType.ChatMessage,
+                    Title = title,
+                    Message = body,
+                    Link = BuildChatLink(recipient.Role),
+                    MetadataJson = metadata,
+                    IsRead = false,
+                    Created = now
+                })
+                .ToList();
+
+            _context.Notifications.AddRange(notifications);
+            await _context.SaveChangesAsync(ct);
+
+            foreach (var notification in notifications)
+            {
+                var dto = MapNotification(notification);
+                await _hubContext.Clients
+                    .Group(NotificationHub.UserGroup(notification.UserId))
+                    .SendAsync("ReceiveNotification", dto, ct);
+                await PushUnreadCountAsync(notification.UserId, ct);
+            }
+        }
+
         public async Task NotifyOrderStatusChangedAsync(
             string orderId,
             OrderStatus previousStatus,
@@ -181,7 +261,7 @@ namespace api.services.implementations.notification
             var order = await LoadOrderForNotificationAsync(orderId, ct);
             var type = nextStatus switch
             {
-                OrderStatus.ReturnRequested or OrderStatus.ReturnApproved or OrderStatus.Returned => NotificationType.Return,
+                OrderStatus.ReturnRequested or OrderStatus.ReturnApproved or OrderStatus.ReturnRejected or OrderStatus.Returned => NotificationType.Return,
                 OrderStatus.Refunded => NotificationType.Refund,
                 _ => NotificationType.OrderStatus
             };
@@ -258,6 +338,43 @@ namespace api.services.implementations.notification
             }
         }
 
+        private async Task<List<NotificationRecipient>> ResolveChatRecipientsAsync(
+            string customerId,
+            string? assignedToId,
+            string senderId,
+            CancellationToken ct)
+        {
+            var recipients = _context.Users
+                .AsNoTracking()
+                .Where(u => u.Id != senderId);
+
+            if (senderId == customerId)
+            {
+                if (!string.IsNullOrWhiteSpace(assignedToId))
+                {
+                    var assigned = await recipients
+                        .Where(u => u.Id == assignedToId)
+                        .Select(u => new NotificationRecipient(u.Id, u.Role))
+                        .ToListAsync(ct);
+
+                    if (assigned.Count > 0)
+                    {
+                        return assigned;
+                    }
+                }
+
+                return await recipients
+                    .Where(u => u.Role == Role.Admin)
+                    .Select(u => new NotificationRecipient(u.Id, u.Role))
+                    .ToListAsync(ct);
+            }
+
+            return await recipients
+                .Where(u => u.Id == customerId)
+                .Select(u => new NotificationRecipient(u.Id, u.Role))
+                .ToListAsync(ct);
+        }
+
         private async Task<List<NotificationRecipient>> ResolveOrderRecipientsAsync(Order order, CancellationToken ct)
         {
             var merchantIds = order.OrderItems
@@ -311,10 +428,20 @@ namespace api.services.implementations.notification
                 OrderStatus.Pending => "Đơn hàng đang chờ xử lý",
                 OrderStatus.Processing => "Đơn hàng đang được xử lý",
                 OrderStatus.Shipping => "Đơn hàng đang giao",
+                OrderStatus.PaymentSucceeded => "Thanh toan thanh cong",
+                OrderStatus.OrderPlaced => "Da dat hang",
+                OrderStatus.SellerConfirmed => "Nguoi ban da xac nhan",
+                OrderStatus.Packing => "Dang dong goi",
+                OrderStatus.HandoverToCarrier => "Da giao cho don vi van chuyen",
+                OrderStatus.InTransit => "Dang van chuyen",
+                OrderStatus.OutForDelivery => "Dang giao hang",
+                OrderStatus.Delivered => "Giao hang thanh cong",
+                OrderStatus.DeliveryFailed => "Giao hang that bai",
                 OrderStatus.Completed => "Giao hàng thành công",
                 OrderStatus.Cancelled => "Đơn hàng đã hủy",
                 OrderStatus.ReturnRequested => "Yêu cầu trả hàng đã được ghi nhận",
                 OrderStatus.ReturnApproved => "Yêu cầu trả hàng đã được duyệt",
+                OrderStatus.ReturnRejected => "Tu choi hoan tra",
                 OrderStatus.Returned => "Đã nhận hàng trả về",
                 OrderStatus.Refunded => "Đã hoàn tiền",
                 _ => "Cập nhật đơn hàng"
@@ -332,10 +459,20 @@ namespace api.services.implementations.notification
                 OrderStatus.Pending => "đang chờ xử lý",
                 OrderStatus.Processing => "đang được xử lý",
                 OrderStatus.Shipping => "đang được giao",
+                OrderStatus.PaymentSucceeded => "da thanh toan thanh cong",
+                OrderStatus.OrderPlaced => "da duoc dat thanh cong",
+                OrderStatus.SellerConfirmed => "da duoc nguoi ban xac nhan",
+                OrderStatus.Packing => "dang duoc dong goi",
+                OrderStatus.HandoverToCarrier => "da giao cho don vi van chuyen",
+                OrderStatus.InTransit => "dang duoc van chuyen",
+                OrderStatus.OutForDelivery => "dang duoc giao den ban",
+                OrderStatus.Delivered => "da giao thanh cong",
+                OrderStatus.DeliveryFailed => "giao hang that bai",
                 OrderStatus.Completed => "đã giao thành công",
                 OrderStatus.Cancelled => "đã bị hủy",
                 OrderStatus.ReturnRequested => "đã ghi nhận yêu cầu trả hàng/đổi trả",
                 OrderStatus.ReturnApproved => "đã được duyệt trả hàng/đổi trả",
+                OrderStatus.ReturnRejected => "da bi tu choi hoan tra",
                 OrderStatus.Returned => "đã hoàn tất nhận hàng trả về",
                 OrderStatus.Refunded => "đã hoàn tiền",
                 _ => $"đã chuyển sang {status}"
@@ -358,6 +495,15 @@ namespace api.services.implementations.notification
             role is Role.Admin or Role.Merchant
                 ? $"/admin/orders?orderId={Uri.EscapeDataString(orderId)}"
                 : $"/orders/{Uri.EscapeDataString(orderId)}";
+
+        private static string BuildChatLink(Role role) =>
+            role is Role.Admin or Role.Merchant ? "/admin/chat" : "/support-chat";
+
+        private static string TruncateMessage(string message, int maxLength)
+        {
+            var normalized = string.IsNullOrWhiteSpace(message) ? "Tin nhan moi" : message.Trim();
+            return normalized.Length <= maxLength ? normalized : $"{normalized[..maxLength]}...";
+        }
 
         private static string ShortOrderId(string orderId) =>
             orderId.Length <= 8 ? orderId.ToUpperInvariant() : orderId[^8..].ToUpperInvariant();

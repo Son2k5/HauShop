@@ -29,6 +29,7 @@ namespace api.models.entities
         public ShippingDetail? ShippingDetail { get; set; }
         public ICollection<OrderItem> OrderItems { get; set; }
         public ICollection<Payment> Payments { get; set; }
+        public ICollection<OrderStatusHistory> StatusHistories { get; set; } = new List<OrderStatusHistory>();
     }
 
 }

@@ -22,29 +22,54 @@ import {
 const statuses: Array<AdminUpdateOrderStatusDto["status"] | ""> = [
   "",
   OrderStatuses.Pending,
+  OrderStatuses.OrderPlaced,
+  OrderStatuses.SellerConfirmed,
+  OrderStatuses.Packing,
+  OrderStatuses.HandoverToCarrier,
+  OrderStatuses.InTransit,
+  OrderStatuses.OutForDelivery,
+  OrderStatuses.Delivered,
+  OrderStatuses.DeliveryFailed,
   OrderStatuses.Processing,
   OrderStatuses.Shipping,
   OrderStatuses.Completed,
   OrderStatuses.Cancelled,
   OrderStatuses.ReturnRequested,
   OrderStatuses.ReturnApproved,
+  OrderStatuses.ReturnRejected,
   OrderStatuses.Returned,
   OrderStatuses.Refunded,
 ];
 
 const statusOptions = statuses.slice(1) as AdminUpdateOrderStatusDto["status"][];
 
-const validTransitions: Record<AdminUpdateOrderStatusDto["status"], AdminUpdateOrderStatusDto["status"][]> = {
-  Pending: [OrderStatuses.Pending, OrderStatuses.Processing, OrderStatuses.Cancelled],
-  Processing: [OrderStatuses.Processing, OrderStatuses.Shipping, OrderStatuses.Cancelled],
-  Shipping: [OrderStatuses.Shipping, OrderStatuses.Completed],
+const validTransitions: Partial<Record<AdminUpdateOrderStatusDto["status"], AdminUpdateOrderStatusDto["status"][]>> = {
+  Pending: [OrderStatuses.Pending, OrderStatuses.OrderPlaced, OrderStatuses.SellerConfirmed, OrderStatuses.Cancelled],
+  Processing: [OrderStatuses.Processing, OrderStatuses.SellerConfirmed, OrderStatuses.Packing, OrderStatuses.HandoverToCarrier, OrderStatuses.Cancelled],
+  Shipping: [OrderStatuses.Shipping, OrderStatuses.InTransit, OrderStatuses.OutForDelivery, OrderStatuses.Delivered, OrderStatuses.DeliveryFailed, OrderStatuses.Completed],
+  OrderPlaced: [OrderStatuses.OrderPlaced, OrderStatuses.SellerConfirmed, OrderStatuses.Cancelled],
+  SellerConfirmed: [OrderStatuses.SellerConfirmed, OrderStatuses.Packing, OrderStatuses.Cancelled],
+  Packing: [OrderStatuses.Packing, OrderStatuses.HandoverToCarrier, OrderStatuses.Cancelled],
+  HandoverToCarrier: [OrderStatuses.HandoverToCarrier, OrderStatuses.InTransit, OrderStatuses.DeliveryFailed],
+  InTransit: [OrderStatuses.InTransit, OrderStatuses.OutForDelivery, OrderStatuses.DeliveryFailed],
+  OutForDelivery: [OrderStatuses.OutForDelivery, OrderStatuses.Delivered, OrderStatuses.DeliveryFailed],
+  DeliveryFailed: [OrderStatuses.DeliveryFailed, OrderStatuses.OutForDelivery, OrderStatuses.Returned, OrderStatuses.Cancelled],
+  Delivered: [OrderStatuses.Delivered, OrderStatuses.Completed, OrderStatuses.ReturnRequested],
   Completed: [OrderStatuses.Completed, OrderStatuses.ReturnRequested],
   Cancelled: [OrderStatuses.Cancelled],
-  ReturnRequested: [OrderStatuses.ReturnRequested, OrderStatuses.ReturnApproved],
+  ReturnRequested: [OrderStatuses.ReturnRequested, OrderStatuses.ReturnApproved, OrderStatuses.ReturnRejected],
+  ReturnRejected: [OrderStatuses.ReturnRejected, OrderStatuses.Delivered, OrderStatuses.Completed],
   ReturnApproved: [OrderStatuses.ReturnApproved, OrderStatuses.Returned],
   Returned: [OrderStatuses.Returned, OrderStatuses.Refunded],
   Refunded: [OrderStatuses.Refunded],
 };
+
+function toDateTimeInputValue(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 16);
+}
 
 export default function AdminOrdersPage() {
   const location = useLocation();
@@ -53,6 +78,11 @@ export default function AdminOrdersPage() {
   const [page, setPage] = useState(1);
   const [selectedOrderId, setSelectedOrderId] = useState<string>();
   const [draftStatus, setDraftStatus] = useState<AdminUpdateOrderStatusDto["status"]>(OrderStatuses.Pending);
+  const [trackingNumber, setTrackingNumber] = useState("");
+  const [carrierName, setCarrierName] = useState("");
+  const [currentLocation, setCurrentLocation] = useState("");
+  const [estimatedDelivery, setEstimatedDelivery] = useState("");
+  const [statusNote, setStatusNote] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
   const debouncedSearch = useDebounce(search, 350);
@@ -90,6 +120,11 @@ export default function AdminOrdersPage() {
   useEffect(() => {
     if (!orderDetail) return;
     setDraftStatus(orderDetail.status as AdminUpdateOrderStatusDto["status"]);
+    setTrackingNumber(orderDetail.shipping?.trackingNumber ?? "");
+    setCarrierName(orderDetail.shipping?.carrierName ?? "");
+    setCurrentLocation(orderDetail.shipping?.currentLocation ?? "");
+    setEstimatedDelivery(toDateTimeInputValue(orderDetail.shipping?.estimatedDelivery));
+    setStatusNote("");
     setFormError(null);
   }, [orderDetail]);
 
@@ -110,7 +145,14 @@ export default function AdminOrdersPage() {
     try {
       await updateStatusMutation.mutateAsync({
         orderId: selectedOrderId,
-        dto: { status: draftStatus },
+        dto: {
+          status: draftStatus,
+          trackingNumber: trackingNumber.trim() || null,
+          carrierName: carrierName.trim() || null,
+          currentLocation: currentLocation.trim() || null,
+          estimatedDelivery: estimatedDelivery ? new Date(estimatedDelivery).toISOString() : null,
+          note: statusNote.trim() || null,
+        },
       });
     } catch (error) {
       setFormError((error as Error).message);
@@ -320,6 +362,16 @@ export default function AdminOrdersPage() {
                   </div>
                 </div>
 
+                <div className="rounded-[24px] border border-slate-200/80 bg-white p-5">
+                  <p className="text-sm font-semibold text-slate-800">Van chuyen</p>
+                  <div className="mt-3 grid gap-3 text-sm text-slate-600">
+                    <InfoCard label="Don vi" value={orderDetail.shipping?.carrierName || "Chua cap nhat"} />
+                    <InfoCard label="Ma van don" value={orderDetail.shipping?.trackingNumber || "Chua cap nhat"} />
+                    <InfoCard label="Vi tri" value={orderDetail.shipping?.currentLocation || "Chua cap nhat"} />
+                    <InfoCard label="Du kien" value={formatAdminDateTime(orderDetail.shipping?.estimatedDelivery)} />
+                  </div>
+                </div>
+
                 <div className="rounded-[24px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5">
                   <label className="block">
                     <span className="mb-2 block text-sm font-semibold text-slate-800">Trạng thái mới</span>
@@ -345,8 +397,62 @@ export default function AdminOrdersPage() {
                     </select>
                   </label>
 
+                  <div className="mt-4 grid gap-3">
+                    <label className="block">
+                      <span className="mb-2 block text-sm font-semibold text-slate-800">Ma van don</span>
+                      <input
+                        value={trackingNumber}
+                        onChange={(event) => setTrackingNumber(event.target.value)}
+                        className="w-full rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400"
+                        placeholder="VD: GHN123456789"
+                      />
+                    </label>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="block">
+                        <span className="mb-2 block text-sm font-semibold text-slate-800">Don vi van chuyen</span>
+                        <input
+                          value={carrierName}
+                          onChange={(event) => setCarrierName(event.target.value)}
+                          className="w-full rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400"
+                          placeholder="GHN, GHTK, Viettel Post..."
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="mb-2 block text-sm font-semibold text-slate-800">Du kien giao</span>
+                        <input
+                          type="datetime-local"
+                          value={estimatedDelivery}
+                          onChange={(event) => setEstimatedDelivery(event.target.value)}
+                          className="w-full rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400"
+                        />
+                      </label>
+                    </div>
+
+                    <label className="block">
+                      <span className="mb-2 block text-sm font-semibold text-slate-800">Vi tri hien tai</span>
+                      <input
+                        value={currentLocation}
+                        onChange={(event) => setCurrentLocation(event.target.value)}
+                        className="w-full rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400"
+                        placeholder="Kho Ho Chi Minh, Dang giao tai Quan 1..."
+                      />
+                    </label>
+
+                    <label className="block">
+                      <span className="mb-2 block text-sm font-semibold text-slate-800">Ghi chu tracking</span>
+                      <textarea
+                        value={statusNote}
+                        onChange={(event) => setStatusNote(event.target.value)}
+                        rows={3}
+                        className="w-full resize-none rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400"
+                        placeholder="Thong tin se hien trong timeline cua khach hang"
+                      />
+                    </label>
+                  </div>
+
                   <div className="mt-4 rounded-[18px] bg-sky-50 px-4 py-3 text-sm text-sky-700">
-                    Rule backend: Pending {"->"} Processing/Cancelled, Processing {"->"} Shipping/Cancelled, Shipping {"->"} Completed, Completed {"->"} ReturnRequested {"->"} ReturnApproved {"->"} Returned {"->"} Refunded.
+                    Rule backend: OrderPlaced {"->"} SellerConfirmed {"->"} Packing {"->"} HandoverToCarrier {"->"} InTransit {"->"} OutForDelivery {"->"} Delivered {"->"} Completed.
                   </div>
 
                   {formError ? (

@@ -23,3 +23,7 @@ export async function getMyOrderByIdApi(orderId: string): Promise<OrderDto> {
 export async function cancelMyOrderApi(orderId: string): Promise<OrderDto> {
   return http.patch<OrderDto>(`/order/${orderId}/cancel`);
 }
+
+export async function completeMyOrderApi(orderId: string): Promise<OrderDto> {
+  return http.patch<OrderDto>(`/order/${orderId}/complete`);
+}

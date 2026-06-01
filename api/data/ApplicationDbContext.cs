@@ -24,6 +24,8 @@ namespace api.data
         public DbSet<Product> Products { get; set; }
         public DbSet<ProductCategory> ProductCategories { get; set; }
         public DbSet<Review> Reviews { get; set; }
+        public DbSet<OrderStatusHistory> OrderStatusHistories { get; set; }
+        public DbSet<ShippingTrackingEvent> ShippingTrackingEvents { get; set; }
         public DbSet<SupportTicket> SupportTickets { get; set; }
         public DbSet<User> Users { get; set; }
         public DbSet<UserConnection> UserConnections { get; set; }
@@ -273,6 +275,32 @@ namespace api.data
                     t.HasCheckConstraint("CK_Order_Subtotal", "`Subtotal` >= 0");
                     t.HasCheckConstraint("CK_Order_ShippingFee", "`ShippingFee` >= 0");
                 });
+            });
+
+            // ============ ORDER STATUS HISTORY ============
+            modelBuilder.Entity<OrderStatusHistory>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasMaxLength(50);
+                entity.Property(e => e.OrderId).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Status).IsRequired().HasConversion<int>();
+                entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.Description).IsRequired().HasMaxLength(1000);
+                entity.Property(e => e.Location).HasMaxLength(300);
+                entity.Property(e => e.Note).HasMaxLength(1000);
+                entity.Property(e => e.ActorUserId).HasMaxLength(50);
+                entity.Property(e => e.ActorRole).HasMaxLength(50);
+                entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.HasOne(e => e.Order)
+                    .WithMany(o => o.StatusHistories)
+                    .HasForeignKey(e => e.OrderId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => new { e.OrderId, e.Created })
+                    .HasDatabaseName("IX_OrderStatusHistories_Order_Created");
+                entity.HasIndex(e => new { e.OrderId, e.Status })
+                    .HasDatabaseName("IX_OrderStatusHistories_Order_Status");
             });
 
             // ============ NOTIFICATION ============
@@ -706,9 +734,13 @@ namespace api.data
                 entity.Property(e => e.Fee).HasPrecision(18, 2);
                 entity.Property(e => e.TrackingNumber).HasMaxLength(100);
                 entity.Property(e => e.Carrier).HasMaxLength(100);
+                entity.Property(e => e.CarrierCode).HasMaxLength(50);
+                entity.Property(e => e.CurrentLocation).HasMaxLength(300);
+                entity.Property(e => e.TrackingUrl).HasMaxLength(500);
                 entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.Property(e => e.Method).IsRequired().HasConversion<int>();
                 entity.Property(e => e.EstimatedDelivery).HasColumnType("datetime");
+                entity.Property(e => e.DeliveredAt).HasColumnType("datetime");
                 entity.Property(e => e.Updated).HasColumnType("datetime");
 
                 entity.HasOne(e => e.Order)
@@ -719,6 +751,34 @@ namespace api.data
                 entity.HasIndex(e => e.OrderId).IsUnique();
                 entity.HasIndex(e => e.TrackingNumber);
                 entity.HasIndex(e => new { e.Carrier, e.Created });
+            });
+
+            modelBuilder.Entity<ShippingTrackingEvent>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasMaxLength(50);
+                entity.Property(e => e.ShippingDetailId).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.OrderId).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Status).IsRequired().HasConversion<int>();
+                entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.Description).IsRequired().HasMaxLength(1000);
+                entity.Property(e => e.Location).HasMaxLength(300);
+                entity.Property(e => e.TrackingNumber).HasMaxLength(100);
+                entity.Property(e => e.CarrierName).HasMaxLength(100);
+                entity.Property(e => e.OccurredAt).HasColumnType("datetime");
+                entity.Property(e => e.Created).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.HasOne(e => e.ShippingDetail)
+                    .WithMany(s => s.TrackingEvents)
+                    .HasForeignKey(e => e.ShippingDetailId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => new { e.OrderId, e.OccurredAt })
+                    .HasDatabaseName("IX_ShippingTrackingEvents_Order_OccurredAt");
+                entity.HasIndex(e => new { e.TrackingNumber, e.OccurredAt })
+                    .HasDatabaseName("IX_ShippingTrackingEvents_Tracking_OccurredAt");
+                entity.HasIndex(e => new { e.ShippingDetailId, e.OccurredAt })
+                    .HasDatabaseName("IX_ShippingTrackingEvents_Detail_OccurredAt");
             });
             // ============ PASSWORD RESET OTP ============
             modelBuilder.Entity<PasswordResetOtp>(entity =>

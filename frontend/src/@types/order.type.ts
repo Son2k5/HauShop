@@ -45,6 +45,8 @@ export interface OrderDto {
   updated?: string | null;
   items: OrderItemDto[];
   payments: PaymentDto[];
+  shipping?: ShippingDetailDto | null;
+  statusHistory: OrderStatusHistoryDto[];
 }
 
 export interface OrderSummaryDto {
@@ -67,4 +69,42 @@ export interface CheckoutResponseDto {
   order: OrderDto;
   requiresRedirect: boolean;
   paymentUrl?: string | null;
+}
+
+export interface ShippingDetailDto {
+  id: string;
+  method: string;
+  fee: number;
+  trackingNumber?: string | null;
+  carrierName?: string | null;
+  carrierCode?: string | null;
+  currentLocation?: string | null;
+  trackingUrl?: string | null;
+  estimatedDelivery?: string | null;
+  deliveredAt?: string | null;
+  trackingEvents: ShippingTrackingEventDto[];
+}
+
+export interface ShippingTrackingEventDto {
+  id: string;
+  status: OrderStatus;
+  title: string;
+  description: string;
+  location?: string | null;
+  trackingNumber?: string | null;
+  carrierName?: string | null;
+  occurredAt: string;
+  created: string;
+}
+
+export interface OrderStatusHistoryDto {
+  id: string;
+  status: OrderStatus;
+  title: string;
+  description: string;
+  location?: string | null;
+  note?: string | null;
+  actorUserId?: string | null;
+  actorRole?: string | null;
+  created: string;
 }

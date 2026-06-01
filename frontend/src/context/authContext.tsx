@@ -121,21 +121,6 @@ function getInitialState(): State {
 }
 
 // ── Context types ────────────────────────────────────────────────────────────
-function shouldBootstrapAuth(pathname: string): boolean {
-    return (
-        pathname.startsWith('/admin') ||
-        pathname.startsWith('/cart') ||
-        pathname.startsWith('/profile') ||
-        pathname.startsWith('/change-password') ||
-        pathname.startsWith('/checkout') ||
-        pathname.startsWith('/orders') ||
-        pathname.startsWith('/notifications') ||
-        pathname.startsWith('/wishlist') ||
-        pathname.startsWith('/support-chat') ||
-        pathname.startsWith('/payment')
-    );
-}
-
 export interface AuthStateValue {
     user: UserDto | null;
     status: 'idle' | 'authenticated' | 'unauthenticated';
@@ -182,7 +167,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const hasCachedUser = !!storage.load();
         if (!hasCachedUser) return;
         if (state.status === 'authenticated') return;
-        if (!shouldBootstrapAuth(location.pathname)) return;
 
         let cancelled = false;
 

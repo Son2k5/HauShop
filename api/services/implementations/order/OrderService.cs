@@ -101,11 +101,15 @@ namespace api.services.implementations.order
 
                 var fullAddress = $"{address.AddressLine}, {address.City}, {address.State}, {address.Country}".Replace(", ,", ",").Trim(',', ' ');
 
+                var initialStatus = dto.PaymentMethod == PaymentMethod.COD
+                    ? OrderStatus.OrderPlaced
+                    : OrderStatus.Pending;
+
                 var order = new Order
                 {
                     Id = Guid.NewGuid().ToString(),
                     UserId = userId,
-                    Status = OrderStatus.Pending,
+                    Status = initialStatus,
                     ShippingAddressId = dto.ShippingAddressId,
                     Subtotal = 0,
                     ShippingFee = shippingFee,
@@ -115,7 +119,8 @@ namespace api.services.implementations.order
                     Created = DateTime.UtcNow,
                     Updated = null,
                     OrderItems = new List<OrderItem>(),
-                    Payments = new List<Payment>()
+                    Payments = new List<Payment>(),
+                    StatusHistories = new List<OrderStatusHistory>()
                 };
 
                 foreach (var cartItem in cart.Items)
@@ -189,6 +194,16 @@ namespace api.services.implementations.order
                     Fee = shippingFee,
                     Created = DateTime.UtcNow
                 };
+
+                order.StatusHistories.Add(CreateStatusHistory(
+                    order.Id,
+                    initialStatus,
+                    null,
+                    null,
+                    dto.PaymentMethod == PaymentMethod.COD
+                        ? "Don hang da duoc dat va dang cho nguoi ban xac nhan."
+                        : "Don hang da duoc tao va dang cho thanh toan.",
+                    null));
 
                 _orderRepository.Add(order);
 
@@ -300,12 +315,19 @@ namespace api.services.implementations.order
             if (order.UserId != userId)
                 throw new ForbiddenAccessException("Bạn không có quyền hủy đơn hàng này");
 
-            if (order.Status != OrderStatus.Pending)
+            if (!CanCustomerCancel(order.Status))
                 throw new InvalidOperationException("Chỉ có thể hủy đơn hàng ở trạng thái Pending");
 
             var previousStatus = order.Status;
             order.Status = OrderStatus.Cancelled;
             order.Updated = DateTime.UtcNow;
+            order.StatusHistories.Add(CreateStatusHistory(
+                order.Id,
+                OrderStatus.Cancelled,
+                userId,
+                Role.Member.ToString(),
+                "Khach hang da huy don hang.",
+                null));
 
             var variantIds = order.OrderItems
                 .Select(i => i.ProductVariantId)
@@ -355,6 +377,41 @@ namespace api.services.implementations.order
             return OrderMapping.MapToDto(updated);
         }
 
+        public async Task<OrderDto> CompleteMyOrderAsync(string userId, string orderId, CancellationToken ct = default)
+        {
+            var order = await _orderRepository.GetTrackedByIdWithIncludesAsync(orderId, ct)
+                ?? throw new KeyNotFoundException("Order not found");
+
+            if (order.UserId != userId)
+                throw new ForbiddenAccessException("You cannot complete this order");
+
+            if (order.Status != OrderStatus.Delivered)
+                throw new InvalidOperationException("Only delivered orders can be completed by the customer");
+
+            var previousStatus = order.Status;
+            order.Status = OrderStatus.Completed;
+            order.Updated = DateTime.UtcNow;
+            order.StatusHistories.Add(CreateStatusHistory(
+                order.Id,
+                OrderStatus.Completed,
+                userId,
+                Role.Member.ToString(),
+                "Khach hang xac nhan da nhan hang.",
+                order.ShippingDetail?.CurrentLocation));
+
+            await _context.SaveChangesAsync(ct);
+            await TryNotifyAsync(
+                token => _notificationService.NotifyOrderStatusChangedAsync(orderId, previousStatus, OrderStatus.Completed, token),
+                orderId,
+                "order-completed",
+                ct);
+
+            var updated = await _orderRepository.GetByIdWithIncludesAsync(orderId, ct)
+                ?? throw new InvalidOperationException("Cannot reload order after completing");
+
+            return OrderMapping.MapToDto(updated);
+        }
+
         public async Task<OrderDto> HandleVnPayReturnAsync(IQueryCollection query, CancellationToken ct = default)
         {
             if (!_vnPayService.ValidateSignature(query))
@@ -382,8 +439,22 @@ namespace api.services.implementations.order
             if (responseCode == "00")
             {
                 payment.Status = PaymentStatus.Paid;
-                order.Status = OrderStatus.Processing;
+                order.Status = OrderStatus.OrderPlaced;
                 order.Updated = DateTime.UtcNow;
+                order.StatusHistories.Add(CreateStatusHistory(
+                    order.Id,
+                    OrderStatus.PaymentSucceeded,
+                    null,
+                    "PaymentProvider",
+                    "Thanh toan VNPay thanh cong.",
+                    null));
+                order.StatusHistories.Add(CreateStatusHistory(
+                    order.Id,
+                    OrderStatus.OrderPlaced,
+                    null,
+                    "System",
+                    "Don hang da duoc dat va dang cho nguoi ban xac nhan.",
+                    null));
 
                 var cart = await _cartRepository.GetTrackedByUserIdWithItemsAsync(order.UserId, ct);
                 if (cart != null && cart.Items.Count > 0)
@@ -396,6 +467,13 @@ namespace api.services.implementations.order
                 payment.Status = PaymentStatus.Failed;
                 order.Status = OrderStatus.Cancelled;
                 order.Updated = DateTime.UtcNow;
+                order.StatusHistories.Add(CreateStatusHistory(
+                    order.Id,
+                    OrderStatus.Cancelled,
+                    null,
+                    "PaymentProvider",
+                    "Thanh toan that bai, don hang da bi huy.",
+                    null));
 
                 var variantIds = order.OrderItems
                     .Select(i => i.ProductVariantId)
@@ -438,7 +516,7 @@ namespace api.services.implementations.order
                     "payment-succeeded",
                     ct);
                 await TryNotifyAsync(
-                    token => _notificationService.NotifyOrderStatusChangedAsync(order.Id, previousStatus, OrderStatus.Processing, token),
+                    token => _notificationService.NotifyOrderStatusChangedAsync(order.Id, previousStatus, OrderStatus.OrderPlaced, token),
                     order.Id,
                     "order-processing",
                     ct);
@@ -454,6 +532,72 @@ namespace api.services.implementations.order
 
             var updated = await _orderRepository.GetByIdWithIncludesAsync(order.Id, ct)
                 ?? throw new InvalidOperationException("Không thể tải lại đơn hàng sau callback");
+
+            return OrderMapping.MapToDto(updated);
+        }
+
+        public async Task<OrderDto> UpdateOrderStatusAsync(
+            string orderId,
+            UpdateOrderStatusDto dto,
+            string? actorUserId = null,
+            bool requireMerchantOwnership = false,
+            CancellationToken ct = default)
+        {
+            if (dto.Status == OrderStatus.PaymentSucceeded)
+                throw new InvalidOperationException("PaymentSucceeded is a payment event, not a current order status");
+
+            var order = await _orderRepository.GetTrackedByIdWithIncludesAsync(orderId, ct)
+                ?? throw new KeyNotFoundException("Order not found");
+
+            if (requireMerchantOwnership)
+            {
+                await EnsureMerchantCanManageOrderAsync(actorUserId, order, ct);
+            }
+
+            if (!IsValidStatusTransition(order.Status, dto.Status))
+            {
+                throw new InvalidOperationException(
+                    $"Cannot change order status from {order.Status} to {dto.Status}.");
+            }
+
+            var previousStatus = order.Status;
+            var actorRole = requireMerchantOwnership ? Role.Merchant.ToString() : Role.Admin.ToString();
+            var shippingDetail = EnsureShippingDetail(order);
+
+            ApplyShippingUpdate(shippingDetail, dto);
+            EnsureShippingDataForStatus(shippingDetail, dto.Status);
+
+            order.Status = dto.Status;
+            order.Updated = DateTime.UtcNow;
+
+            if (dto.Status == OrderStatus.Delivered && shippingDetail.DeliveredAt == null)
+            {
+                shippingDetail.DeliveredAt = DateTime.UtcNow;
+            }
+
+            order.StatusHistories.Add(CreateStatusHistory(
+                order.Id,
+                dto.Status,
+                actorUserId,
+                actorRole,
+                dto.Note,
+                shippingDetail.CurrentLocation));
+
+            if (ShouldCreateShippingTrackingEvent(dto.Status))
+            {
+                shippingDetail.TrackingEvents.Add(CreateShippingTrackingEvent(order.Id, shippingDetail, dto.Status, dto.Note));
+            }
+
+            await _context.SaveChangesAsync(ct);
+
+            await TryNotifyAsync(
+                token => _notificationService.NotifyOrderStatusChangedAsync(orderId, previousStatus, dto.Status, token),
+                orderId,
+                $"order-status-{dto.Status}",
+                ct);
+
+            var updated = await _orderRepository.GetByIdWithIncludesAsync(orderId, ct)
+                ?? throw new InvalidOperationException("Cannot reload order after status update");
 
             return OrderMapping.MapToDto(updated);
         }
@@ -499,6 +643,274 @@ namespace api.services.implementations.order
                 product.Stock = totalsByProduct.GetValueOrDefault(product.Id, 0);
                 product.Updated = DateTime.UtcNow;
             }
+        }
+
+        private async Task EnsureMerchantCanManageOrderAsync(string? actorUserId, Order order, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(actorUserId))
+                throw new ForbiddenAccessException("Merchant account is required");
+
+            var merchantUser = await _context.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == actorUserId, ct)
+                ?? throw new ForbiddenAccessException("Merchant account is required");
+
+            if (merchantUser.Role != Role.Merchant || string.IsNullOrWhiteSpace(merchantUser.MerchantId))
+                throw new ForbiddenAccessException("Merchant account is required");
+
+            var merchantIds = order.OrderItems
+                .Select(i => i.Product?.Brand?.MerchantId)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Select(id => id!)
+                .Distinct()
+                .ToList();
+
+            if (merchantIds.Count == 0 || merchantIds.Any(id => id != merchantUser.MerchantId))
+                throw new ForbiddenAccessException("You cannot update this order");
+        }
+
+        private ShippingDetail EnsureShippingDetail(Order order)
+        {
+            if (order.ShippingDetail != null)
+            {
+                order.ShippingDetail.TrackingEvents ??= new List<ShippingTrackingEvent>();
+                return order.ShippingDetail;
+            }
+
+            var shippingDetail = new ShippingDetail
+            {
+                Id = Guid.NewGuid().ToString(),
+                OrderId = order.Id,
+                Method = ShippingMethod.Standard,
+                Fee = order.ShippingFee,
+                Created = DateTime.UtcNow,
+                TrackingEvents = new List<ShippingTrackingEvent>()
+            };
+
+            order.ShippingDetail = shippingDetail;
+            _context.ShippingDetails.Add(shippingDetail);
+            return shippingDetail;
+        }
+
+        private static void ApplyShippingUpdate(ShippingDetail shippingDetail, UpdateOrderStatusDto dto)
+        {
+            var changed = false;
+
+            if (dto.TrackingNumber != null)
+            {
+                shippingDetail.TrackingNumber = NormalizeOptional(dto.TrackingNumber);
+                changed = true;
+            }
+
+            if (dto.CarrierName != null)
+            {
+                shippingDetail.Carrier = NormalizeOptional(dto.CarrierName);
+                changed = true;
+            }
+
+            if (dto.CarrierCode != null)
+            {
+                shippingDetail.CarrierCode = NormalizeOptional(dto.CarrierCode);
+                changed = true;
+            }
+
+            if (dto.CurrentLocation != null)
+            {
+                shippingDetail.CurrentLocation = NormalizeOptional(dto.CurrentLocation);
+                changed = true;
+            }
+
+            if (dto.TrackingUrl != null)
+            {
+                shippingDetail.TrackingUrl = NormalizeOptional(dto.TrackingUrl);
+                changed = true;
+            }
+
+            if (dto.EstimatedDelivery.HasValue)
+            {
+                shippingDetail.EstimatedDelivery = dto.EstimatedDelivery.Value;
+                changed = true;
+            }
+
+            if (changed)
+            {
+                shippingDetail.Updated = DateTime.UtcNow;
+            }
+        }
+
+        private static void EnsureShippingDataForStatus(ShippingDetail shippingDetail, OrderStatus status)
+        {
+            if (!RequiresShippingData(status))
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(shippingDetail.TrackingNumber) ||
+                string.IsNullOrWhiteSpace(shippingDetail.Carrier))
+            {
+                throw new ArgumentException("Tracking number and carrier are required for shipping statuses");
+            }
+        }
+
+        private static OrderStatusHistory CreateStatusHistory(
+            string orderId,
+            OrderStatus status,
+            string? actorUserId,
+            string? actorRole,
+            string? note,
+            string? location)
+        {
+            return new OrderStatusHistory
+            {
+                Id = Guid.NewGuid().ToString(),
+                OrderId = orderId,
+                Status = status,
+                Title = BuildStatusTitle(status),
+                Description = BuildStatusDescription(status, note),
+                Location = NormalizeOptional(location),
+                Note = NormalizeOptional(note),
+                ActorUserId = NormalizeOptional(actorUserId),
+                ActorRole = NormalizeOptional(actorRole),
+                Created = DateTime.UtcNow
+            };
+        }
+
+        private static ShippingTrackingEvent CreateShippingTrackingEvent(
+            string orderId,
+            ShippingDetail shippingDetail,
+            OrderStatus status,
+            string? note)
+        {
+            return new ShippingTrackingEvent
+            {
+                Id = Guid.NewGuid().ToString(),
+                ShippingDetailId = shippingDetail.Id,
+                OrderId = orderId,
+                Status = status,
+                Title = BuildStatusTitle(status),
+                Description = BuildStatusDescription(status, note),
+                Location = shippingDetail.CurrentLocation,
+                TrackingNumber = shippingDetail.TrackingNumber,
+                CarrierName = shippingDetail.Carrier,
+                OccurredAt = DateTime.UtcNow,
+                Created = DateTime.UtcNow
+            };
+        }
+
+        private static bool CanCustomerCancel(OrderStatus status) =>
+            status is OrderStatus.Pending
+                or OrderStatus.OrderPlaced
+                or OrderStatus.SellerConfirmed
+                or OrderStatus.Packing;
+
+        private static bool IsValidStatusTransition(OrderStatus currentStatus, OrderStatus nextStatus)
+        {
+            if (currentStatus == nextStatus)
+            {
+                return true;
+            }
+
+            return currentStatus switch
+            {
+                OrderStatus.Pending => nextStatus is OrderStatus.OrderPlaced or OrderStatus.SellerConfirmed or OrderStatus.Cancelled,
+                OrderStatus.Processing => nextStatus is OrderStatus.SellerConfirmed or OrderStatus.Packing or OrderStatus.HandoverToCarrier or OrderStatus.Cancelled,
+                OrderStatus.Shipping => nextStatus is OrderStatus.InTransit or OrderStatus.OutForDelivery or OrderStatus.Delivered or OrderStatus.DeliveryFailed or OrderStatus.Completed,
+                OrderStatus.OrderPlaced => nextStatus is OrderStatus.SellerConfirmed or OrderStatus.Cancelled,
+                OrderStatus.SellerConfirmed => nextStatus is OrderStatus.Packing or OrderStatus.Cancelled,
+                OrderStatus.Packing => nextStatus is OrderStatus.HandoverToCarrier or OrderStatus.Cancelled,
+                OrderStatus.HandoverToCarrier => nextStatus is OrderStatus.InTransit or OrderStatus.DeliveryFailed,
+                OrderStatus.InTransit => nextStatus is OrderStatus.OutForDelivery or OrderStatus.DeliveryFailed,
+                OrderStatus.OutForDelivery => nextStatus is OrderStatus.Delivered or OrderStatus.DeliveryFailed,
+                OrderStatus.DeliveryFailed => nextStatus is OrderStatus.OutForDelivery or OrderStatus.Returned or OrderStatus.Cancelled,
+                OrderStatus.Delivered => nextStatus is OrderStatus.Completed or OrderStatus.ReturnRequested,
+                OrderStatus.Completed => nextStatus is OrderStatus.ReturnRequested,
+                OrderStatus.ReturnRequested => nextStatus is OrderStatus.ReturnApproved or OrderStatus.ReturnRejected,
+                OrderStatus.ReturnRejected => nextStatus is OrderStatus.Delivered or OrderStatus.Completed,
+                OrderStatus.ReturnApproved => nextStatus is OrderStatus.Returned,
+                OrderStatus.Returned => nextStatus is OrderStatus.Refunded,
+                OrderStatus.Cancelled => false,
+                OrderStatus.Refunded => false,
+                _ => false
+            };
+        }
+
+        private static bool RequiresShippingData(OrderStatus status) =>
+            status is OrderStatus.HandoverToCarrier
+                or OrderStatus.InTransit
+                or OrderStatus.OutForDelivery
+                or OrderStatus.Delivered
+                or OrderStatus.DeliveryFailed
+                or OrderStatus.Returned;
+
+        private static bool ShouldCreateShippingTrackingEvent(OrderStatus status) =>
+            status is OrderStatus.HandoverToCarrier
+                or OrderStatus.InTransit
+                or OrderStatus.OutForDelivery
+                or OrderStatus.Delivered
+                or OrderStatus.DeliveryFailed
+                or OrderStatus.Returned;
+
+        private static string BuildStatusTitle(OrderStatus status) =>
+            status switch
+            {
+                OrderStatus.Pending => "Cho thanh toan",
+                OrderStatus.PaymentSucceeded => "Thanh toan thanh cong",
+                OrderStatus.OrderPlaced => "Da dat hang",
+                OrderStatus.SellerConfirmed => "Nguoi ban da xac nhan",
+                OrderStatus.Packing => "Dang dong goi",
+                OrderStatus.HandoverToCarrier => "Da giao cho don vi van chuyen",
+                OrderStatus.InTransit => "Dang van chuyen",
+                OrderStatus.OutForDelivery => "Dang giao hang",
+                OrderStatus.Delivered => "Giao hang thanh cong",
+                OrderStatus.Completed => "Hoan tat",
+                OrderStatus.DeliveryFailed => "Giao hang that bai",
+                OrderStatus.Cancelled => "Da huy don",
+                OrderStatus.ReturnRequested => "Yeu cau hoan tra",
+                OrderStatus.ReturnApproved => "Da duyet hoan tra",
+                OrderStatus.ReturnRejected => "Tu choi hoan tra",
+                OrderStatus.Returned => "Da nhan hang hoan tra",
+                OrderStatus.Refunded => "Da hoan tien",
+                OrderStatus.Processing => "Dang xu ly",
+                OrderStatus.Shipping => "Dang giao",
+                _ => "Cap nhat don hang"
+            };
+
+        private static string BuildStatusDescription(OrderStatus status, string? note)
+        {
+            if (!string.IsNullOrWhiteSpace(note))
+            {
+                return note.Trim();
+            }
+
+            return status switch
+            {
+                OrderStatus.Pending => "Don hang dang cho thanh toan hoac xac nhan.",
+                OrderStatus.PaymentSucceeded => "Thanh toan da duoc ghi nhan thanh cong.",
+                OrderStatus.OrderPlaced => "Don hang da duoc tao va dang cho nguoi ban xac nhan.",
+                OrderStatus.SellerConfirmed => "Nguoi ban da xac nhan don hang.",
+                OrderStatus.Packing => "Don hang dang duoc dong goi.",
+                OrderStatus.HandoverToCarrier => "Don hang da duoc ban giao cho don vi van chuyen.",
+                OrderStatus.InTransit => "Kien hang dang di chuyen qua cac buu cuc/kho trung chuyen.",
+                OrderStatus.OutForDelivery => "Kien hang dang duoc shipper giao den nguoi nhan.",
+                OrderStatus.Delivered => "Kien hang da giao thanh cong.",
+                OrderStatus.Completed => "Don hang da hoan tat.",
+                OrderStatus.DeliveryFailed => "Don vi van chuyen giao hang khong thanh cong.",
+                OrderStatus.Cancelled => "Don hang da bi huy.",
+                OrderStatus.ReturnRequested => "Khach hang da gui yeu cau hoan tra.",
+                OrderStatus.ReturnApproved => "Yeu cau hoan tra da duoc chap thuan.",
+                OrderStatus.ReturnRejected => "Yeu cau hoan tra da bi tu choi.",
+                OrderStatus.Returned => "Hang hoan tra da duoc ghi nhan.",
+                OrderStatus.Refunded => "Khoan hoan tien da duoc xu ly.",
+                OrderStatus.Processing => "Don hang dang duoc xu ly.",
+                OrderStatus.Shipping => "Don hang dang duoc van chuyen.",
+                _ => "Don hang co cap nhat moi."
+            };
+        }
+
+        private static string? NormalizeOptional(string? value)
+        {
+            var normalized = value?.Trim();
+            return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
         }
 
         private async Task TryNotifyAsync(

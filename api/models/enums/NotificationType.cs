@@ -5,6 +5,7 @@ namespace api.models.enums
         OrderStatus = 0,
         Payment = 1,
         Return = 2,
-        Refund = 3
+        Refund = 3,
+        ChatMessage = 4
     }
 }

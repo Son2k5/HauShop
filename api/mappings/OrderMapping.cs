@@ -48,7 +48,50 @@ namespace api.mappings
                     VnpResponseCode = p.ResponseCode,
                     VnpBankCode = p.BankCode,
                     VnpPayDate = p.PaidAt
-                }).ToList() ?? new List<PaymentDto>()
+                }).ToList() ?? new List<PaymentDto>(),
+
+                Shipping = o.ShippingDetail == null ? null : new ShippingDetailDto
+                {
+                    Id = o.ShippingDetail.Id,
+                    Method = o.ShippingDetail.Method.ToString(),
+                    Fee = o.ShippingDetail.Fee,
+                    TrackingNumber = o.ShippingDetail.TrackingNumber,
+                    CarrierName = o.ShippingDetail.Carrier,
+                    CarrierCode = o.ShippingDetail.CarrierCode,
+                    CurrentLocation = o.ShippingDetail.CurrentLocation,
+                    TrackingUrl = o.ShippingDetail.TrackingUrl,
+                    EstimatedDelivery = o.ShippingDetail.EstimatedDelivery,
+                    DeliveredAt = o.ShippingDetail.DeliveredAt,
+                    TrackingEvents = o.ShippingDetail.TrackingEvents?
+                        .OrderByDescending(e => e.OccurredAt)
+                        .Select(e => new ShippingTrackingEventDto
+                        {
+                            Id = e.Id,
+                            Status = e.Status.ToString(),
+                            Title = e.Title,
+                            Description = e.Description,
+                            Location = e.Location,
+                            TrackingNumber = e.TrackingNumber,
+                            CarrierName = e.CarrierName,
+                            OccurredAt = e.OccurredAt,
+                            Created = e.Created
+                        }).ToList() ?? new List<ShippingTrackingEventDto>()
+                },
+
+                StatusHistory = o.StatusHistories?
+                    .OrderBy(h => h.Created)
+                    .Select(h => new OrderStatusHistoryDto
+                    {
+                        Id = h.Id,
+                        Status = h.Status.ToString(),
+                        Title = h.Title,
+                        Description = h.Description,
+                        Location = h.Location,
+                        Note = h.Note,
+                        ActorUserId = h.ActorUserId,
+                        ActorRole = h.ActorRole,
+                        Created = h.Created
+                    }).ToList() ?? new List<OrderStatusHistoryDto>()
             };
         }
     }

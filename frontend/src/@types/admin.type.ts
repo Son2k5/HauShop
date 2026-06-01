@@ -1,4 +1,5 @@
 import type { OrderStatus, PaymentStatus, Role } from "./enums.type";
+import type { OrderStatusHistoryDto, ShippingDetailDto } from "./order.type";
 
 export interface LowStockProductDto {
   id: string;
@@ -112,10 +113,19 @@ export interface AdminOrderDetailDto {
   created: string;
   updated?: string | null;
   items: AdminOrderItemDto[];
+  shipping?: ShippingDetailDto | null;
+  statusHistory: OrderStatusHistoryDto[];
 }
 
 export interface AdminUpdateOrderStatusDto {
   status: OrderStatus;
+  trackingNumber?: string | null;
+  carrierName?: string | null;
+  carrierCode?: string | null;
+  currentLocation?: string | null;
+  trackingUrl?: string | null;
+  estimatedDelivery?: string | null;
+  note?: string | null;
 }
 
 export interface AdminInventoryOverviewDto {

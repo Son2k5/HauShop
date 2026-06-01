@@ -47,6 +47,14 @@ const SignIn = () => {
   const googleError = searchParams.get("error");
   const googleStatus = searchParams.get("google");
 
+  const getPostLoginPath = useCallback(
+    (user: UserDto) => {
+      if (user.role === "Admin") return ROUTES.ADMIN;
+      return from.startsWith(ROUTES.ADMIN) || from === "/403" ? ROUTES.HOME : from;
+    },
+    [from]
+  );
+
   const [activeSlide, setActiveSlide] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -92,7 +100,7 @@ const SignIn = () => {
           return;
         }
 
-        navigate(user.role === "Admin" ? ROUTES.ADMIN : from, { replace: true });
+        navigate(getPostLoginPath(user), { replace: true });
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -103,7 +111,7 @@ const SignIn = () => {
     return () => {
       cancelled = true;
     };
-  }, [from, googleStatus, navigate, refreshUser]);
+  }, [getPostLoginPath, googleStatus, navigate, refreshUser]);
 
   useEffect(() => {
     const state = location.state as { passwordChanged?: boolean } | null;
@@ -141,7 +149,7 @@ const SignIn = () => {
         );
         setEmail("");
         setPassword("");
-        navigate(user.role === "Admin" ? ROUTES.ADMIN : from, { replace: true });
+        navigate(getPostLoginPath(user), { replace: true });
       } catch (err) {
         const e = err as ApiError;
         if (e.errors && Object.keys(e.errors).length > 0) {

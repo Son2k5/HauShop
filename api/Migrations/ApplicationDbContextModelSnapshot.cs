@@ -677,6 +677,62 @@ namespace api.Migrations
                         });
                 });
 
+            modelBuilder.Entity("api.models.entities.OrderStatusHistory", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("ActorRole")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("ActorUserId")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<DateTime>("Created")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<string>("OrderId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId", "Created")
+                        .HasDatabaseName("IX_OrderStatusHistories_Order_Created");
+
+                    b.HasIndex("OrderId", "Status")
+                        .HasDatabaseName("IX_OrderStatusHistories_Order_Status");
+
+                    b.ToTable("OrderStatusHistories");
+                });
+
             modelBuilder.Entity("api.models.entities.PasswordResetOtp", b =>
                 {
                     b.Property<string>("Id")
@@ -1141,10 +1197,21 @@ namespace api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
+                    b.Property<string>("CarrierCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
                     b.Property<DateTime>("Created")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("CurrentLocation")
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)");
+
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("datetime");
 
                     b.Property<DateTime?>("EstimatedDelivery")
                         .HasColumnType("datetime");
@@ -1165,6 +1232,10 @@ namespace api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
+                    b.Property<string>("TrackingUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
                     b.Property<DateTime?>("Updated")
                         .HasColumnType("datetime");
 
@@ -1178,6 +1249,69 @@ namespace api.Migrations
                     b.HasIndex("Carrier", "Created");
 
                     b.ToTable("ShippingDetails");
+                });
+
+            modelBuilder.Entity("api.models.entities.ShippingTrackingEvent", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("CarrierName")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime>("Created")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<string>("OrderId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("ShippingDetailId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<string>("TrackingNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId", "OccurredAt")
+                        .HasDatabaseName("IX_ShippingTrackingEvents_Order_OccurredAt");
+
+                    b.HasIndex("ShippingDetailId", "OccurredAt")
+                        .HasDatabaseName("IX_ShippingTrackingEvents_Detail_OccurredAt");
+
+                    b.HasIndex("TrackingNumber", "OccurredAt")
+                        .HasDatabaseName("IX_ShippingTrackingEvents_Tracking_OccurredAt");
+
+                    b.ToTable("ShippingTrackingEvents");
                 });
 
             modelBuilder.Entity("api.models.entities.SupportTicket", b =>
@@ -1546,6 +1680,17 @@ namespace api.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("api.models.entities.OrderStatusHistory", b =>
+                {
+                    b.HasOne("api.models.entities.Order", "Order")
+                        .WithMany("StatusHistories")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("api.models.entities.PasswordResetOtp", b =>
                 {
                     b.HasOne("api.models.entities.User", "User")
@@ -1647,6 +1792,17 @@ namespace api.Migrations
                         .IsRequired();
 
                     b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("api.models.entities.ShippingTrackingEvent", b =>
+                {
+                    b.HasOne("api.models.entities.ShippingDetail", "ShippingDetail")
+                        .WithMany("TrackingEvents")
+                        .HasForeignKey("ShippingDetailId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ShippingDetail");
                 });
 
             modelBuilder.Entity("api.models.entities.SupportTicket", b =>
@@ -1752,6 +1908,8 @@ namespace api.Migrations
                     b.Navigation("Payments");
 
                     b.Navigation("ShippingDetail");
+
+                    b.Navigation("StatusHistories");
                 });
 
             modelBuilder.Entity("api.models.entities.Product", b =>
@@ -1772,6 +1930,11 @@ namespace api.Migrations
             modelBuilder.Entity("api.models.entities.ProductVariant", b =>
                 {
                     b.Navigation("CartItems");
+                });
+
+            modelBuilder.Entity("api.models.entities.ShippingDetail", b =>
+                {
+                    b.Navigation("TrackingEvents");
                 });
 
             modelBuilder.Entity("api.models.entities.User", b =>

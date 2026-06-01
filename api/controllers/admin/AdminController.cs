@@ -163,19 +163,8 @@ namespace api.controllers.admin
             [FromBody] AdminUpdateOrderStatusDto dto,
             CancellationToken ct)
         {
-            try
-            {
-                var result = await _managementService.UpdateOrderStatusAsync(orderId, dto, ct);
-                return Ok(result);
-            }
-            catch (InvalidOperationException)
-            {
-                return BadRequest(new { message = ClientErrorMessages.CannotProcessDetail });
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound(new { message = ClientErrorMessages.NotFoundDetail });
-            }
+            var result = await _managementService.UpdateOrderStatusAsync(orderId, dto, ct);
+            return Ok(result);
         }
 
         [HttpGet("products")]

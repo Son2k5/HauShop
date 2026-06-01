@@ -13,7 +13,17 @@ export function useChatConnection({
   onRoomUpdated?: (roomId: string) => void;
 }) {
   const connectionRef = useRef<signalR.HubConnection | null>(null);
+  const onMessageRef = useRef<typeof onMessage>(onMessage);
+  const onRoomUpdatedRef = useRef<typeof onRoomUpdated>(onRoomUpdated);
   const [status, setStatus] = useState<"idle" | "connecting" | "connected" | "disconnected">("idle");
+
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+  }, [onMessage]);
+
+  useEffect(() => {
+    onRoomUpdatedRef.current = onRoomUpdated;
+  }, [onRoomUpdated]);
 
   const connection = useMemo(() => {
     if (!enabled) return null;
@@ -26,13 +36,16 @@ export function useChatConnection({
   }, [enabled]);
 
   useEffect(() => {
-    if (!connection) return;
+    if (!connection) {
+      setStatus("idle");
+      return;
+    }
 
     let cancelled = false;
     connectionRef.current = connection;
 
-    connection.on("ReceiveMessage", (message: ChatMessageDto) => onMessage?.(message));
-    connection.on("RoomUpdated", (roomId: string) => onRoomUpdated?.(roomId));
+    connection.on("ReceiveMessage", (message: ChatMessageDto) => onMessageRef.current?.(message));
+    connection.on("RoomUpdated", (roomId: string) => onRoomUpdatedRef.current?.(roomId));
     connection.onreconnecting(() => setStatus("connecting"));
     connection.onreconnected(() => setStatus("connected"));
     connection.onclose(() => setStatus("disconnected"));
@@ -58,7 +71,7 @@ export function useChatConnection({
         connectionRef.current = null;
       }
     };
-  }, [connection, onMessage, onRoomUpdated]);
+  }, [connection]);
 
   const joinRoom = useCallback(async (roomId: string) => {
     if (!connectionRef.current || connectionRef.current.state !== signalR.HubConnectionState.Connected) return;

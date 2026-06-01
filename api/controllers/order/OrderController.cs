@@ -73,6 +73,34 @@ namespace api.controllers.order
             return Ok(result);
         }
 
+        [HttpPatch("{id}/complete")]
+        [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> CompleteMyOrder(string id, CancellationToken ct)
+        {
+            var userId = TryGetUserId();
+            if (userId == null)
+                return UnauthorizedProblem();
+
+            var result = await _orderService.CompleteMyOrderAsync(userId, id, ct);
+            return Ok(result);
+        }
+
+        [Authorize(Policy = "MerchantOnly")]
+        [HttpPatch("seller/{id}/status")]
+        [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> UpdateSellerOrderStatus(
+            string id,
+            [FromBody] UpdateOrderStatusDto dto,
+            CancellationToken ct)
+        {
+            var userId = TryGetUserId();
+            if (userId == null)
+                return UnauthorizedProblem();
+
+            var result = await _orderService.UpdateOrderStatusAsync(id, dto, userId, true, ct);
+            return Ok(result);
+        }
+
         [AllowAnonymous]
         [HttpGet("vnpay-return")]
         [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]

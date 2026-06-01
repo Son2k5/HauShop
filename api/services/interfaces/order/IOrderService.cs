@@ -21,6 +21,15 @@ namespace api.services.interfaces.order
 
         Task<OrderDto> CancelMyOrderAsync(string userId, string orderId, CancellationToken ct = default);
 
+        Task<OrderDto> CompleteMyOrderAsync(string userId, string orderId, CancellationToken ct = default);
+
         Task<OrderDto> HandleVnPayReturnAsync(IQueryCollection query, CancellationToken ct = default);
+
+        Task<OrderDto> UpdateOrderStatusAsync(
+            string orderId,
+            UpdateOrderStatusDto dto,
+            string? actorUserId = null,
+            bool requireMerchantOwnership = false,
+            CancellationToken ct = default);
     }
 }

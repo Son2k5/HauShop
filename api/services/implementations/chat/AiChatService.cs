@@ -151,7 +151,8 @@ namespace api.services.implementations.chat
             var maxPrice = ExtractMaxPrice(normalized);
             var wantedSizes = ExtractValues(normalized, SizeTerms);
             var wantedColors = ExtractWantedColors(normalized);
-            var searchTerms = BuildSearchTerms(normalized, wantedColors, wantedSizes);
+            var constraints = ExtractProductQueryConstraints(normalized);
+            var searchTerms = BuildSearchTerms(normalized, wantedColors, wantedSizes, constraints);
 
             var query = _context.Products
                 .AsNoTracking()
@@ -184,6 +185,17 @@ namespace api.services.implementations.chat
                         .Where(pc => pc.Category != null)
                         .Select(pc => pc.Category.Name)
                         .ToList(),
+                    CategorySlugs = p.ProductCategories
+                        .Where(pc => pc.Category != null)
+                        .Select(pc => pc.Category.Slug)
+                        .ToList(),
+                    CategoryIds = p.ProductCategories
+                        .Select(pc => pc.CategoryId)
+                        .ToList(),
+                    CategoryParentIds = p.ProductCategories
+                        .Where(pc => pc.Category != null)
+                        .Select(pc => pc.Category.ParentId ?? string.Empty)
+                        .ToList(),
                     TotalVariantStock = p.ProductVariants
                         .Where(v => v.IsActive)
                         .Sum(v => (int?)v.Stock) ?? 0,
@@ -203,6 +215,8 @@ namespace api.services.implementations.chat
                         .ToList()
                 })
                 .ToListAsync(ct);
+
+            products = ApplyProductConstraints(products, constraints);
 
             if (wantedColors.Count > 0)
             {
@@ -224,7 +238,7 @@ namespace api.services.implementations.chat
                     Product = p,
                     Score = ScoreProductMatch(p, searchTerms, wantedColors, wantedSizes)
                 })
-                .Where(p => searchTerms.Count == 0 || p.Score > 0)
+                .Where(p => searchTerms.Count == 0 || constraints.HasHardFilters || p.Score > 0)
                 .OrderByDescending(p => p.Score)
                 .ThenByDescending(p => p.Product.AverageRating)
                 .ThenBy(p => p.Product.MinVariantPrice)
@@ -421,7 +435,113 @@ namespace api.services.implementations.chat
             return ExtractValues(colorText, ColorTerms);
         }
 
-        private static List<string> BuildSearchTerms(string text, HashSet<string> wantedColors, HashSet<string> wantedSizes)
+        private static ProductQueryConstraints ExtractProductQueryConstraints(string text)
+        {
+            var constraints = new ProductQueryConstraints();
+            var words = Tokenize(text).ToHashSet();
+            var hasMale = words.Contains("nam") || ContainsAnyPhrase(text, GenderMalePhrases);
+            var hasFemale = words.Contains("nu") || ContainsAnyPhrase(text, GenderFemalePhrases);
+            var hasUnisex = words.Contains("unisex") || ContainsAnyPhrase(text, GenderUnisexPhrases);
+
+            if (hasUnisex)
+            {
+                constraints.Gender = GenderFilter.Unisex;
+            }
+            else if (hasMale && !hasFemale)
+            {
+                constraints.Gender = GenderFilter.Male;
+            }
+            else if (hasFemale && !hasMale)
+            {
+                constraints.Gender = GenderFilter.Female;
+            }
+
+            foreach (var alias in ProductKindAliases)
+            {
+                if (ContainsPhrase(text, alias.Phrase))
+                {
+                    constraints.ProductKinds.Add(alias.Kind);
+                }
+            }
+
+            RemoveBroadProductKinds(constraints.ProductKinds);
+            return constraints;
+        }
+
+        private static void RemoveBroadProductKinds(HashSet<ProductKind> productKinds)
+        {
+            if (productKinds.Overlaps(TopProductKinds))
+            {
+                productKinds.Remove(ProductKind.Top);
+            }
+
+            if (productKinds.Overlaps(SpecificShoeProductKinds))
+            {
+                productKinds.Remove(ProductKind.Shoe);
+            }
+
+            if (productKinds.Overlaps(SpecificPantsProductKinds))
+            {
+                productKinds.Remove(ProductKind.Pants);
+            }
+        }
+
+        private static List<ProductSearchItem> ApplyProductConstraints(
+            List<ProductSearchItem> products,
+            ProductQueryConstraints constraints)
+        {
+            if (constraints.Gender.HasValue)
+            {
+                products = products
+                    .Where(p => MatchesGender(p, constraints.Gender.Value))
+                    .ToList();
+            }
+
+            if (constraints.ProductKinds.Count > 0)
+            {
+                products = products
+                    .Where(p => constraints.ProductKinds.Any(kind => MatchesProductKind(p, kind)))
+                    .ToList();
+            }
+
+            return products;
+        }
+
+        private static bool MatchesGender(ProductSearchItem product, GenderFilter gender)
+        {
+            return gender switch
+            {
+                GenderFilter.Male => IsInGenderCategory(product, MaleCategoryId, "nam")
+                    || IsInGenderCategory(product, UnisexCategoryId, "unisex"),
+                GenderFilter.Female => IsInGenderCategory(product, FemaleCategoryId, "nu")
+                    || IsInGenderCategory(product, UnisexCategoryId, "unisex"),
+                GenderFilter.Unisex => IsInGenderCategory(product, UnisexCategoryId, "unisex"),
+                _ => false
+            };
+        }
+
+        private static bool IsInGenderCategory(ProductSearchItem product, string categoryId, string token)
+        {
+            return product.CategoryIds.Contains(categoryId)
+                || product.CategoryParentIds.Contains(categoryId)
+                || product.CategorySlugs.Any(slug => ContainsPhrase(Normalize(slug), token))
+                || ContainsPhrase(BuildProductSearchableText(product), token);
+        }
+
+        private static bool MatchesProductKind(ProductSearchItem product, ProductKind kind)
+        {
+            return ProductKindMatchTerms.TryGetValue(kind, out var terms)
+                && terms.Any(term => ContainsPhrase(BuildProductSearchableText(product), term));
+        }
+
+        private static bool ContainsAnyPhrase(string text, IEnumerable<string> phrases) =>
+            phrases.Any(phrase => ContainsPhrase(text, phrase));
+
+        private static List<string> BuildSearchTerms(
+            string text,
+            HashSet<string> wantedColors,
+            HashSet<string> wantedSizes,
+            ProductQueryConstraints constraints)
         {
             var terms = new List<string>();
 
@@ -439,9 +559,23 @@ namespace api.services.implementations.chat
             return terms
                 .Select(Normalize)
                 .Where(term => term.Length > 0)
+                .Where(term => !IsConstraintTerm(term, constraints))
                 .Distinct()
                 .Take(10)
                 .ToList();
+        }
+
+        private static bool IsConstraintTerm(string term, ProductQueryConstraints constraints)
+        {
+            if (constraints.Gender.HasValue && GenderSearchTerms.Contains(term))
+            {
+                return true;
+            }
+
+            return constraints.ProductKinds.Count > 0
+                && constraints.ProductKinds
+                    .SelectMany(kind => ProductKindMatchTerms.TryGetValue(kind, out var terms) ? terms : Array.Empty<string>())
+                    .Any(term.Equals);
         }
 
         private static bool IsSearchKeyword(string word, HashSet<string> wantedColors, HashSet<string> wantedSizes)
@@ -465,9 +599,7 @@ namespace api.services.implementations.chat
             HashSet<string> wantedColors,
             HashSet<string> wantedSizes)
         {
-            var variantText = string.Join(' ', product.Variants.Select(v => $"{v.Color} {v.Size}"));
-            var searchable = Normalize(
-                $"{product.Name} {product.Description} {product.Sku} {product.Slug} {product.BrandName} {string.Join(' ', product.CategoryNames)} {variantText}");
+            var searchable = BuildProductSearchableText(product);
             var compactSearchable = Compact(searchable);
             var score = searchTerms.Count == 0 ? 1 : 0;
 
@@ -478,7 +610,7 @@ namespace api.services.implementations.chat
                 {
                     score += term.Contains(' ') ? 6 : 3;
                 }
-                else if (compactTerm.Length > 0 && compactSearchable.Contains(compactTerm))
+                else if (ShouldUseCompactFallback(term) && compactTerm.Length > 0 && compactSearchable.Contains(compactTerm))
                 {
                     score += 2;
                 }
@@ -496,6 +628,16 @@ namespace api.services.implementations.chat
 
             return score;
         }
+
+        private static string BuildProductSearchableText(ProductSearchItem product)
+        {
+            var variantText = string.Join(' ', product.Variants.Select(v => $"{v.Color} {v.Size}"));
+            return Normalize(
+                $"{product.Name} {product.Description} {product.Sku} {product.Slug} {product.BrandName} {string.Join(' ', product.CategoryNames)} {string.Join(' ', product.CategorySlugs)} {variantText}");
+        }
+
+        private static bool ShouldUseCompactFallback(string term) =>
+            term.Contains(' ') || (term.Length >= 4 && !ShortSearchTerms.Contains(term));
 
         private static bool MatchesAnyToken(string? value, HashSet<string> expectedTokens)
         {
@@ -539,6 +681,10 @@ namespace api.services.implementations.chat
         private const string ProductContextTitle = "Sản phẩm liên quan trong database:";
         private const string OrderContextTitle = "Đơn hàng gần đây của khách:";
 
+        private const string MaleCategoryId = "CAT100";
+        private const string FemaleCategoryId = "CAT200";
+        private const string UnisexCategoryId = "CAT300";
+
         private static readonly HashSet<string> StopWords = new()
         {
             "toi", "minh", "ban", "cho", "can", "tim", "mua", "san", "pham", "voi", "theo", "mot", "cai",
@@ -561,6 +707,119 @@ namespace api.services.implementations.chat
         private static readonly HashSet<string> ShortSearchTerms = new()
         {
             "ao", "so", "mi", "mu", "nu"
+        };
+
+        private static readonly HashSet<string> GenderSearchTerms = new()
+        {
+            "nam", "nu", "unisex", "male", "female", "men", "women"
+        };
+
+        private static readonly string[] GenderMalePhrases =
+        {
+            "nam gioi",
+            "dan ong",
+            "con trai",
+            "male",
+            "men"
+        };
+
+        private static readonly string[] GenderFemalePhrases =
+        {
+            "nu gioi",
+            "phu nu",
+            "con gai",
+            "female",
+            "women"
+        };
+
+        private static readonly string[] GenderUnisexPhrases =
+        {
+            "unisex",
+            "nam nu"
+        };
+
+        private static readonly HashSet<ProductKind> TopProductKinds = new()
+        {
+            ProductKind.TShirt,
+            ProductKind.Shirt,
+            ProductKind.Polo,
+            ProductKind.Jacket
+        };
+
+        private static readonly HashSet<ProductKind> SpecificShoeProductKinds = new()
+        {
+            ProductKind.Sneaker,
+            ProductKind.AthleticShoe
+        };
+
+        private static readonly HashSet<ProductKind> SpecificPantsProductKinds = new()
+        {
+            ProductKind.LongPants,
+            ProductKind.Shorts
+        };
+
+        private static readonly (string Phrase, ProductKind Kind)[] ProductKindAliases =
+        {
+            ("ao khoac", ProductKind.Jacket),
+            ("aokhoac", ProductKind.Jacket),
+            ("khoac", ProductKind.Jacket),
+            ("ao thun", ProductKind.TShirt),
+            ("aothun", ProductKind.TShirt),
+            ("thun", ProductKind.TShirt),
+            ("ao so mi", ProductKind.Shirt),
+            ("ao somi", ProductKind.Shirt),
+            ("so mi", ProductKind.Shirt),
+            ("somi", ProductKind.Shirt),
+            ("ao polo", ProductKind.Polo),
+            ("polo", ProductKind.Polo),
+            ("ao", ProductKind.Top),
+            ("quan dai", ProductKind.LongPants),
+            ("quandai", ProductKind.LongPants),
+            ("quan dui", ProductKind.Shorts),
+            ("quandui", ProductKind.Shorts),
+            ("quan", ProductKind.Pants),
+            ("do the thao", ProductKind.Sportswear),
+            ("dothethao", ProductKind.Sportswear),
+            ("giay sneaker", ProductKind.Sneaker),
+            ("sneaker", ProductKind.Sneaker),
+            ("giay the thao", ProductKind.AthleticShoe),
+            ("giaythethao", ProductKind.AthleticShoe),
+            ("giay", ProductKind.Shoe),
+            ("tui xach", ProductKind.Handbag),
+            ("tuixach", ProductKind.Handbag),
+            ("tui", ProductKind.Handbag),
+            ("balo", ProductKind.Backpack),
+            ("ba lo", ProductKind.Backpack),
+            ("dong ho", ProductKind.Watch),
+            ("dongho", ProductKind.Watch),
+            ("kinh mat", ProductKind.Sunglasses),
+            ("kinhmat", ProductKind.Sunglasses),
+            ("vay dam", ProductKind.Dress),
+            ("vay", ProductKind.Dress),
+            ("dam", ProductKind.Dress),
+            ("mu", ProductKind.Hat)
+        };
+
+        private static readonly Dictionary<ProductKind, string[]> ProductKindMatchTerms = new()
+        {
+            [ProductKind.Top] = new[] { "ao" },
+            [ProductKind.TShirt] = new[] { "ao thun", "thun" },
+            [ProductKind.Shirt] = new[] { "ao so mi", "so mi", "somi" },
+            [ProductKind.Polo] = new[] { "polo" },
+            [ProductKind.Jacket] = new[] { "ao khoac", "khoac" },
+            [ProductKind.Pants] = new[] { "quan" },
+            [ProductKind.LongPants] = new[] { "quan dai" },
+            [ProductKind.Shorts] = new[] { "quan dui" },
+            [ProductKind.Sportswear] = new[] { "do the thao" },
+            [ProductKind.Shoe] = new[] { "giay", "sneaker" },
+            [ProductKind.Sneaker] = new[] { "giay sneaker", "sneaker" },
+            [ProductKind.AthleticShoe] = new[] { "giay the thao" },
+            [ProductKind.Handbag] = new[] { "tui xach", "tui" },
+            [ProductKind.Backpack] = new[] { "balo", "ba lo" },
+            [ProductKind.Watch] = new[] { "dong ho" },
+            [ProductKind.Sunglasses] = new[] { "kinh mat", "kinh" },
+            [ProductKind.Dress] = new[] { "vay dam", "vay", "dam" },
+            [ProductKind.Hat] = new[] { "mu" }
         };
 
         private static readonly string[] NonColorDoPhrases =
@@ -621,9 +880,19 @@ namespace api.services.implementations.chat
             public decimal AverageRating { get; set; }
             public string BrandName { get; set; } = string.Empty;
             public List<string> CategoryNames { get; set; } = new();
+            public List<string> CategorySlugs { get; set; } = new();
+            public List<string> CategoryIds { get; set; } = new();
+            public List<string> CategoryParentIds { get; set; } = new();
             public int TotalVariantStock { get; set; }
             public decimal MinVariantPrice { get; set; }
             public List<ProductVariantSearchItem> Variants { get; set; } = new();
+        }
+
+        private sealed class ProductQueryConstraints
+        {
+            public GenderFilter? Gender { get; set; }
+            public HashSet<ProductKind> ProductKinds { get; } = new();
+            public bool HasHardFilters => Gender.HasValue || ProductKinds.Count > 0;
         }
 
         private sealed class ProductVariantSearchItem
@@ -632,6 +901,35 @@ namespace api.services.implementations.chat
             public string? Size { get; set; }
             public int Stock { get; set; }
             public decimal Price { get; set; }
+        }
+
+        private enum GenderFilter
+        {
+            Male,
+            Female,
+            Unisex
+        }
+
+        private enum ProductKind
+        {
+            Top,
+            TShirt,
+            Shirt,
+            Polo,
+            Jacket,
+            Pants,
+            LongPants,
+            Shorts,
+            Sportswear,
+            Shoe,
+            Sneaker,
+            AthleticShoe,
+            Handbag,
+            Backpack,
+            Watch,
+            Sunglasses,
+            Dress,
+            Hat
         }
 
         private enum AiChatIntent

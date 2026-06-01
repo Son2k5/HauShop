@@ -10,10 +10,20 @@ export const OrderStatuses = {
   Pending: "Pending",
   Processing: "Processing",
   Shipping: "Shipping",
+  PaymentSucceeded: "PaymentSucceeded",
+  OrderPlaced: "OrderPlaced",
+  SellerConfirmed: "SellerConfirmed",
+  Packing: "Packing",
+  HandoverToCarrier: "HandoverToCarrier",
+  InTransit: "InTransit",
+  OutForDelivery: "OutForDelivery",
+  Delivered: "Delivered",
   Completed: "Completed",
+  DeliveryFailed: "DeliveryFailed",
   Cancelled: "Cancelled",
   ReturnRequested: "ReturnRequested",
   ReturnApproved: "ReturnApproved",
+  ReturnRejected: "ReturnRejected",
   Returned: "Returned",
   Refunded: "Refunded",
 } as const;
@@ -25,6 +35,7 @@ export const NotificationTypes = {
   Payment: "Payment",
   Return: "Return",
   Refund: "Refund",
+  ChatMessage: "ChatMessage",
 } as const;
 
 export type NotificationType = (typeof NotificationTypes)[keyof typeof NotificationTypes];

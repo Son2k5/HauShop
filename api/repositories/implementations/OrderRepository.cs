@@ -16,8 +16,12 @@ namespace api.repositories.implementations
         {
             IQueryable<Order> query = _context.Orders
                 .Include(o => o.OrderItems)
+                    .ThenInclude(i => i.Product)
+                        .ThenInclude(p => p.Brand)
                 .Include(o => o.Payments)
                 .Include(o => o.ShippingDetail)
+                    .ThenInclude(s => s!.TrackingEvents)
+                .Include(o => o.StatusHistories)
                 .Include(o => o.ShippingAddress);
 
             if (!tracked)

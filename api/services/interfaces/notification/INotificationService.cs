@@ -1,3 +1,4 @@
+using api.DTOs.chat;
 using api.DTOs.notification;
 using api.models.enums;
 
@@ -21,6 +22,7 @@ namespace api.services.interfaces.notification
 
         Task NotifyOrderCreatedAsync(string orderId, CancellationToken ct = default);
         Task NotifyPaymentSucceededAsync(string orderId, CancellationToken ct = default);
+        Task NotifyChatMessageAsync(ChatMessageDto message, CancellationToken ct = default);
         Task NotifyOrderStatusChangedAsync(
             string orderId,
             OrderStatus previousStatus,

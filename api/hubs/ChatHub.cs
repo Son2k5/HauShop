@@ -5,6 +5,7 @@ using api.data;
 using api.exceptions;
 using api.models.entities;
 using api.services.interfaces.chat;
+using api.services.interfaces.notification;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
@@ -18,6 +19,7 @@ namespace api.hubs
         private readonly ApplicationDbContext _context;
         private readonly IChatService _chatService;
         private readonly IAiChatService _aiChatService;
+        private readonly INotificationService _notificationService;
         private readonly IValidator<SendChatMessageDto> _sendMessageValidator;
         private readonly ILogger<ChatHub> _logger;
 
@@ -25,12 +27,14 @@ namespace api.hubs
             ApplicationDbContext context,
             IChatService chatService,
             IAiChatService aiChatService,
+            INotificationService notificationService,
             IValidator<SendChatMessageDto> sendMessageValidator,
             ILogger<ChatHub> logger)
         {
             _context = context;
             _chatService = chatService;
             _aiChatService = aiChatService;
+            _notificationService = notificationService;
             _sendMessageValidator = sendMessageValidator;
             _logger = logger;
         }
@@ -136,6 +140,7 @@ namespace api.hubs
 
                 await Clients.Group(RoomGroup(dto.ChatRoomId)).SendAsync("ReceiveMessage", message, Context.ConnectionAborted);
                 await Clients.Group(AdminGroup).SendAsync("RoomUpdated", dto.ChatRoomId, Context.ConnectionAborted);
+                await NotifyChatMessageAsync(message);
             }
             catch (HubException)
             {
@@ -228,6 +233,22 @@ namespace api.hubs
             if (!validation.IsValid)
             {
                 throw new HubException(ClientErrorMessages.HubValidationDetail);
+            }
+        }
+
+        private async Task NotifyChatMessageAsync(ChatMessageDto message)
+        {
+            try
+            {
+                await _notificationService.NotifyChatMessageAsync(message, Context.ConnectionAborted);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Failed to create chat notification. ChatRoomId={ChatRoomId}, MessageId={MessageId}",
+                    message.ChatRoomId,
+                    message.Id);
             }
         }
 

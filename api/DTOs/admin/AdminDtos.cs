@@ -1,4 +1,5 @@
 using api.DTOs.product;
+using api.DTOs.order;
 using api.models.enums;
 
 namespace api.DTOs.admin
@@ -79,6 +80,8 @@ namespace api.DTOs.admin
         public DateTime Created { get; set; }
         public DateTime? Updated { get; set; }
         public List<AdminOrderItemDto> Items { get; set; } = new();
+        public ShippingDetailDto? Shipping { get; set; }
+        public List<OrderStatusHistoryDto> StatusHistory { get; set; } = new();
     }
 
     public class AdminOrderItemDto
@@ -94,9 +97,8 @@ namespace api.DTOs.admin
         public decimal Total { get; set; }
     }
 
-    public class AdminUpdateOrderStatusDto
+    public class AdminUpdateOrderStatusDto : UpdateOrderStatusDto
     {
-        public OrderStatus Status { get; set; }
     }
 
     public class AdminInventoryOverviewDto
