@@ -1,4 +1,3 @@
-using api.exceptions;
 using api.common;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;

@@ -1,6 +1,6 @@
 using api.data;
 using api.DTOs.review;
-using api.exceptions;
+using api.common;
 using api.models.entities;
 using api.models.enums;
 using api.repositories.interfaces;

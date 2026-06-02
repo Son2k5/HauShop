@@ -1,5 +1,5 @@
-using api.exceptions;
 using FluentValidation;
+using FluentValidation.Results;
 
 namespace api.common;
 
@@ -40,5 +40,31 @@ public static class ClientErrorMessages
             OperationCanceledException => RequestCancelledTitle,
             _ => ServerErrorDetail
         };
+    }
+}
+
+public sealed class ApiAuthenticationException : Exception
+{
+    public ApiAuthenticationException(string message) : base(message)
+    {
+    }
+}
+
+public sealed class ForbiddenAccessException : Exception
+{
+    public ForbiddenAccessException(string message) : base(message)
+    {
+    }
+}
+
+public static class ValidationResultExtensions
+{
+    public static IDictionary<string, string[]> ToClientSafeDictionary(this ValidationResult result)
+    {
+        return result.Errors
+            .GroupBy(error => string.IsNullOrWhiteSpace(error.PropertyName) ? "request" : error.PropertyName)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(_ => ClientErrorMessages.FieldInvalid).Distinct().ToArray());
     }
 }

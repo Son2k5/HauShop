@@ -1,7 +1,6 @@
 using System.Text;
 using System.IdentityModel.Tokens.Jwt;
 using api.common;
-using api.extensions;
 using api.data;
 using api.infrastructure.redis;
 using api.models.email;
@@ -11,6 +10,7 @@ using api.services.implementations.auth;
 using api.services.interfaces.auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -60,6 +60,16 @@ var builder = WebApplication.CreateBuilder(args);
 // SET UP ENV
 // ===========================
 builder.Configuration.AddEnvironmentVariables();
+
+if (builder.Configuration.GetValue<bool>("ForwardedHeaders:Enabled"))
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.KnownNetworks.Clear();
+        options.KnownProxies.Clear();
+    });
+}
 
 // ===========================
 // CONTROLLERS & API EXPLORER
@@ -395,6 +405,11 @@ if (app.Environment.IsDevelopment())
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "HauShop API V1");
     });
+}
+
+if (app.Configuration.GetValue<bool>("ForwardedHeaders:Enabled"))
+{
+    app.UseForwardedHeaders();
 }
 
 if (!app.Environment.IsDevelopment())

@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using api.DTOs.notification;
-using api.exceptions;
+using api.common;
 using api.models.enums;
 using api.services.interfaces.notification;
 using Microsoft.AspNetCore.Authorization;

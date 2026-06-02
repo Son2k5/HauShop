@@ -7,12 +7,21 @@ import { checkoutApi } from "../services/orderService";
 import { userService } from "../services/userService";
 import { useToast } from "../context/toastContext";
 import { formatPrice } from "../utils/formatPrice";
-import type { AddressDto } from "../@types/address.type";
+import type { AddressDto, CreateAddressDto } from "../@types/address.type";
 import { queryKeys } from "../lib/queryKeys";
 import { logger } from "../lib/logger";
 import { useAuth } from "../hooks/useAuth";
 import { ROUTES, routeTo } from "../lib/routes";
 import { PaymentMethods, type PaymentMethod } from "../@types/enums.type";
+
+const emptyAddressForm: CreateAddressDto = {
+  addressLine: "",
+  city: "",
+  state: "",
+  country: "Vietnam",
+  zipCode: "",
+  isDefault: false,
+};
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -33,6 +42,10 @@ export default function CheckoutPage() {
   const shippingFee = 30000; // Backend sẽ tính phí ship dựa trên địa chỉ
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [addressModalOpen, setAddressModalOpen] = useState(false);
+  const [addressModalMode, setAddressModalMode] = useState<"select" | "create">("select");
+  const [addressForm, setAddressForm] = useState<CreateAddressDto>(emptyAddressForm);
+  const [savingAddress, setSavingAddress] = useState(false);
 
   // Fetch user addresses on mount
   useEffect(() => {
@@ -65,6 +78,54 @@ export default function CheckoutPage() {
 
     fetchAddresses();
   }, [isAuthenticated, showToast]);
+
+  const openAddressModal = (mode: "select" | "create") => {
+    setAddressModalMode(mode);
+    setAddressForm({
+      ...emptyAddressForm,
+      isDefault: addresses.length === 0,
+    });
+    setAddressModalOpen(true);
+  };
+
+  const handleAddressFormChange = (key: keyof CreateAddressDto, value: string | boolean) => {
+    setAddressForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const handleCreateAddress = async () => {
+    if (!addressForm.addressLine.trim() || !addressForm.city.trim()) {
+      showToast("Vui lòng nhập địa chỉ và tỉnh/thành phố", "warning");
+      return;
+    }
+
+    try {
+      setSavingAddress(true);
+      const created = await userService.createAddress({
+        ...addressForm,
+        addressLine: addressForm.addressLine.trim(),
+        city: addressForm.city.trim(),
+        state: addressForm.state?.trim(),
+        country: addressForm.country?.trim() || "Vietnam",
+        zipCode: addressForm.zipCode?.trim(),
+        isDefault: addresses.length === 0 || addressForm.isDefault,
+      });
+
+      setAddresses((current) => {
+        const next = created.isDefault
+          ? current.map((address) => ({ ...address, isDefault: false }))
+          : current;
+        return [...next, created];
+      });
+      setShippingAddressId(created.id);
+      setAddressModalOpen(false);
+      showToast("Đã thêm địa chỉ giao hàng", "success");
+    } catch (error) {
+      logger.error("Failed to create address", error);
+      showToast("Không thể thêm địa chỉ", "error");
+    } finally {
+      setSavingAddress(false);
+    }
+  };
 
   const subtotal = useMemo(() => {
     return cart.items.reduce((sum: number, item: any) => {
@@ -151,46 +212,51 @@ export default function CheckoutPage() {
             ) : addresses.length === 0 ? (
               <div className="text-center py-4 border border-dashed border-gray-200 rounded">
                 <p className="text-sm text-gray-500 mb-2">Bạn chưa có địa chỉ nào</p>
-                <Link
-                  to={ROUTES.PROFILE}
-                  className="text-sm text-primeColor hover:underline"
+                <button
+                  type="button"
+                  onClick={() => openAddressModal("create")}
+                  className="text-sm font-semibold text-primeColor hover:underline"
                 >
-                  Thêm địa chỉ mới →
-                </Link>
+                  Thêm địa chỉ mới
+                </button>
               </div>
             ) : (
-              <div className="space-y-3">
-                {addresses.map((address) => (
-                  <label
-                    key={address.id}
-                    className={`flex items-start gap-3 p-3 border rounded cursor-pointer transition ${
-                      shippingAddressId === address.id
-                        ? "border-primeColor bg-primeColor/5"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="shippingAddress"
-                      value={address.id}
-                      checked={shippingAddressId === address.id}
-                      onChange={() => setShippingAddressId(address.id)}
-                      className="mt-1"
-                    />
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{address.displayText}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {address.city}, {address.country}
+                <div className="border border-gray-200 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-xs uppercase text-lightText">Địa chỉ đang chọn</p>
+                      <p className="mt-1 text-sm font-semibold text-gray-900">
+                        {selectedAddress?.displayText || "Chưa chọn địa chỉ"}
                       </p>
-                      {address.isDefault && (
-                        <span className="inline-block mt-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded">
+                      {selectedAddress ? (
+                        <p className="mt-1 text-xs text-gray-500">
+                          {selectedAddress.city}, {selectedAddress.country}
+                        </p>
+                      ) : null}
+                      {selectedAddress?.isDefault ? (
+                        <span className="mt-2 inline-block rounded bg-green-100 px-2 py-0.5 text-xs text-green-700">
                           Mặc định
                         </span>
-                      )}
+                      ) : null}
                     </div>
-                  </label>
-                ))}
-              </div>
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openAddressModal("select")}
+                        className="border border-gray-300 px-3 py-2 text-sm font-medium transition hover:bg-gray-50"
+                      >
+                        Thay đổi
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openAddressModal("create")}
+                        className="bg-primeColor px-3 py-2 text-sm font-semibold text-white transition hover:bg-gray-800"
+                      >
+                        Thêm mới
+                      </button>
+                    </div>
+                  </div>
+                </div>
             )}
 
             <label className="block text-sm font-medium mb-2 mt-5">Ghi chú</label>
@@ -278,6 +344,228 @@ export default function CheckoutPage() {
           </button>
         </div>
       </div>
+
+      {addressModalOpen ? (
+        <AddressModal
+          mode={addressModalMode}
+          setMode={setAddressModalMode}
+          addresses={addresses}
+          selectedAddressId={shippingAddressId}
+          onSelect={(id) => {
+            setShippingAddressId(id);
+            setAddressModalOpen(false);
+          }}
+          form={addressForm}
+          onFormChange={handleAddressFormChange}
+          onCreate={handleCreateAddress}
+          onClose={() => setAddressModalOpen(false)}
+          saving={savingAddress}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function AddressModal({
+  mode,
+  setMode,
+  addresses,
+  selectedAddressId,
+  onSelect,
+  form,
+  onFormChange,
+  onCreate,
+  onClose,
+  saving,
+}: {
+  mode: "select" | "create";
+  setMode: (mode: "select" | "create") => void;
+  addresses: AddressDto[];
+  selectedAddressId: string;
+  onSelect: (id: string) => void;
+  form: CreateAddressDto;
+  onFormChange: (key: keyof CreateAddressDto, value: string | boolean) => void;
+  onCreate: () => void;
+  onClose: () => void;
+  saving: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
+      <div className="w-full max-w-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Địa chỉ giao hàng</h3>
+            <p className="text-sm text-lightText">Chọn địa chỉ có sẵn hoặc thêm địa chỉ mới.</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="border border-gray-300 px-3 py-1.5 text-sm font-medium hover:bg-gray-50"
+          >
+            Đóng
+          </button>
+        </div>
+
+        <div className="flex border-b border-gray-200">
+          <button
+            type="button"
+            onClick={() => setMode("select")}
+            className={[
+              "flex-1 px-4 py-3 text-sm font-semibold",
+              mode === "select" ? "border-b-2 border-primeColor text-primeColor" : "text-gray-500",
+            ].join(" ")}
+          >
+            Thay đổi địa chỉ
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("create")}
+            className={[
+              "flex-1 px-4 py-3 text-sm font-semibold",
+              mode === "create" ? "border-b-2 border-primeColor text-primeColor" : "text-gray-500",
+            ].join(" ")}
+          >
+            Thêm địa chỉ mới
+          </button>
+        </div>
+
+        <div className="max-h-[70vh] overflow-y-auto px-5 py-5">
+          {mode === "select" ? (
+            <div className="space-y-3">
+              {addresses.length ? (
+                addresses.map((address) => (
+                  <button
+                    type="button"
+                    key={address.id}
+                    onClick={() => onSelect(address.id)}
+                    className={[
+                      "w-full border p-4 text-left transition hover:border-primeColor",
+                      selectedAddressId === address.id ? "border-primeColor bg-primeColor/5" : "border-gray-200",
+                    ].join(" ")}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{address.displayText}</p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {address.city}, {address.country}
+                        </p>
+                      </div>
+                      {address.isDefault ? (
+                        <span className="rounded bg-green-100 px-2 py-0.5 text-xs text-green-700">Mặc định</span>
+                      ) : null}
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="border border-dashed border-gray-200 p-5 text-center text-sm text-gray-500">
+                  Chưa có địa chỉ nào.
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setMode("create")}
+                className="w-full border border-gray-300 px-4 py-3 text-sm font-semibold text-primeColor hover:bg-gray-50"
+              >
+                Thêm địa chỉ mới
+              </button>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              <AddressInput
+                label="Địa chỉ"
+                value={form.addressLine}
+                onChange={(value) => onFormChange("addressLine", value)}
+                placeholder="Số nhà, tên đường..."
+                required
+              />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <AddressInput
+                  label="Tỉnh/Thành phố"
+                  value={form.city}
+                  onChange={(value) => onFormChange("city", value)}
+                  placeholder="TP. Hồ Chí Minh"
+                  required
+                />
+                <AddressInput
+                  label="Quận/Huyện"
+                  value={form.state ?? ""}
+                  onChange={(value) => onFormChange("state", value)}
+                  placeholder="Quận 1"
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <AddressInput
+                  label="Quốc gia"
+                  value={form.country ?? ""}
+                  onChange={(value) => onFormChange("country", value)}
+                  placeholder="Vietnam"
+                />
+                <AddressInput
+                  label="Mã bưu chính"
+                  value={form.zipCode ?? ""}
+                  onChange={(value) => onFormChange("zipCode", value)}
+                  placeholder="700000"
+                />
+              </div>
+
+              <label className="flex items-center gap-3 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={form.isDefault}
+                  onChange={(event) => onFormChange("isDefault", event.target.checked)}
+                />
+                Đặt làm địa chỉ mặc định
+              </label>
+
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setMode("select")}
+                  className="border border-gray-300 px-5 py-3 text-sm font-medium hover:bg-gray-50"
+                >
+                  Quay lại
+                </button>
+                <button
+                  type="button"
+                  onClick={onCreate}
+                  disabled={saving}
+                  className="bg-primeColor px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving ? "Đang lưu..." : "Lưu địa chỉ"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AddressInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+  required = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  required?: boolean;
+}) {
+  return (
+    <label className="block text-sm font-medium text-gray-700">
+      {label}
+      {required ? <span className="text-red-500"> *</span> : null}
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-2 w-full border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-primeColor"
+        placeholder={placeholder}
+      />
+    </label>
   );
 }

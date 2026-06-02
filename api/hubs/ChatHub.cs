@@ -2,7 +2,6 @@ using System.Security.Claims;
 using api.DTOs.chat;
 using api.common;
 using api.data;
-using api.exceptions;
 using api.models.entities;
 using api.services.interfaces.chat;
 using api.services.interfaces.notification;

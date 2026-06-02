@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using api.common;
 using api.services.interfaces.auth;
 using api.DTOs.user;
-using api.extensions;
 using FluentValidation;
 
 namespace api.controllers

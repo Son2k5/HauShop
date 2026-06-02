@@ -1,6 +1,7 @@
 using api.data;
 using api.DTOs.order;
 using api.models.entities;
+using api.models.enums;
 using api.repositories.interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -67,6 +68,7 @@ namespace api.repositories.implementations
                     Id = o.Id,
                     Total = o.Total,
                     Status = o.Status.ToString(),
+                    IsPaid = o.Payments.Any(p => p.Status == PaymentStatus.Paid),
                     Created = o.Created,
                     ItemCount = o.OrderItems.Count
                 })

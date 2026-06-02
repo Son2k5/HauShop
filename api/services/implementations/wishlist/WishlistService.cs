@@ -1,6 +1,6 @@
 using api.data;
 using api.DTOs.wishlist;
-using api.exceptions;
+using api.common;
 using api.mappings;
 using api.models.entities;
 using api.repositories.interfaces;

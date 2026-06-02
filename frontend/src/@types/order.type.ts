@@ -53,6 +53,7 @@ export interface OrderSummaryDto {
   id: string;
   total: number;
   status: OrderStatus;
+  isPaid?: boolean;
   created: string;
   itemCount: number;
 }

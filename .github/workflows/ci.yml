@@ -7,15 +7,16 @@ on:
 
 jobs:
   api:
-    name: API build
+    name: API build and test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 9.0.x
-      - run: dotnet restore api/api.csproj
-      - run: dotnet build api/api.csproj --configuration Release --no-restore
+      - run: dotnet restore HauShop.sln
+      - run: dotnet build HauShop.sln --configuration Release --no-restore
+      - run: dotnet test HauShop.sln --configuration Release --no-build --verbosity normal
 
   frontend:
     name: Frontend lint and build

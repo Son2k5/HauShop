@@ -2,7 +2,7 @@
 using System.Text.Json;
 using api.data;
 using api.DTOs.user;
-using api.exceptions;
+using api.common;
 using api.repositories.interfaces;
 using api.services.interfaces;
 using api.services.interfaces.auth;

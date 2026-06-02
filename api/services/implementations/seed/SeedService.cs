@@ -19,7 +19,6 @@ namespace api.services.implementations.seed
         public async Task<SeedResult> SeedAllAsync()
         {
             var result = new SeedResult();
-
             var strategy = _context.Database.CreateExecutionStrategy();
 
             await strategy.ExecuteAsync(async () =>
@@ -27,15 +26,72 @@ namespace api.services.implementations.seed
                 await using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
-                    result.Categories = await SeedCategoriesAsync();
-                    result.Brands = await SeedBrandsAsync();
-                    result.Products = await SeedProductsAsync();
-                    result.ProductCats = await SeedProductCategoriesAsync();
-                    result.Variants = await SeedVariantsAsync();
+                    await SeedCatalogAsync(result);
+                    await _context.SaveChangesAsync();
+
+                    await SeedCustomerOrderDataAsync(result);
 
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
                     result.Success = true;
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    result.Success = false;
+                    result.Error = ex.Message;
+                }
+            });
+
+            return result;
+        }
+
+        public async Task<SeedResult> SeedCustomerOrderAsync()
+        {
+            var result = new SeedResult();
+            var strategy = _context.Database.CreateExecutionStrategy();
+
+            await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    await SeedCatalogAsync(result);
+                    await _context.SaveChangesAsync();
+
+                    await SeedCustomerOrderDataAsync(result);
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    result.Success = true;
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    result.Success = false;
+                    result.Error = ex.Message;
+                }
+            });
+
+            return result;
+        }
+
+        public async Task<SeedResult> ClearCustomerOrderAsync()
+        {
+            var result = new SeedResult();
+            var strategy = _context.Database.CreateExecutionStrategy();
+
+            await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    result.Orders = await ClearCustomerOrderDataAsync();
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    result.Success = true;
+                    result.Message = "Da xoa du lieu order seed cua khach hang.";
                 }
                 catch (Exception ex)
                 {
@@ -51,7 +107,6 @@ namespace api.services.implementations.seed
         public async Task<SeedResult> ClearAllAsync()
         {
             var result = new SeedResult();
-
             var strategy = _context.Database.CreateExecutionStrategy();
 
             await strategy.ExecuteAsync(async () =>
@@ -59,7 +114,9 @@ namespace api.services.implementations.seed
                 await using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
-                    // Xoá theo thứ tự ngược để tránh lỗi FK constraint
+                    await ClearCustomerOrderDataAsync();
+                    await _context.SaveChangesAsync();
+
                     _context.ProductVariants.RemoveRange(_context.ProductVariants);
                     _context.ProductCategories.RemoveRange(_context.ProductCategories);
                     _context.Products.RemoveRange(_context.Products);
@@ -69,7 +126,7 @@ namespace api.services.implementations.seed
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
                     result.Success = true;
-                    result.Message = "Đã xoá toàn bộ dữ liệu seed.";
+                    result.Message = "Da xoa toan bo du lieu seed.";
                 }
                 catch (Exception ex)
                 {
@@ -82,7 +139,21 @@ namespace api.services.implementations.seed
             return result;
         }
 
-        // Private helpers
+        private async Task SeedCatalogAsync(SeedResult result)
+        {
+            result.Categories = await SeedCategoriesAsync();
+            result.Brands = await SeedBrandsAsync();
+            result.Products = await SeedProductsAsync();
+            result.ProductCats = await SeedProductCategoriesAsync();
+            result.Variants = await SeedVariantsAsync();
+        }
+
+        private async Task SeedCustomerOrderDataAsync(SeedResult result)
+        {
+            result.Users = await SeedOrderUsersAsync();
+            result.Addresses = await SeedOrderAddressesAsync();
+            result.Orders = await SeedCustomerOrdersAsync();
+        }
 
         private async Task<int> SeedCategoriesAsync()
         {
@@ -129,6 +200,46 @@ namespace api.services.implementations.seed
             await _context.ProductVariants.AddRangeAsync(toInsert);
             return toInsert.Count;
         }
+
+        private async Task<int> SeedOrderUsersAsync()
+        {
+            var existing = await _context.Users.Select(u => u.Id).ToHashSetAsync();
+            var toInsert = OrderSeedDataStore.Users.Where(u => !existing.Contains(u.Id)).ToList();
+            await _context.Users.AddRangeAsync(toInsert);
+            return toInsert.Count;
+        }
+
+        private async Task<int> SeedOrderAddressesAsync()
+        {
+            var existing = await _context.Addresses.Select(a => a.Id).ToHashSetAsync();
+            var toInsert = OrderSeedDataStore.Addresses.Where(a => !existing.Contains(a.Id)).ToList();
+            await _context.Addresses.AddRangeAsync(toInsert);
+            return toInsert.Count;
+        }
+
+        private async Task<int> SeedCustomerOrdersAsync()
+        {
+            var existing = await _context.Orders.Select(o => o.Id).ToHashSetAsync();
+            var toInsert = OrderSeedDataStore.Orders.Where(o => !existing.Contains(o.Id)).ToList();
+            await _context.Orders.AddRangeAsync(toInsert);
+            return toInsert.Count;
+        }
+
+        private async Task<int> ClearCustomerOrderDataAsync()
+        {
+            var orderIds = OrderSeedDataStore.OrderIds;
+            var orders = await _context.Orders
+                .Where(o => orderIds.Contains(o.Id))
+                .ToListAsync();
+
+            if (orders.Count == 0)
+            {
+                return 0;
+            }
+
+            _context.Orders.RemoveRange(orders);
+            return orders.Count;
+        }
     }
 
     public class SeedResult
@@ -141,5 +252,8 @@ namespace api.services.implementations.seed
         public int Products { get; set; }
         public int ProductCats { get; set; }
         public int Variants { get; set; }
+        public int Users { get; set; }
+        public int Addresses { get; set; }
+        public int Orders { get; set; }
     }
 }

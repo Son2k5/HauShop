@@ -20,10 +20,17 @@
 **/.vite/
 
 ############################
+# Local temporary artifacts
+############################
+.codex-temp/
+
+############################
 # Environment variables
 ############################
 **/.env
 **/.env.*
+!**/.env.example
+!**/.env.*.example
 
 ############################
 # IDE / OS

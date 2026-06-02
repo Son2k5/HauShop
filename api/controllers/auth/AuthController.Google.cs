@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using api.exceptions;
+using api.common;
 using api.services.interfaces.auth;
 
 namespace api.controllers

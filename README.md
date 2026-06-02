@@ -45,3 +45,39 @@ cd frontend
 npm run lint
 npm run build
 ```
+
+## Production Deploy
+
+Recommended split deploy:
+
+- `https://haushop.io.vn` -> frontend on Vercel
+- `https://api.haushop.io.vn` -> ASP.NET Core API on the VPS
+
+### VPS API
+
+```bash
+cp .env.production.example .env.production
+# edit .env.production and replace all change-me values
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+```
+
+Copy `infra/nginx/api.haushop.io.vn.conf` to the VPS Nginx sites folder, issue a LetsEncrypt certificate for `api.haushop.io.vn`, then reload Nginx.
+
+### Vercel Frontend
+
+Set the Vercel project root to `frontend` and use:
+
+```bash
+npm run build
+dist
+```
+
+Add these Vercel environment variables:
+
+```bash
+VITE_API_BASE_URL=https://api.haushop.io.vn/api
+VITE_SIGNALR_URL=https://api.haushop.io.vn/hubs/chat
+VITE_NOTIFICATION_HUB_URL=https://api.haushop.io.vn/hubs/notifications
+```
+
+Keep real secret files local: root `.env` for backend/local Docker, `frontend/.env` for local Vite. `api/.env` is optional for running `dotnet` from inside the `api` folder; after moving its values into the root `.env`, you can remove it locally.

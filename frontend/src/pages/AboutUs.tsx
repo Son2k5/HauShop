@@ -66,7 +66,7 @@ const AboutUs = () => {
       icon: 'lucide:megaphone',
     },
     {
-      name: 'Lê Văn C',
+      name: 'Lê Thành Đạt ',
       position: 'Dev/Design',
       icon: 'lucide:code-2',
     },

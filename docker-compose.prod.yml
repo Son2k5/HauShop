@@ -1,0 +1,128 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: haushop-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-haushop}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER:-haushop}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD}
+    expose:
+      - "3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - haushop-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: haushop-redis
+    restart: unless-stopped
+    command:
+      - redis-server
+      - /usr/local/etc/redis/redis.conf
+      - --requirepass
+      - ${REDIS_PASSWORD:?set REDIS_PASSWORD}
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+      - ./infra/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - haushop-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: haushop-api
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_URLS: ${ASPNETCORE_URLS:-http://+:8080}
+      ForwardedHeaders__Enabled: ${ForwardedHeaders__Enabled:-true}
+      ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=${MYSQL_DATABASE:-haushop};User=${MYSQL_USER:-haushop};Password=${MYSQL_PASSWORD:?set MYSQL_PASSWORD};"
+      Database__ServerVersion: ${Database__ServerVersion:-8.4.0-mysql}
+      Database__ApplyMigrationsOnStartup: ${Database__ApplyMigrationsOnStartup:-false}
+      Database__MaxRetryCount: ${Database__MaxRetryCount:-5}
+      Database__MaxRetryDelaySeconds: ${Database__MaxRetryDelaySeconds:-10}
+      Warmup__ProductSearch__Enabled: ${Warmup__ProductSearch__Enabled:-false}
+      Warmup__ProductSearch__DelaySeconds: ${Warmup__ProductSearch__DelaySeconds:-30}
+      Redis__Configuration: "redis:6379,password=${REDIS_PASSWORD:?set REDIS_PASSWORD},abortConnect=false,connectRetry=3,connectTimeout=5000,syncTimeout=5000,asyncTimeout=5000"
+      Redis__InstanceName: ${Redis__InstanceName:-haushop:}
+      RateLimiting__Login__PermitLimit: ${RateLimiting__Login__PermitLimit:-5}
+      RateLimiting__Login__WindowSeconds: ${RateLimiting__Login__WindowSeconds:-300}
+      Jwt__Issuer: ${Jwt__Issuer:-HauShopAPI}
+      Jwt__Audience: ${Jwt__Audience:-HauShopClient}
+      Jwt__Key: ${Jwt__Key:?set Jwt__Key}
+      Jwt__AccessTokenExpirationMinutes: ${Jwt__AccessTokenExpirationMinutes:-15}
+      Jwt__RefreshTokenExpirationDays: ${Jwt__RefreshTokenExpirationDays:-7}
+      Cors__AllowedOrigins__0: ${FRONTEND_ORIGIN:-https://haushop.io.vn}
+      Cors__AllowedOrigins__1: ${FRONTEND_WWW_ORIGIN:-https://www.haushop.io.vn}
+      Google__RedirectUri: "${API_PUBLIC_ORIGIN:-https://api.haushop.io.vn}/api/auth/google/callback"
+      Google__FrontendUrl: ${FRONTEND_ORIGIN:-https://haushop.io.vn}
+      Google__ClientId: ${Google__ClientId:-}
+      Google__ClientSecret: ${Google__ClientSecret:-}
+      AppUrl: ${FRONTEND_ORIGIN:-https://haushop.io.vn}
+      EmailSettings__SmtpServer: ${EmailSettings__SmtpServer:-smtp.gmail.com}
+      EmailSettings__SmtpPort: ${EmailSettings__SmtpPort:-587}
+      EmailSettings__SenderEmail: ${EmailSettings__SenderEmail:-}
+      EmailSettings__SenderName: ${EmailSettings__SenderName:-HauShop}
+      EmailSettings__Username: ${EmailSettings__Username:-}
+      EmailSettings__Password: ${EmailSettings__Password:-}
+      EmailSettings__SecureSocketOptions: ${EmailSettings__SecureSocketOptions:-StartTls}
+      CloudinarySettings__CloudName: ${CloudinarySettings__CloudName:-}
+      CloudinarySettings__ApiKey: ${CloudinarySettings__ApiKey:-}
+      CloudinarySettings__ApiSecret: ${CloudinarySettings__ApiSecret:-}
+      VnPay__TmnCode: ${VnPay__TmnCode:-}
+      VnPay__HashSecret: ${VnPay__HashSecret:-}
+      VnPay__BaseUrl: ${VnPay__BaseUrl:-https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+      VnPay__ReturnUrl: "${FRONTEND_ORIGIN:-https://haushop.io.vn}/payment/vnpay-return"
+      CHATGPT_API_KEY: ${CHATGPT_API_KEY:-}
+    ports:
+      - "127.0.0.1:${API_PORT:-8080}:8080"
+    networks:
+      - haushop-network
+
+  frontend:
+    profiles:
+      - vps-frontend
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://api.haushop.io.vn/api}
+        VITE_SIGNALR_URL: ${VITE_SIGNALR_URL:-https://api.haushop.io.vn/hubs/chat}
+        VITE_NOTIFICATION_HUB_URL: ${VITE_NOTIFICATION_HUB_URL:-https://api.haushop.io.vn/hubs/notifications}
+    container_name: haushop-frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-5173}:80"
+    networks:
+      - haushop-network
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  haushop-network:
+    driver: bridge

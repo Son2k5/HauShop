@@ -1,7 +1,6 @@
 using api.DTOs.admin;
 using api.DTOs.product;
 using api.common;
-using api.extensions;
 using api.services.interfaces.admin;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;

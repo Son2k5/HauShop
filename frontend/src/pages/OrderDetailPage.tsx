@@ -4,79 +4,21 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import type { OrderDto, OrderStatusHistoryDto, ShippingDetailDto } from "../@types/order.type";
 import { useToast } from "../context/toastContext";
 import { useMyOrder } from "../hooks/useOrder";
+import {
+  customerOrderSteps,
+  getCompletedCustomerOrderSteps,
+  getCustomerOrderStatusLabel,
+  getCustomerOrderStatusTone,
+  getCustomerOrderStep,
+  hasPaidOrder,
+  isExceptionOrderStatus,
+} from "../lib/orderStatus";
 import { cancelMyOrderApi, completeMyOrderApi } from "../services/orderService";
+import { createReviewApi } from "../services/reviewService";
 import { formatPrice } from "../utils/formatPrice";
 
-const primaryFlow = [
-  "PaymentSucceeded",
-  "OrderPlaced",
-  "SellerConfirmed",
-  "Packing",
-  "HandoverToCarrier",
-  "InTransit",
-  "OutForDelivery",
-  "Delivered",
-  "Completed",
-] as const;
-
-const statusLabels: Record<string, string> = {
-  Pending: "Cho thanh toan",
-  Processing: "Dang xu ly",
-  Shipping: "Dang giao",
-  PaymentSucceeded: "Thanh toan thanh cong",
-  OrderPlaced: "Da dat hang",
-  SellerConfirmed: "Nguoi ban xac nhan",
-  Packing: "Dang dong goi",
-  HandoverToCarrier: "Da giao don vi van chuyen",
-  InTransit: "Dang van chuyen",
-  OutForDelivery: "Dang giao hang",
-  Delivered: "Giao hang thanh cong",
-  Completed: "Hoan tat",
-  DeliveryFailed: "Giao hang that bai",
-  Cancelled: "Da huy",
-  ReturnRequested: "Yeu cau hoan tra",
-  ReturnApproved: "Da duyet hoan tra",
-  ReturnRejected: "Tu choi hoan tra",
-  Returned: "Da nhan hang hoan",
-  Refunded: "Da hoan tien",
-};
-
-const statusTone: Record<string, string> = {
-  Pending: "bg-amber-50 text-amber-700",
-  Processing: "bg-blue-50 text-blue-700",
-  Shipping: "bg-cyan-50 text-cyan-700",
-  PaymentSucceeded: "bg-emerald-50 text-emerald-700",
-  OrderPlaced: "bg-amber-50 text-amber-700",
-  SellerConfirmed: "bg-blue-50 text-blue-700",
-  Packing: "bg-orange-50 text-orange-700",
-  HandoverToCarrier: "bg-sky-50 text-sky-700",
-  InTransit: "bg-cyan-50 text-cyan-700",
-  OutForDelivery: "bg-indigo-50 text-indigo-700",
-  Delivered: "bg-teal-50 text-teal-700",
-  Completed: "bg-emerald-50 text-emerald-700",
-  DeliveryFailed: "bg-rose-50 text-rose-700",
-  Cancelled: "bg-red-50 text-red-700",
-  ReturnRequested: "bg-violet-50 text-violet-700",
-  ReturnApproved: "bg-indigo-50 text-indigo-700",
-  ReturnRejected: "bg-red-50 text-red-700",
-  Returned: "bg-cyan-50 text-cyan-700",
-  Refunded: "bg-slate-100 text-slate-700",
-};
-
-const stepIcons: Record<string, string> = {
-  PaymentSucceeded: "mdi:credit-card-check-outline",
-  OrderPlaced: "mdi:clipboard-check-outline",
-  SellerConfirmed: "mdi:store-check-outline",
-  Packing: "mdi:package-variant-closed",
-  HandoverToCarrier: "mdi:truck-check-outline",
-  InTransit: "mdi:truck-fast-outline",
-  OutForDelivery: "mdi:bike-fast",
-  Delivered: "mdi:home-check-outline",
-  Completed: "mdi:check-decagram-outline",
-};
-
-function formatStatus(status: string) {
-  return statusLabels[status] ?? status;
+function formatStatus(status: string, isPaid = false) {
+  return getCustomerOrderStatusLabel(status, isPaid);
 }
 
 function formatDateTime(value?: string | null) {
@@ -88,10 +30,6 @@ function isCustomerCancellable(status: string) {
   return ["Pending", "OrderPlaced", "SellerConfirmed", "Packing"].includes(status);
 }
 
-function isExceptionStatus(status: string) {
-  return ["Cancelled", "DeliveryFailed", "ReturnRequested", "ReturnApproved", "ReturnRejected", "Returned", "Refunded"].includes(status);
-}
-
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -99,6 +37,10 @@ export default function OrderDetailPage() {
   const { order, isLoading, isError, error, refetch } = useMyOrder(id);
   const [cancelling, setCancelling] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewContent, setReviewContent] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   const latestPayment = useMemo(
     () => order?.payments.slice().sort((a, b) => b.transactionNo.localeCompare(a.transactionNo))[0],
@@ -128,10 +70,52 @@ export default function OrderDetailPage() {
       await completeMyOrderApi(order.id);
       showToast("Da xac nhan nhan hang", "success");
       await refetch();
+      setReviewModalOpen(true);
     } catch (err: any) {
       showToast(err?.response?.data?.message || "Khong the xac nhan nhan hang", "error");
     } finally {
       setCompleting(false);
+    }
+  };
+
+  const handleSubmitOrderReview = async () => {
+    if (!order) return;
+
+    const productIds = Array.from(new Set(order.items.map((item) => item.productId).filter(Boolean)));
+    if (!productIds.length) {
+      showToast("Không có sản phẩm để đánh giá", "warning");
+      return;
+    }
+
+    try {
+      setReviewSubmitting(true);
+      let successCount = 0;
+      let firstError: any = null;
+
+      for (const productId of productIds) {
+        try {
+          await createReviewApi({
+            productId,
+            rating: reviewRating,
+            content: reviewContent.trim() || undefined,
+          });
+          successCount += 1;
+        } catch (err) {
+          firstError ??= err;
+        }
+      }
+
+      if (successCount > 0) {
+        showToast("Đã gửi đánh giá đơn hàng", "success");
+        setReviewModalOpen(false);
+        setReviewContent("");
+        setReviewRating(5);
+        return;
+      }
+
+      showToast(firstError?.response?.data?.message || "Không thể gửi đánh giá", "error");
+    } finally {
+      setReviewSubmitting(false);
     }
   };
 
@@ -155,6 +139,8 @@ export default function OrderDetailPage() {
     );
   }
 
+  const orderPaid = hasPaidOrder(order);
+
   return (
     <div className="mx-auto max-w-container px-4 py-10 sm:px-6 lg:px-10">
       <button
@@ -172,8 +158,8 @@ export default function OrderDetailPage() {
         </div>
         <div className="text-left sm:text-right">
           <p className="text-xl font-semibold text-red-500">{formatPrice(order.total)}</p>
-          <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-sm font-medium ${statusTone[order.status] ?? "bg-gray-100 text-gray-700"}`}>
-            {formatStatus(order.status)}
+          <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-sm font-medium ${getCustomerOrderStatusTone(order.status, orderPaid)}`}>
+            {formatStatus(order.status, orderPaid)}
           </span>
         </div>
       </div>
@@ -238,13 +224,34 @@ export default function OrderDetailPage() {
             {completing ? "Dang xac nhan..." : "Da nhan hang"}
           </button>
         ) : null}
+        {order.status === "Completed" ? (
+          <button
+            type="button"
+            onClick={() => setReviewModalOpen(true)}
+            className="rounded-lg bg-amber-500 px-6 py-3 font-semibold text-white transition hover:bg-amber-600"
+          >
+            Đánh giá đơn hàng
+          </button>
+        ) : null}
         <Link to="/cart" className="rounded-lg border border-gray-300 px-6 py-3 transition hover:bg-gray-50">
           Tiep tuc mua sam
         </Link>
       </div>
 
       {latestPayment?.status === "Paid" && order.status === "OrderPlaced" ? (
-        <p className="mt-4 text-sm text-emerald-700">Thanh toan da thanh cong. Don hang dang cho nguoi ban xac nhan.</p>
+        <p className="mt-4 text-sm text-emerald-700">Đơn hàng đã thanh toán và đang chờ xử lý.</p>
+      ) : null}
+
+      {reviewModalOpen ? (
+        <OrderReviewModal
+          rating={reviewRating}
+          content={reviewContent}
+          submitting={reviewSubmitting}
+          onRatingChange={setReviewRating}
+          onContentChange={setReviewContent}
+          onSubmit={handleSubmitOrderReview}
+          onClose={() => setReviewModalOpen(false)}
+        />
       ) : null}
     </div>
   );
@@ -252,29 +259,42 @@ export default function OrderDetailPage() {
 
 function OrderTimeline({ order }: { order: OrderDto }) {
   const historyByStatus = new Map((order.statusHistory ?? []).map((item) => [item.status, item]));
-  const currentIndex = primaryFlow.findIndex((status) => status === order.status);
-  const paid = order.payments.some((payment) => payment.status === "Paid") || historyByStatus.has("PaymentSucceeded");
+  const paid = hasPaidOrder(order);
+  const activeStep = getCustomerOrderStep(order.status, paid);
+  const completedSteps = getCompletedCustomerOrderSteps(order.status, paid);
+
+  const getStepHistory = (stepKey: string) => {
+    const statusGroups: Record<string, OrderStatusHistoryDto["status"][]> = {
+      placed: ["OrderPlaced", "Pending", "SellerConfirmed", "Packing", "Processing"],
+      paid: ["PaymentSucceeded"],
+      carrier: ["HandoverToCarrier"],
+      delivery: ["OutForDelivery", "InTransit", "Shipping", "Delivered"],
+      review: ["Completed", "Delivered"],
+    };
+
+    return statusGroups[stepKey]?.map((status) => historyByStatus.get(status)).find(Boolean);
+  };
 
   return (
     <section className="border border-gray-200 bg-white p-5">
       <div className="mb-5 flex items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Trang thai don hang</h2>
-        {isExceptionStatus(order.status) ? (
-          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone[order.status]}`}>
-            {formatStatus(order.status)}
+        {isExceptionOrderStatus(order.status) ? (
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getCustomerOrderStatusTone(order.status, paid)}`}>
+            {formatStatus(order.status, paid)}
           </span>
         ) : null}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-9">
-        {primaryFlow.map((status, index) => {
-          const history = historyByStatus.get(status);
-          const completed = status === "PaymentSucceeded" ? paid : Boolean(history) || (currentIndex >= 0 && index <= currentIndex);
-          const active = order.status === status;
+      <div className="grid gap-4 md:grid-cols-5">
+        {customerOrderSteps.map((step, index) => {
+          const history = getStepHistory(step.key);
+          const completed = completedSteps[step.key];
+          const active = activeStep === step.key && !isExceptionOrderStatus(order.status);
 
           return (
-            <div key={status} className="relative flex gap-3 md:block">
-              {index < primaryFlow.length - 1 ? (
+            <div key={step.key} className="relative flex gap-3 md:block">
+              {index < customerOrderSteps.length - 1 ? (
                 <div className="absolute left-4 top-9 h-[calc(100%+1rem)] w-px bg-gray-200 md:left-[calc(50%+1.25rem)] md:top-5 md:h-px md:w-[calc(100%-2.5rem)]" />
               ) : null}
               <div className={[
@@ -282,10 +302,10 @@ function OrderTimeline({ order }: { order: OrderDto }) {
                 completed ? "border-primeColor bg-primeColor" : "border-gray-200 bg-gray-300",
                 active ? "ring-4 ring-gray-100" : "",
               ].join(" ")}>
-                <Icon icon={stepIcons[status]} width={19} />
+                <Icon icon={step.icon} width={19} />
               </div>
               <div className="min-w-0 md:mt-3 md:text-center">
-                <p className="text-sm font-semibold text-gray-900">{formatStatus(status)}</p>
+                <p className="text-sm font-semibold text-gray-900">{step.label}</p>
                 <p className="mt-1 text-xs leading-5 text-lightText">{history ? formatDateTime(history.created) : completed ? "Da cap nhat" : "Dang cho"}</p>
               </div>
             </div>
@@ -293,13 +313,93 @@ function OrderTimeline({ order }: { order: OrderDto }) {
         })}
       </div>
 
-      {isExceptionStatus(order.status) ? (
+      {isExceptionOrderStatus(order.status) ? (
         <div className="mt-5 border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
-          <p className="font-semibold">{formatStatus(order.status)}</p>
+          <p className="font-semibold">{formatStatus(order.status, paid)}</p>
           <p className="mt-1">{order.statusHistory[order.statusHistory.length - 1]?.description ?? "Don hang co cap nhat ngoai le."}</p>
         </div>
       ) : null}
     </section>
+  );
+}
+
+function OrderReviewModal({
+  rating,
+  content,
+  submitting,
+  onRatingChange,
+  onContentChange,
+  onSubmit,
+  onClose,
+}: {
+  rating: number;
+  content: string;
+  submitting: boolean;
+  onRatingChange: (rating: number) => void;
+  onContentChange: (content: string) => void;
+  onSubmit: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
+      <div className="w-full max-w-md bg-white shadow-2xl">
+        <div className="border-b border-gray-200 px-5 py-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Đánh giá đơn hàng</h3>
+              <p className="mt-1 text-sm text-lightText">Chọn số sao và để lại cảm nhận của bạn.</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="border border-gray-300 px-3 py-1.5 text-sm font-medium hover:bg-gray-50"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-5 px-5 py-5">
+          <div>
+            <p className="mb-3 text-sm font-medium text-gray-700">Số sao</p>
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => onRatingChange(star)}
+                  className="text-amber-400 transition hover:scale-105"
+                  aria-label={`${star} sao`}
+                >
+                  <Icon icon={star <= rating ? "mdi:star" : "mdi:star-outline"} width={34} />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <label className="block text-sm font-medium text-gray-700">
+            Nội dung đánh giá
+            <textarea
+              value={content}
+              onChange={(event) => onContentChange(event.target.value)}
+              rows={4}
+              maxLength={2000}
+              className="mt-2 w-full resize-none border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-primeColor"
+              placeholder="Sản phẩm và trải nghiệm giao hàng của bạn thế nào?"
+            />
+          </label>
+
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={submitting}
+            className="w-full bg-primeColor px-5 py-3 font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {submitting ? "Đang gửi..." : "Gửi đánh giá"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

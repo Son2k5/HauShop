@@ -3,8 +3,8 @@ using System.Globalization;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using api.common;
 using api.DTOs.product;
-using api.extensions;
 using api.services.interfaces.product;
 
 namespace api.controllers.product

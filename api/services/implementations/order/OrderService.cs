@@ -1,7 +1,6 @@
 using api.data;
 using api.DTOs.order;
-using api.events;
-using api.exceptions;
+using api.common;
 using api.mappings;
 using api.models.entities;
 using api.models.enums;
@@ -59,6 +58,10 @@ namespace api.services.implementations.order
             HttpContext httpContext,
             CancellationToken ct = default)
         {
+            var strategy = _context.Database.CreateExecutionStrategy();
+
+            var checkoutResult = await strategy.ExecuteAsync(async () =>
+            {
             var address = await _context.Addresses
                 .AsNoTracking()
                 .FirstOrDefaultAsync(a => a.Id == dto.ShippingAddressId && a.UserId == userId, ct);
@@ -234,47 +237,59 @@ namespace api.services.implementations.order
                 await _context.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
 
-                await InvalidateProductCachesAsync(affectedProductIds, ct);
-                if (dto.PaymentMethod == PaymentMethod.COD)
-                    await _cartCache.RemoveUserCartAsync(userId, ct);
+                return (
+                    OrderId: order.Id,
+                    Total: order.Total,
+                    AffectedProductIds: affectedProductIds,
+                    PaymentUrl: paymentUrl);
 
-                var orderEvent = new OrderCreatedEvent
-                {
-                    OrderId = order.Id,
-                    UserId = userId,
-                    Total = order.Total,
-                    PaymentMethod = dto.PaymentMethod,
-                    ProductIds = affectedProductIds,
-                    CreatedAtUtc = DateTime.UtcNow
-                };
-
-                await _eventBus.PublishAsync(EventTopics.OrderCreatedChannel, orderEvent, ct);
-                await _eventBus.EnqueueAsync(EventTopics.OrderEventsStream, orderEvent, ct);
-                await TryNotifyAsync(
-                    token => _notificationService.NotifyOrderCreatedAsync(order.Id, token),
-                    order.Id,
-                    "order-created",
-                    ct);
-
-                var created = await _orderRepository.GetByIdWithIncludesAsync(order.Id, ct)
-                    ?? throw new InvalidOperationException("Không thể tải lại order sau checkout");
-
-                _logger.LogInformation(
-                    "Checkout success. OrderId={OrderId}, UserId={UserId}, PaymentMethod={PaymentMethod}, Total={Total}",
-                    order.Id, userId, dto.PaymentMethod, order.Total);
-
-                return new CheckoutResponseDto
-                {
-                    Order = OrderMapping.MapToDto(created),
-                    RequiresRedirect = dto.PaymentMethod == PaymentMethod.VNPay,
-                    PaymentUrl = paymentUrl
-                };
             }
             catch
             {
                 await tx.RollbackAsync(ct);
+                _context.ChangeTracker.Clear();
                 throw;
             }
+
+            });
+
+            _context.ChangeTracker.Clear();
+
+            await InvalidateProductCachesAsync(checkoutResult.AffectedProductIds, ct);
+            if (dto.PaymentMethod == PaymentMethod.COD)
+                await _cartCache.RemoveUserCartAsync(userId, ct);
+
+            var orderEvent = new OrderCreatedEvent
+            {
+                OrderId = checkoutResult.OrderId,
+                UserId = userId,
+                Total = checkoutResult.Total,
+                PaymentMethod = dto.PaymentMethod,
+                ProductIds = checkoutResult.AffectedProductIds,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+
+            await _eventBus.PublishAsync(EventTopics.OrderCreatedChannel, orderEvent, ct);
+            await _eventBus.EnqueueAsync(EventTopics.OrderEventsStream, orderEvent, ct);
+            await TryNotifyAsync(
+                token => _notificationService.NotifyOrderCreatedAsync(checkoutResult.OrderId, token),
+                checkoutResult.OrderId,
+                "order-created",
+                ct);
+
+            var created = await _orderRepository.GetByIdWithIncludesAsync(checkoutResult.OrderId, ct)
+                ?? throw new InvalidOperationException("Không thể tải lại order sau checkout");
+
+            _logger.LogInformation(
+                "Checkout success. OrderId={OrderId}, UserId={UserId}, PaymentMethod={PaymentMethod}, Total={Total}",
+                checkoutResult.OrderId, userId, dto.PaymentMethod, checkoutResult.Total);
+
+            return new CheckoutResponseDto
+            {
+                Order = OrderMapping.MapToDto(created),
+                RequiresRedirect = dto.PaymentMethod == PaymentMethod.VNPay,
+                PaymentUrl = checkoutResult.PaymentUrl
+            };
         }
 
         public async Task<PagedOrderDto> GetMyOrdersAsync(
