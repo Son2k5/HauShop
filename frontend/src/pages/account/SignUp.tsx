@@ -20,25 +20,34 @@ const SLIDES = [
 ];
 
 const validatePassword = (value: string) => {
-  const errors: string[] = [];
+  const missingRequirements: string[] = [];
 
   if (value.length < 8) {
-    errors.push("Mật khẩu phải có ít nhất 8 ký tự");
+    missingRequirements.push("có ít nhất 8 ký tự");
   }
   if (!/[A-Z]/.test(value)) {
-    errors.push("Mật khẩu phải có ít nhất một chữ cái viết hoa");
+    missingRequirements.push("có chữ cái viết hoa");
   }
   if (!/[a-z]/.test(value)) {
-    errors.push("Mật khẩu phải có ít nhất một chữ cái viết thường");
+    missingRequirements.push("có chữ cái viết thường");
   }
   if (!/[0-9]/.test(value)) {
-    errors.push("Mật khẩu phải có ít nhất một chữ số");
+    missingRequirements.push("có chữ số");
   }
   if (!/[^a-zA-Z0-9]/.test(value)) {
-    errors.push("Mật khẩu phải có ít nhất một ký tự đặc biệt");
+    missingRequirements.push("có ký tự đặc biệt");
   }
 
-  return errors;
+  if (missingRequirements.length === 0) {
+    return "";
+  }
+
+  const requirementText =
+    missingRequirements.length === 1
+      ? missingRequirements[0]
+      : `${missingRequirements.slice(0, -1).join(", ")} và ${missingRequirements.at(-1)}`;
+
+  return `Mật khẩu phải ${requirementText}.`;
 };
 
 const SignUp = () => {
@@ -119,9 +128,9 @@ const SignUp = () => {
       setErrPassword("Vui lòng nhập mật khẩu");
       hasClientError = true;
     } else {
-      const passwordErrors = validatePassword(password);
-      if (passwordErrors.length > 0) {
-        setErrPassword(passwordErrors.join(" • "));
+      const passwordError = validatePassword(password);
+      if (passwordError) {
+        setErrPassword(passwordError);
         hasClientError = true;
       }
     }
