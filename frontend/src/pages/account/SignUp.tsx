@@ -19,6 +19,28 @@ const SLIDES = [
   },
 ];
 
+const validatePassword = (value: string) => {
+  const errors: string[] = [];
+
+  if (value.length < 8) {
+    errors.push("Mật khẩu phải có ít nhất 8 ký tự");
+  }
+  if (!/[A-Z]/.test(value)) {
+    errors.push("Mật khẩu phải có ít nhất một chữ cái viết hoa");
+  }
+  if (!/[a-z]/.test(value)) {
+    errors.push("Mật khẩu phải có ít nhất một chữ cái viết thường");
+  }
+  if (!/[0-9]/.test(value)) {
+    errors.push("Mật khẩu phải có ít nhất một chữ số");
+  }
+  if (!/[^a-zA-Z0-9]/.test(value)) {
+    errors.push("Mật khẩu phải có ít nhất một ký tự đặc biệt");
+  }
+
+  return errors;
+};
+
 const SignUp = () => {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -93,7 +115,16 @@ const SignUp = () => {
     if (!firstName) { setErrFirstName("Vui lòng nhập tên"); hasClientError = true; }
     if (!email) { setErrEmail("Vui lòng nhập email"); hasClientError = true; }
     if (!phone) { setErrPhone("Vui lòng nhập số điện thoại"); hasClientError = true; }
-    if (!password) { setErrPassword("Vui lòng nhập mật khẩu"); hasClientError = true; }
+    if (!password) {
+      setErrPassword("Vui lòng nhập mật khẩu");
+      hasClientError = true;
+    } else {
+      const passwordErrors = validatePassword(password);
+      if (passwordErrors.length > 0) {
+        setErrPassword(passwordErrors.join(" • "));
+        hasClientError = true;
+      }
+    }
     if (!confirmPassword) { setErrConfirmPassword("Vui lòng xác nhận mật khẩu"); hasClientError = true; }
     if (password && confirmPassword && password !== confirmPassword) {
       setErrConfirmPassword("Mật khẩu xác nhận không khớp");
