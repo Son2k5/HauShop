@@ -90,13 +90,13 @@ const SignUp = () => {
     if (!checked) return;
 
     let hasClientError = false;
-    if (!firstName) { setErrFirstName("Enter your first name"); hasClientError = true; }
-    if (!email) { setErrEmail("Enter your email"); hasClientError = true; }
-    if (!phone) { setErrPhone("Enter your phone number"); hasClientError = true; }
-    if (!password) { setErrPassword("Enter your password"); hasClientError = true; }
-    if (!confirmPassword) { setErrConfirmPassword("Please confirm your password"); hasClientError = true; }
+    if (!firstName) { setErrFirstName("Vui lòng nhập tên"); hasClientError = true; }
+    if (!email) { setErrEmail("Vui lòng nhập email"); hasClientError = true; }
+    if (!phone) { setErrPhone("Vui lòng nhập số điện thoại"); hasClientError = true; }
+    if (!password) { setErrPassword("Vui lòng nhập mật khẩu"); hasClientError = true; }
+    if (!confirmPassword) { setErrConfirmPassword("Vui lòng xác nhận mật khẩu"); hasClientError = true; }
     if (password && confirmPassword && password !== confirmPassword) {
-      setErrConfirmPassword("Passwords do not match");
+      setErrConfirmPassword("Mật khẩu xác nhận không khớp");
       hasClientError = true;
     }
     if (hasClientError) return;
@@ -124,9 +124,9 @@ const SignUp = () => {
           setServerErrMsg(unknownErrors.map((k) => errs[k].join(", ")).join(" | "));
         }
       } else if (e.statusCode && e.statusCode >= 500) {
-        setServerErrMsg("Server error. Please try again later.");
+        setServerErrMsg("Máy chủ đang gặp lỗi. Vui lòng thử lại sau.");
       } else {
-        setServerErrMsg(e.message ?? "Registration failed. Please try again.");
+        setServerErrMsg(e.message ?? "Đăng ký thất bại. Vui lòng thử lại.");
       }
     } finally {
       setLoading(false);

@@ -9,22 +9,22 @@ namespace api.DTOs.user
 {
     public class RegisterDto
     {
-        [Required(ErrorMessage = "Email is required")]
-        [EmailAddress(ErrorMessage = "Invalid email format")]
+        [Required(ErrorMessage = "Vui lòng nhập email")]
+        [EmailAddress(ErrorMessage = "Email không đúng định dạng")]
         public string Email { get; set; }
 
-        [Required(ErrorMessage = "Password is required")]
-        [MinLength(6, ErrorMessage = "Password must be at least 6 characters")]
+        [Required(ErrorMessage = "Vui lòng nhập mật khẩu")]
+        [MinLength(8, ErrorMessage = "Mật khẩu phải có ít nhất 8 ký tự")]
         public string Password { get; set; }
 
-        [Required(ErrorMessage = "First name is required")]
-        [StringLength(100, ErrorMessage = "First name cannot exceed 100 characters")]
+        [Required(ErrorMessage = "Vui lòng nhập tên")]
+        [StringLength(100, ErrorMessage = "Tên không được vượt quá 100 ký tự")]
         public string FirstName { get; set; }
 
-        [StringLength(100, ErrorMessage = "Last name cannot exceed 100 characters")]
+        [StringLength(100, ErrorMessage = "Họ không được vượt quá 100 ký tự")]
         public string? LastName { get; set; }
 
-        [Phone(ErrorMessage = "Invalid phone number format")]
+        [Phone(ErrorMessage = "Số điện thoại không đúng định dạng")]
         public string? PhoneNumber { get; set; }
     }
 }

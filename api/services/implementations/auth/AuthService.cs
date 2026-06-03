@@ -46,7 +46,7 @@ namespace api.services.implementations.auth
         {
             var existingUser = await _userRepository.GetByEmailAsync(dto.Email);
             if (existingUser != null)
-                return AuthResult<AuthResponseDto>.Failure("Email already exists", StatusCodes.Status409Conflict);
+                return AuthResult<AuthResponseDto>.Failure("Email đã được sử dụng", StatusCodes.Status409Conflict);
 
             var user = new User
             {

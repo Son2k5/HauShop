@@ -84,7 +84,12 @@ namespace api.middleware
                     .GroupBy(error => string.IsNullOrWhiteSpace(error.PropertyName) ? "request" : error.PropertyName)
                     .ToDictionary(
                         group => group.Key,
-                        group => group.Select(_ => ClientErrorMessages.FieldInvalid).Distinct().ToArray());
+                        group => group
+                            .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage)
+                                ? ClientErrorMessages.FieldInvalid
+                                : error.ErrorMessage)
+                            .Distinct()
+                            .ToArray());
             }
 
             await context.Response.WriteAsJsonAsync(problem, ct);

@@ -84,7 +84,9 @@ api.interceptors.response.use(
             error.response.data = toCamelCase(error.response.data);
 
             const data = error.response.data;
+            error.statusCode = error.response.status;
             if (data?.errors && typeof data.errors === 'object') {
+                error.errors = data.errors;
                 error.message = Object.values(data.errors).flat().join(', ');
             } else if (data?.detail) {
                 error.message = `${data.title ?? 'Request failed'}: ${data.detail}`;

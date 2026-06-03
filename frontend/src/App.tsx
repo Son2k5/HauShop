@@ -43,6 +43,47 @@ const AdminAccessDenied = lazy(() => import("./pages/admin/AdminAccessDenied"));
 
 type ChatPanel = "ai" | "support";
 
+const APP_NAME = "HauShop";
+
+function titleForPath(pathname: string) {
+  const path = pathname.replace(/\/+$/, "") || "/";
+
+  if (path === "/") return APP_NAME;
+  if (path === "/shop") return `Sản phẩm | ${APP_NAME}`;
+  if (/^\/shop\/[^/]+$/.test(path)) return `Chi tiết sản phẩm | ${APP_NAME}`;
+  if (path === "/cart") return `Giỏ hàng | ${APP_NAME}`;
+  if (path === "/wishlist") return `Yêu thích | ${APP_NAME}`;
+  if (path === "/signin") return `Đăng nhập | ${APP_NAME}`;
+  if (path === "/signup") return `Đăng ký | ${APP_NAME}`;
+  if (path === "/forgot-password") return `Quên mật khẩu | ${APP_NAME}`;
+  if (path === "/reset-password") return `Đặt lại mật khẩu | ${APP_NAME}`;
+  if (path === "/profile") return `Hồ sơ | ${APP_NAME}`;
+  if (path === "/change-password") return `Đổi mật khẩu | ${APP_NAME}`;
+  if (path === "/contact-us") return `Liên hệ | ${APP_NAME}`;
+  if (path === "/about-us") return `Về ${APP_NAME}`;
+  if (path === "/checkout") return `Thanh toán | ${APP_NAME}`;
+  if (path === "/orders") return `Đơn hàng của tôi | ${APP_NAME}`;
+  if (/^\/orders\/[^/]+$/.test(path)) return `Chi tiết đơn hàng | ${APP_NAME}`;
+  if (path === "/cancellations") return `Đơn đã hủy | ${APP_NAME}`;
+  if (path === "/reviews") return `Đánh giá của tôi | ${APP_NAME}`;
+  if (path === "/notifications") return `Thông báo | ${APP_NAME}`;
+  if (path === "/support-chat") return `Hỗ trợ | ${APP_NAME}`;
+  if (path === "/payment/vnpay-return") return `Kết quả thanh toán | ${APP_NAME}`;
+  if (path === "/403") return `Không có quyền truy cập | ${APP_NAME}`;
+
+  if (path === "/admin") return `Quản trị | ${APP_NAME}`;
+  if (path === "/admin/users") return `Quản lý người dùng | ${APP_NAME}`;
+  if (path === "/admin/orders") return `Quản lý đơn hàng | ${APP_NAME}`;
+  if (path === "/admin/notifications") return `Thông báo quản trị | ${APP_NAME}`;
+  if (path === "/admin/chat") return `Chat quản trị | ${APP_NAME}`;
+  if (path === "/admin/products") return `Quản lý sản phẩm | ${APP_NAME}`;
+  if (path === "/admin/inventory") return `Tồn kho | ${APP_NAME}`;
+  if (path === "/admin/media") return `Thư viện ảnh | ${APP_NAME}`;
+  if (path === "/admin/settings") return `Cài đặt | ${APP_NAME}`;
+
+  return `Không tìm thấy | ${APP_NAME}`;
+}
+
 function StorefrontLayout() {
   return (
     <>
@@ -189,6 +230,10 @@ function SuspendedRoute({ children }: { children: ReactNode }) {
 function App() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith("/admin");
+
+  useEffect(() => {
+    document.title = titleForPath(location.pathname);
+  }, [location.pathname]);
 
   return (
     <AuthProvider>

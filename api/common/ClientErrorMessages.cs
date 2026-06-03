@@ -5,28 +5,28 @@ namespace api.common;
 
 public static class ClientErrorMessages
 {
-    public const string InvalidRequestTitle = "Yeu cau khong hop le";
-    public const string InvalidRequestDetail = "Mot vai thong tin chua dung hoac con thieu. Vui long kiem tra lai.";
-    public const string FieldInvalid = "Thong tin nay thieu hoac khong hop le.";
+    public const string InvalidRequestTitle = "Yêu cầu không hợp lệ";
+    public const string InvalidRequestDetail = "Một vài thông tin chưa đúng hoặc còn thiếu. Vui lòng kiểm tra lại.";
+    public const string FieldInvalid = "Thông tin này thiếu hoặc không hợp lệ.";
 
-    public const string UnauthorizedTitle = "Can dang nhap";
-    public const string UnauthorizedDetail = "Vui long dang nhap de tiep tuc.";
+    public const string UnauthorizedTitle = "Cần đăng nhập";
+    public const string UnauthorizedDetail = "Vui lòng đăng nhập để tiếp tục.";
 
-    public const string ForbiddenTitle = "Khong co quyen truy cap";
-    public const string ForbiddenDetail = "Ban khong co quyen thuc hien thao tac nay.";
+    public const string ForbiddenTitle = "Không có quyền truy cập";
+    public const string ForbiddenDetail = "Bạn không có quyền thực hiện thao tác này.";
 
-    public const string NotFoundTitle = "Khong tim thay";
-    public const string NotFoundDetail = "Khong tim thay thong tin phu hop.";
+    public const string NotFoundTitle = "Không tìm thấy";
+    public const string NotFoundDetail = "Không tìm thấy thông tin phù hợp.";
 
-    public const string CannotProcessTitle = "Khong the xu ly yeu cau";
-    public const string CannotProcessDetail = "Yeu cau hien chua the thuc hien. Vui long kiem tra lai hoac thu sau.";
+    public const string CannotProcessTitle = "Không thể xử lý yêu cầu";
+    public const string CannotProcessDetail = "Yêu cầu hiện chưa thể thực hiện. Vui lòng kiểm tra lại hoặc thử sau.";
 
-    public const string RequestCancelledTitle = "Yeu cau da bi huy";
-    public const string ServerErrorTitle = "Co loi xay ra";
-    public const string ServerErrorDetail = "Vui long thu lai sau.";
+    public const string RequestCancelledTitle = "Yêu cầu đã bị hủy";
+    public const string ServerErrorTitle = "Có lỗi xảy ra";
+    public const string ServerErrorDetail = "Vui lòng thử lại sau.";
 
-    public const string HubValidationDetail = "Du lieu gui len chua hop le. Vui long kiem tra lai.";
-    public const string HubCannotProcessDetail = "Khong the thuc hien thao tac luc nay. Vui long thu lai.";
+    public const string HubValidationDetail = "Dữ liệu gửi lên chưa hợp lệ. Vui lòng kiểm tra lại.";
+    public const string HubCannotProcessDetail = "Không thể thực hiện thao tác lúc này. Vui lòng thử lại.";
 
     public static string ToHubMessage(Exception exception)
     {
@@ -65,6 +65,11 @@ public static class ValidationResultExtensions
             .GroupBy(error => string.IsNullOrWhiteSpace(error.PropertyName) ? "request" : error.PropertyName)
             .ToDictionary(
                 group => group.Key,
-                group => group.Select(_ => ClientErrorMessages.FieldInvalid).Distinct().ToArray());
+                group => group
+                    .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage)
+                        ? ClientErrorMessages.FieldInvalid
+                        : error.ErrorMessage)
+                    .Distinct()
+                    .ToArray());
     }
 }

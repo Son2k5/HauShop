@@ -320,7 +320,9 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
             .ToDictionary(
                 kvp => string.IsNullOrWhiteSpace(kvp.Key) ? "request" : kvp.Key,
                 kvp => kvp.Value!.Errors
-                    .Select(_ => ClientErrorMessages.FieldInvalid)
+                    .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage)
+                        ? ClientErrorMessages.FieldInvalid
+                        : error.ErrorMessage)
                     .Distinct()
                     .ToArray()
             );
