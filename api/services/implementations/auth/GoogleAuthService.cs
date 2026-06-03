@@ -84,7 +84,8 @@ namespace api.services.implementations.auth
                 await _context.SaveChangesAsync();
             var accessToken = _tokenService.GenerateAccessToken(user);
             var refreshTokenString = _tokenService.GenerateRefreshToken();
-            var refreshTokenDays = _config.GetValue<int>("Jwt:RefreshTokenExpirationDays", 7);
+            var refreshTokenLifetime = _tokenService.GetRefreshTokenLifetime();
+            var refreshTokenExpires = DateTime.UtcNow.Add(refreshTokenLifetime);
 
             var refreshToken = new RefreshToken
             {
@@ -93,7 +94,7 @@ namespace api.services.implementations.auth
                 UserId = user.Id,
                 User = user,
                 Created = DateTime.UtcNow,
-                Expires = DateTime.UtcNow.AddDays(refreshTokenDays),
+                Expires = refreshTokenExpires,
             };
             _refreshTokenRepository.Add(refreshToken);
 

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
-import { Outlet, Routes, Route, useLocation } from "react-router-dom";
+import { Navigate, Outlet, Routes, Route, useLocation } from "react-router-dom";
 
 import { AuthProvider } from "./context/authContext";
 import Header from "./components/layout/Header";
@@ -25,10 +25,11 @@ const CartPage = lazy(() => import("./pages/CartPage"));
 const VnPayReturnPage = lazy(() => import("./pages/VnPayReturn"));
 const OrderDetailPage = lazy(() => import("./pages/OrderDetailPage"));
 const MyOrdersPage = lazy(() => import("./pages/OrderPage"));
+const MyCancellationsPage = lazy(() => import("./pages/MyCancellationsPage"));
+const MyReviewsPage = lazy(() => import("./pages/MyReviewsPage"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
 const WishlistPage = lazy(() => import("./pages/WishlistPage"));
-const SupportChatPage = lazy(() => import("./pages/SupportChatPage"));
 const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
 const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage"));
 const AdminUsersPage = lazy(() => import("./pages/admin/AdminUsersPage"));
@@ -57,12 +58,22 @@ function StorefrontLayout() {
 }
 
 function LazySupportChatWidget() {
+  const location = useLocation();
   const [initialPanel, setInitialPanel] = useState<ChatPanel | null>(null);
+  const [widgetVersion, setWidgetVersion] = useState(0);
+
+  useEffect(() => {
+    const requestedPanel = new URLSearchParams(location.search).get("chat");
+    if (requestedPanel !== "ai" && requestedPanel !== "support") return;
+
+    setInitialPanel(requestedPanel);
+    setWidgetVersion((current) => current + 1);
+  }, [location.key, location.search]);
 
   if (initialPanel) {
     return (
       <Suspense fallback={<ChatLaunchButtons disabled />}>
-        <SupportChatWidget initialPanel={initialPanel} />
+        <SupportChatWidget key={widgetVersion} initialPanel={initialPanel} />
       </Suspense>
     );
   }
@@ -208,6 +219,22 @@ function App() {
           <Route path="/orders" element={<SuspendedRoute><MyOrdersPage /></SuspendedRoute>} />
           <Route path="/orders/:id" element={<SuspendedRoute><OrderDetailPage /></SuspendedRoute>} />
           <Route
+            path="/cancellations"
+            element={
+              <ProtectedRoute>
+                <SuspendedRoute><MyCancellationsPage /></SuspendedRoute>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reviews"
+            element={
+              <ProtectedRoute>
+                <SuspendedRoute><MyReviewsPage /></SuspendedRoute>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/notifications"
             element={
               <ProtectedRoute>
@@ -215,7 +242,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/support-chat" element={<SuspendedRoute><SupportChatPage /></SuspendedRoute>} />
+          <Route path="/support-chat" element={<Navigate to="/?chat=support" replace />} />
           <Route path="/payment/vnpay-return" element={<SuspendedRoute><VnPayReturnPage /></SuspendedRoute>} />
           {!isAdminRoute ? <Route path="*" element={<SuspendedRoute><NotFound /></SuspendedRoute>} /> : null}
         </Route>

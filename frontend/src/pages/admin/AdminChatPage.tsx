@@ -54,7 +54,7 @@ export default function AdminChatPage() {
         setRooms(data);
         setActiveRoomId(data[0]?.id ?? null);
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Khong tai duoc danh sach chat.");
+        if (!cancelled) setError(e instanceof Error ? e.message : "Không tải được danh sách chat.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -78,7 +78,7 @@ export default function AdminChatPage() {
         const history = await chatService.getMessages(activeRoomId);
         if (!cancelled) setMessages(history);
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Khong tai duoc tin nhan.");
+        if (!cancelled) setError(e instanceof Error ? e.message : "Không tải được tin nhắn.");
       }
     };
 
@@ -108,7 +108,7 @@ export default function AdminChatPage() {
     try {
       await sendMessage({ chatRoomId: activeRoomId, message });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Khong gui duoc tin nhan.");
+      setError(e instanceof Error ? e.message : "Không gửi được tin nhắn.");
       setText(message);
     }
   };
@@ -118,17 +118,17 @@ export default function AdminChatPage() {
       <aside className="border-b border-sky-100 bg-slate-50/70 lg:border-b-0 lg:border-r">
         <div className="flex items-center justify-between border-b border-sky-100 px-5 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-950">Ho tro khach hang</h2>
-            <p className="text-xs text-slate-500">{status === "connected" ? "Realtime dang bat" : "Dang ket noi"}</p>
+            <h2 className="text-lg font-semibold text-slate-950">Hỗ trợ khách hàng</h2>
+            <p className="text-xs text-slate-500">{status === "connected" ? "Realtime đang bật" : "Đang kết nối"}</p>
           </div>
           <Icon icon="mdi:headset" width={24} className="text-sky-700" />
         </div>
 
         <div className="max-h-[calc(100vh-210px)] overflow-y-auto p-3">
           {loading ? (
-            <div className="p-4 text-sm text-slate-500">Dang tai...</div>
+            <div className="p-4 text-sm text-slate-500">Đang tải...</div>
           ) : rooms.length === 0 ? (
-            <div className="p-4 text-sm leading-6 text-slate-500">Chua co khach hang nao mo chat support.</div>
+            <div className="p-4 text-sm leading-6 text-slate-500">Chưa có khách hàng nào mở chat support.</div>
           ) : (
             rooms.map((room) => (
               <button
@@ -149,7 +149,7 @@ export default function AdminChatPage() {
                   ) : null}
                 </span>
                 <span className="truncate text-xs text-slate-500">{room.customerEmail}</span>
-                <span className="truncate text-xs text-slate-400">{room.lastMessage?.message ?? "Chua co tin nhan"}</span>
+                <span className="truncate text-xs text-slate-400">{room.lastMessage?.message ?? "Chưa có tin nhắn"}</span>
               </button>
             ))
           )}
@@ -159,7 +159,7 @@ export default function AdminChatPage() {
       <section className="grid min-h-[560px] grid-rows-[auto_minmax(0,1fr)_auto]">
         <div className="flex items-center justify-between border-b border-sky-100 px-5 py-4">
           <div className="min-w-0">
-            <h2 className="truncate text-lg font-semibold text-slate-950">{activeRoom?.customerName ?? "Chon hoi thoai"}</h2>
+            <h2 className="truncate text-lg font-semibold text-slate-950">{activeRoom?.customerName ?? "Chọn hội thoại"}</h2>
             <p className="truncate text-xs text-slate-500">{activeRoom?.customerEmail ?? "Tin nhan giua admin va user se hien tai day"}</p>
           </div>
         </div>
@@ -167,7 +167,7 @@ export default function AdminChatPage() {
         <div className="flex flex-col gap-3 overflow-y-auto bg-slate-50/70 p-5">
           {messages.length === 0 ? (
             <div className="m-auto text-center text-sm text-slate-500">
-              {activeRoom ? "Chua co tin nhan trong hoi thoai nay." : "Chon mot user de bat dau tra loi."}
+              {activeRoom ? "Chưa có tin nhắn trong hội thoại này." : "Chọn một user để bắt đầu trả lời."}
             </div>
           ) : (
             messages.map((message) => {
@@ -200,14 +200,14 @@ export default function AdminChatPage() {
             onChange={(event) => setText(event.target.value)}
             disabled={!activeRoom}
             maxLength={5000}
-            placeholder="Nhap phan hoi..."
+            placeholder="Nhập phản hồi..."
             className="min-w-0 flex-1 rounded-2xl border border-sky-200 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
           />
           <button
             type="submit"
             disabled={!canSend}
             className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label="Gui tin nhan"
+            aria-label="Gửi tin nhắn"
           >
             <Icon icon="mdi:send" width={21} />
           </button>

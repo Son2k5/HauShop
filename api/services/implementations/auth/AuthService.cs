@@ -17,7 +17,6 @@ namespace api.services.implementations.auth
         private readonly ApplicationDbContext _context;
         private readonly ITokenService _tokenService;
         private readonly IEmailService _emailService;
-        private readonly IConfiguration _config;
         private readonly IRefreshTokenRepository _refreshTokenRepository;
         private readonly IUserRepository _userRepository;
         private readonly IOtpService _otpService;
@@ -29,13 +28,11 @@ namespace api.services.implementations.auth
             ApplicationDbContext context,
             ITokenService tokenService,
             IEmailService emailService,
-            IConfiguration config,
             IUserRepository userRepository,
             IRefreshTokenRepository refreshTokenRepository,
             IOtpService otpService,
             IAuthTokenCacheService tokenCache)
         {
-            _config = config;
             _context = context;
             _emailService = emailService;
             _tokenService = tokenService;
@@ -67,9 +64,8 @@ namespace api.services.implementations.auth
 
             var accessToken = _tokenService.GenerateAccessToken(user);
             var refreshTokenValue = _tokenService.GenerateRefreshToken();
-
-            var refreshTokenDays =
-                _config.GetValue<int?>("Jwt:RefreshTokenExpirationDays") ?? 7;
+            var refreshTokenLifetime = _tokenService.GetRefreshTokenLifetime();
+            var refreshTokenExpires = DateTime.UtcNow.Add(refreshTokenLifetime);
 
             var refreshToken = new RefreshToken
             {
@@ -77,7 +73,7 @@ namespace api.services.implementations.auth
                 Token = HashRefreshToken.Hash(refreshTokenValue),
                 UserId = user.Id,
                 Created = DateTime.UtcNow,
-                Expires = DateTime.UtcNow.AddDays(refreshTokenDays)
+                Expires = refreshTokenExpires
             };
 
             _userRepository.Add(user);
@@ -87,7 +83,7 @@ namespace api.services.implementations.auth
             await _tokenCache.StoreRefreshTokenAsync(
                 refreshToken.Token,
                 user.Id,
-                TimeSpan.FromDays(refreshTokenDays));
+                refreshTokenExpires - DateTime.UtcNow);
 
             return AuthResult<AuthResponseDto>.Success(new AuthResponseDto
             {
@@ -111,14 +107,28 @@ namespace api.services.implementations.auth
             if (user == null)
                 return AuthResult<AuthResponseDto>.Failure("User not found", StatusCodes.Status401Unauthorized);
 
-            if (!storedToken.IsActive)
+            var refreshTokenIdleTimeout = _tokenService.GetRefreshTokenIdleTimeout();
+            var now = DateTime.UtcNow;
+            var expiredByIdleTimeout = storedToken.Created.Add(refreshTokenIdleTimeout) <= now;
+
+            if (!storedToken.IsActive || expiredByIdleTimeout)
             {
+                if (!storedToken.IsRevoked)
+                {
+                    storedToken.IsRevoked = true;
+                    storedToken.RevokedAt = now;
+                    _refreshTokenRepository.Update(storedToken);
+                    await _context.SaveChangesAsync();
+                }
+
                 await _tokenCache.RemoveRefreshTokenAsync(hashToken);
                 return AuthResult<AuthResponseDto>.Failure("Token is expired or revoked", StatusCodes.Status401Unauthorized);
             }
 
             var newAccessToken = _tokenService.GenerateAccessToken(user);
             var newRefreshTokenString = _tokenService.GenerateRefreshToken();
+            var refreshTokenLifetime = _tokenService.GetRefreshTokenLifetime();
+            var refreshTokenExpires = DateTime.UtcNow.Add(refreshTokenLifetime);
 
             storedToken.IsRevoked = true;
             storedToken.RevokedAt = DateTime.UtcNow;
@@ -131,7 +141,7 @@ namespace api.services.implementations.auth
                 UserId = user.Id,
                 User = user,
                 Created = DateTime.UtcNow,
-                Expires = DateTime.UtcNow.AddDays(_config.GetValue<int>("Jwt:RefreshTokenExpirationDays"))
+                Expires = refreshTokenExpires
             };
 
             _refreshTokenRepository.Add(newRefreshToken);
@@ -170,6 +180,8 @@ namespace api.services.implementations.auth
 
             var accessToken = _tokenService.GenerateAccessToken(user);
             var refreshTokenString = _tokenService.GenerateRefreshToken();
+            var refreshTokenLifetime = _tokenService.GetRefreshTokenLifetime();
+            var refreshTokenExpires = DateTime.UtcNow.Add(refreshTokenLifetime);
             await CleanupUserTokenAsync(user.Id);
 
             var refreshToken = new RefreshToken
@@ -179,7 +191,7 @@ namespace api.services.implementations.auth
                 UserId = user.Id,
                 User = user,
                 Created = DateTime.UtcNow,
-                Expires = DateTime.UtcNow.AddDays(_config.GetValue<int>("Jwt:RefreshTokenExpirationDays"))
+                Expires = refreshTokenExpires
             };
             _refreshTokenRepository.Add(refreshToken);
             user.IsOnline = true;

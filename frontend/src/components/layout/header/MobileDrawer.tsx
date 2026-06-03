@@ -125,7 +125,7 @@ export default function MobileDrawer({
               <HeartIcon className="h-5 w-5" />
             </MobileDrawerLink>
 
-            <MobileDrawerLink to={ROUTES.CART} onClose={onClose} label="Cart">
+            <MobileDrawerLink to={ROUTES.CART} onClose={onClose} label="Giỏ hàng">
               <div className="relative inline-flex h-5 w-5 items-center justify-center">
                 <CartIcon className="h-5 w-5" />
                 {totalQty > 0 && (
@@ -140,13 +140,13 @@ export default function MobileDrawer({
               <>
                 <div className="my-2 border-t border-gray-200" />
                 <div className="px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400">
-                  Account
+                  Tài khoản
                 </div>
 
-                <MobileDrawerLink to={ROUTES.PROFILE} onClose={onClose} label="My Profile">
+                <MobileDrawerLink to={ROUTES.PROFILE} onClose={onClose} label="Hồ sơ của tôi">
                   <UserIcon className="h-5 w-5" />
                 </MobileDrawerLink>
-                <MobileDrawerLink to={ROUTES.ORDERS} onClose={onClose} label="My Orders">
+                <MobileDrawerLink to={ROUTES.ORDERS} onClose={onClose} label="Đơn hàng của tôi">
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       strokeLinecap="round"
@@ -156,13 +156,13 @@ export default function MobileDrawer({
                     />
                   </svg>
                 </MobileDrawerLink>
-                <MobileDrawerLink to="/cancellations" onClose={onClose} label="My Cancellations">
+                <MobileDrawerLink to={ROUTES.CANCELLATIONS} onClose={onClose} label="Đơn đã hủy">
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <circle cx="12" cy="12" r="9" strokeWidth={1.5} />
                     <circle cx="12" cy="12" r="3" fill="currentColor" />
                   </svg>
                 </MobileDrawerLink>
-                <MobileDrawerLink to="/reviews" onClose={onClose} label="My Reviews">
+                <MobileDrawerLink to={ROUTES.REVIEWS} onClose={onClose} label="Đánh giá của tôi">
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -174,7 +174,7 @@ export default function MobileDrawer({
                   className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
                 >
                   <LogoutIcon className="h-5 w-5" />
-                  Logout
+                  Đăng xuất
                 </button>
               </>
             )}
@@ -188,7 +188,7 @@ export default function MobileDrawer({
                     onClick={onClose}
                     className="flex w-full items-center justify-center rounded-xl bg-red-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-600"
                   >
-                    Sign In
+                    Đăng nhập
                   </Link>
                 </div>
               </>

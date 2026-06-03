@@ -137,7 +137,7 @@ export default function CheckoutPage() {
 
   const handleCheckout = async () => {
     if (!isAuthenticated) {
-      showToast("Vui long dang nhap de thanh toan", "warning");
+      showToast("Vui lòng đăng nhập để thanh toán", "warning");
       navigate(ROUTES.SIGN_IN);
       return;
     }

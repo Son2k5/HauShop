@@ -12,7 +12,8 @@ namespace api.services.interfaces
     {
         string GenerateAccessToken(User user);
         string GenerateRefreshToken();
-        int GetRefreshTokenExpirationDays();
+        TimeSpan GetRefreshTokenLifetime();
+        TimeSpan GetRefreshTokenIdleTimeout();
     }
     public class TokenService : ITokenService
     {
@@ -52,9 +53,22 @@ namespace api.services.interfaces
             var randomBytes = RandomNumberGenerator.GetBytes(64);
             return Convert.ToBase64String(randomBytes);
         }
-        public int GetRefreshTokenExpirationDays()
+        public TimeSpan GetRefreshTokenLifetime()
         {
-            return _config.GetValue<int>("Jwt:RefreshTokenExpirationDays");
+            var days = _config.GetValue<int?>("Jwt:RefreshTokenExpirationDays") ?? 7;
+            if (days <= 0)
+                throw new InvalidOperationException("Jwt:RefreshTokenExpirationDays must be greater than 0.");
+
+            return TimeSpan.FromDays(days);
+        }
+
+        public TimeSpan GetRefreshTokenIdleTimeout()
+        {
+            var hours = _config.GetValue<int?>("Jwt:RefreshTokenIdleTimeoutHours") ?? 3;
+            if (hours <= 0)
+                throw new InvalidOperationException("Jwt:RefreshTokenIdleTimeoutHours must be greater than 0.");
+
+            return TimeSpan.FromHours(hours);
         }
     }
 }

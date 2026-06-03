@@ -32,37 +32,37 @@ export default function MyOrdersPage() {
   return (
     <div className="max-w-container mx-auto px-10 py-12">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold font-titleFont">Don hang cua toi</h1>
+        <h1 className="text-3xl font-bold font-titleFont">Đơn hàng của tôi</h1>
         <div className="flex gap-3">
           <Link
             to="/cart"
             className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
           >
-            Gio hang
+            Giỏ hàng
           </Link>
           <Link
             to="/shop"
             className="px-4 py-2 bg-primeColor text-white rounded-lg hover:bg-gray-800 transition"
           >
-            Mua sam
+            Mua sắm
           </Link>
         </div>
       </div>
 
       {orders.length === 0 ? (
         <div className="border border-dashed border-gray-200 p-8 text-center">
-          <p className="text-lightText mb-4">Ban chua co don hang nao.</p>
+          <p className="text-lightText mb-4">Bạn chưa có đơn hàng nào.</p>
           <Link
             to="/shop"
             className="inline-block px-6 py-3 bg-primeColor text-white rounded-lg hover:bg-gray-800 transition"
           >
-            Bat dau mua sam
+            Bắt đầu mua sản phẩm
           </Link>
         </div>
       ) : (
         <div className="space-y-5">
           <p className="text-sm text-lightText">
-            {total > 0 ? `${total} don hang` : "Dang hien thi don hang gan day"}
+            {total > 0 ? `${total} Đơn hàng` : "Đang hiển thị đơn hàng gần đây"}
           </p>
 
           <div className="space-y-5">
@@ -75,7 +75,7 @@ export default function MyOrdersPage() {
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                   <div>
                     <p className="font-semibold text-lg">
-                      Ma don: #{order.id.slice(-8).toUpperCase()}
+                      Mã đơn: #{order.id.slice(-8).toUpperCase()}
                     </p>
                     <p className="text-sm text-lightText">
                       {new Date(order.created).toLocaleString("vi-VN")}
@@ -95,7 +95,7 @@ export default function MyOrdersPage() {
                 </div>
 
                 <div className="mt-4 text-sm text-lightText border-t border-gray-100 pt-4">
-                  {order.itemCount} san pham
+                  {order.itemCount} sản phẩm
                 </div>
               </Link>
             ))}
@@ -109,7 +109,7 @@ export default function MyOrdersPage() {
                 disabled={!canGoPrevious}
                 className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50"
               >
-                Truoc
+                Trước
               </button>
               <span className="text-sm text-lightText">
                 Trang {page} / {totalPages}

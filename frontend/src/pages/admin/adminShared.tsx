@@ -27,32 +27,32 @@ export const roleBadgeClass: Record<Role, string> = {
 };
 
 export const orderStatusBadgeClass: Record<string, string> = {
-  Pending: "bg-amber-100 text-amber-800",
-  Processing: "bg-orange-100 text-orange-800",
-  Shipping: "bg-sky-100 text-sky-800",
-  PaymentSucceeded: "bg-emerald-100 text-emerald-800",
-  OrderPlaced: "bg-amber-100 text-amber-800",
-  SellerConfirmed: "bg-blue-100 text-blue-800",
-  Packing: "bg-orange-100 text-orange-800",
-  HandoverToCarrier: "bg-sky-100 text-sky-800",
-  InTransit: "bg-cyan-100 text-cyan-800",
-  OutForDelivery: "bg-indigo-100 text-indigo-800",
-  Delivered: "bg-teal-100 text-teal-800",
-  Completed: "bg-emerald-100 text-emerald-800",
-  DeliveryFailed: "bg-rose-100 text-rose-800",
-  Cancelled: "bg-red-100 text-red-700",
-  ReturnRequested: "bg-violet-100 text-violet-800",
-  ReturnApproved: "bg-indigo-100 text-indigo-800",
-  ReturnRejected: "bg-red-100 text-red-700",
-  Returned: "bg-cyan-100 text-cyan-800",
-  Refunded: "bg-slate-200 text-slate-800",
+  Pending: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200",
+  Processing: "bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-200",
+  Shipping: "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200",
+  PaymentSucceeded: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
+  OrderPlaced: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200",
+  SellerConfirmed: "bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200",
+  Packing: "bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-200",
+  HandoverToCarrier: "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200",
+  InTransit: "bg-cyan-50 text-cyan-700 ring-1 ring-inset ring-cyan-200",
+  OutForDelivery: "bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200",
+  Delivered: "bg-teal-50 text-teal-700 ring-1 ring-inset ring-teal-200",
+  Completed: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
+  DeliveryFailed: "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200",
+  Cancelled: "bg-red-50 text-red-700 ring-1 ring-inset ring-red-200",
+  ReturnRequested: "bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200",
+  ReturnApproved: "bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200",
+  ReturnRejected: "bg-red-50 text-red-700 ring-1 ring-inset ring-red-200",
+  Returned: "bg-cyan-50 text-cyan-700 ring-1 ring-inset ring-cyan-200",
+  Refunded: "bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200",
 };
 
 export const paymentStatusBadgeClass: Record<string, string> = {
-  Pending: "bg-slate-100 text-slate-700",
-  Paid: "bg-emerald-100 text-emerald-800",
-  Failed: "bg-red-100 text-red-700",
-  Refunded: "bg-cyan-100 text-cyan-800",
+  Pending: "bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200",
+  Paid: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
+  Failed: "bg-red-50 text-red-700 ring-1 ring-inset ring-red-200",
+  Refunded: "bg-cyan-50 text-cyan-700 ring-1 ring-inset ring-cyan-200",
 };
 
 export function getInitials(name?: string | null) {
@@ -79,34 +79,67 @@ export function formatRoleLabel(role: Role) {
   return roleLabels[role] ?? role;
 }
 
+export function normalizeOrderStatusKey(status: string) {
+  const compactStatus = status.trim().replace(/[\s_-]/g, "");
+  const withoutBooleanPrefix =
+    compactStatus.toLowerCase().startsWith("is") ? compactStatus.slice(2) : compactStatus;
+
+  const aliases: Record<string, string> = {
+    pending: "Pending",
+    processing: "Processing",
+    shipping: "Shipping",
+    paymentsucceeded: "PaymentSucceeded",
+    orderplaced: "OrderPlaced",
+    sellerconfirmed: "SellerConfirmed",
+    packing: "Packing",
+    handovertocarrier: "HandoverToCarrier",
+    intransit: "InTransit",
+    outfordelivery: "OutForDelivery",
+    delivered: "Delivered",
+    completed: "Completed",
+    deliveryfailed: "DeliveryFailed",
+    cancelled: "Cancelled",
+    canceled: "Cancelled",
+    returnrequested: "ReturnRequested",
+    returnapproved: "ReturnApproved",
+    returnrejected: "ReturnRejected",
+    returned: "Returned",
+    refunded: "Refunded",
+  };
+
+  return aliases[withoutBooleanPrefix.toLowerCase()] ?? status;
+}
+
 export function formatOrderStatusLabel(status: string) {
+  const normalizedStatus = normalizeOrderStatusKey(status);
   const map: Record<string, string> = {
     Pending: "Đang chờ xử lý",
     Processing: "Đang xử lý",
     Shipping: "Đang giao",
-    PaymentSucceeded: "Thanh toan thanh cong",
-    OrderPlaced: "Da dat hang",
-    SellerConfirmed: "Nguoi ban xac nhan",
-    Packing: "Dang dong goi",
-    HandoverToCarrier: "Da giao DVVC",
-    InTransit: "Dang van chuyen",
-    OutForDelivery: "Dang giao hang",
-    Delivered: "Giao thanh cong",
-    Completed: "Hoan tat",
-    DeliveryFailed: "Giao that bai",
+    PaymentSucceeded: "Thanh toán thành công",
+    OrderPlaced: "Đã đặt hàng",
+    SellerConfirmed: "Người bán xác nhận",
+    Packing: "Đang đóng gói",
+    HandoverToCarrier: "Đã giao đơn vị vận chuyển",
+    InTransit: "Đang vận chuyển",
+    OutForDelivery: "Đang giao hàng",
+    Delivered: "Giao thành công",
+    Completed: "Hoàn tất",
+    DeliveryFailed: "Giao thất bại",
     Cancelled: "Đã hủy",
     ReturnRequested: "Yêu cầu hoàn hàng",
     ReturnApproved: "Đã duyệt hoàn hàng",
-    ReturnRejected: "Tu choi hoan hang",
+    ReturnRejected: "Từ chối hoàn hàng",
     Returned: "Đã nhận hàng hoàn",
     Refunded: "Đã hoàn tiền",
   };
-  return map[status] ?? status;
+  return map[normalizedStatus] ?? status;
 }
 
 export function statusTone(status: string, kind: "order" | "payment" = "order") {
   const source = kind === "order" ? orderStatusBadgeClass : paymentStatusBadgeClass;
-  return source[status] ?? "bg-slate-100 text-slate-700";
+  const normalizedStatus = kind === "order" ? normalizeOrderStatusKey(status) : status;
+  return source[normalizedStatus] ?? "bg-slate-100 text-slate-700";
 }
 
 export function AdminPanel({
@@ -216,7 +249,16 @@ export function AdminBadge({
   children: ReactNode;
   className: string;
 }) {
-  return <span className={["inline-flex rounded-full px-3 py-1 text-xs font-medium", className].join(" ")}>{children}</span>;
+  return (
+    <span
+      className={[
+        "inline-flex items-center justify-center whitespace-nowrap rounded-full px-3 py-1 text-center text-xs font-semibold leading-5 shadow-sm",
+        className,
+      ].join(" ")}
+    >
+      {children}
+    </span>
+  );
 }
 
 export function AdminPrimaryButton({

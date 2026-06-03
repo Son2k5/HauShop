@@ -1,4 +1,5 @@
 using api.DTOs.order;
+using api.models.enums;
 using Microsoft.AspNetCore.Http;
 
 namespace api.services.interfaces.order
@@ -15,6 +16,7 @@ namespace api.services.interfaces.order
             string userId,
             int page = 1,
             int pageSize = 10,
+            IReadOnlyCollection<OrderStatus>? statuses = null,
             CancellationToken ct = default);
 
         Task<OrderDto> GetMyOrderByIdAsync(string userId, string orderId, CancellationToken ct = default);
@@ -24,6 +26,8 @@ namespace api.services.interfaces.order
         Task<OrderDto> CompleteMyOrderAsync(string userId, string orderId, CancellationToken ct = default);
 
         Task<OrderDto> HandleVnPayReturnAsync(IQueryCollection query, CancellationToken ct = default);
+
+        Task<VnPayIpnResponseDto> HandleVnPayIpnAsync(IQueryCollection query, CancellationToken ct = default);
 
         Task<OrderDto> UpdateOrderStatusAsync(
             string orderId,

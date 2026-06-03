@@ -49,6 +49,7 @@ namespace api.repositories.implementations
             string userId,
             int page,
             int pageSize,
+            IReadOnlyCollection<OrderStatus>? statuses = null,
             CancellationToken ct = default)
         {
             page = Math.Max(page, 1);
@@ -56,8 +57,14 @@ namespace api.repositories.implementations
 
             var query = _context.Orders
                 .AsNoTracking()
-                .Where(o => o.UserId == userId)
-                .OrderByDescending(o => o.Created);
+                .Where(o => o.UserId == userId);
+
+            if (statuses is { Count: > 0 })
+            {
+                query = query.Where(o => statuses.Contains(o.Status));
+            }
+
+            query = query.OrderByDescending(o => o.Created);
 
             var total = await query.CountAsync(ct);
             var items = await query

@@ -95,7 +95,7 @@ function SignInPrompt({ activePanel, onClose }: { activePanel: Exclude<ActivePan
           }}
           className={["mt-6 inline-flex h-11 items-center justify-center rounded-full px-6 text-sm font-semibold text-white transition", isAi ? "bg-red-500 hover:bg-red-600" : "bg-slate-900 hover:bg-slate-700"].join(" ")}
         >
-          Dang nhap
+          Đăng nhập
         </button>
       </div>
     </div>

@@ -59,7 +59,7 @@ export default function SupportChatPanel({ onClose }: Props) {
         setMessages(history);
       } catch (e) {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Khong tai duoc chat.");
+          setError(e instanceof Error ? e.message : "Không tải được chat.");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -103,7 +103,7 @@ export default function SupportChatPanel({ onClose }: Props) {
     try {
       await sendMessage({ chatRoomId: room.id, message });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Khong gui duoc tin nhan.");
+      setError(e instanceof Error ? e.message : "Không gửi được tin nhắn.");
       setText(message);
     }
   };
@@ -117,16 +117,16 @@ export default function SupportChatPanel({ onClose }: Props) {
     <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-red-100 bg-white shadow-[0_22px_70px_rgba(0,0,0,0.22)]">
       <div className="flex items-center justify-between bg-slate-900 px-4 py-4 text-white">
         <div className="min-w-0">
-          <p className="text-sm font-semibold">Nhan vien HauShop</p>
+          <p className="text-sm font-semibold">Nhân viên HauShop</p>
           <p className="text-xs text-white/80">
-            {status === "connected" ? "Chat realtime voi bo phan ho tro" : "Dang ket noi..."}
+            {status === "connected" ? "Chat realtime với bộ phận hỗ trợ" : "Đang kết nối..."}
           </p>
         </div>
         <button
           type="button"
           onClick={onClose}
           className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white/85 transition hover:bg-white/15 hover:text-white"
-          aria-label="Dong chat"
+          aria-label="Đóng chat"
         >
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18 18 6M6 6l12 12" />
@@ -136,10 +136,10 @@ export default function SupportChatPanel({ onClose }: Props) {
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-slate-50 px-4 py-4">
         {loading ? (
-          <div className="m-auto text-sm text-slate-500">Dang tai hoi thoai...</div>
+          <div className="m-auto text-sm text-slate-500">Đang tải hội thoại...</div>
         ) : messages.length === 0 ? (
           <div className="m-auto max-w-xs text-center text-sm leading-6 text-slate-500">
-            Hay gui cau hoi dau tien, nhan vien HauShop se nhan tin nhan realtime.
+            Hãy gửi câu hỏi đầu tiên, nhân viên HauShop sẽ nhận tin nhắn realtime.
           </div>
         ) : (
           messages.map((message) => {
@@ -184,14 +184,14 @@ export default function SupportChatPanel({ onClose }: Props) {
           }}
           rows={1}
           maxLength={5000}
-          placeholder="Nhap tin nhan cho nhan vien..."
+          placeholder="Nhập tin nhắn cho nhân viên..."
           className="max-h-28 min-h-11 flex-1 resize-none rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-slate-500 focus:ring-4 focus:ring-slate-100"
         />
         <button
           type="submit"
           disabled={!canSend}
           className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-          aria-label="Gui tin nhan"
+          aria-label="Gửi tin nhắn"
         >
           <SendIcon />
         </button>

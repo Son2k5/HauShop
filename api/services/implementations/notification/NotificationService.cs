@@ -497,7 +497,7 @@ namespace api.services.implementations.notification
                 : $"/orders/{Uri.EscapeDataString(orderId)}";
 
         private static string BuildChatLink(Role role) =>
-            role is Role.Admin or Role.Merchant ? "/admin/chat" : "/support-chat";
+            role is Role.Admin or Role.Merchant ? "/admin/chat" : "/?chat=support";
 
         private static string TruncateMessage(string message, int maxLength)
         {

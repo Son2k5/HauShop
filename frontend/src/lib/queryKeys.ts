@@ -37,7 +37,8 @@ export const queryKeys = {
   },
   orders: {
     mineRoot: ["orders", "mine"] as const,
-    mine: (page: number, pageSize: number) => ["orders", "mine", page, pageSize] as const,
+    mine: (page: number, pageSize: number, statuses?: readonly string[]) =>
+      ["orders", "mine", page, pageSize, statuses?.join(",") ?? "all"] as const,
     detail: (orderId: string) => ["orders", "detail", orderId] as const,
   },
   notifications: {
@@ -53,5 +54,6 @@ export const queryKeys = {
   reviews: {
     product: (productId: string, page: number, pageSize: number) =>
       ["reviews", "product", productId, page, pageSize] as const,
+    mine: (page: number, pageSize: number) => ["reviews", "mine", page, pageSize] as const,
   },
 };

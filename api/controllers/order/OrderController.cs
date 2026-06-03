@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using api.DTOs.order;
+using api.models.enums;
 using api.services.interfaces.order;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -39,13 +40,14 @@ namespace api.controllers.order
         public async Task<IActionResult> GetMyOrders(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10,
+            [FromQuery] List<OrderStatus>? statuses = null,
             CancellationToken ct = default)
         {
             var userId = TryGetUserId();
             if (userId == null)
                 return UnauthorizedProblem();
 
-            var result = await _orderService.GetMyOrdersAsync(userId, page, pageSize, ct);
+            var result = await _orderService.GetMyOrdersAsync(userId, page, pageSize, statuses, ct);
             return Ok(result);
         }
 
@@ -107,6 +109,15 @@ namespace api.controllers.order
         public async Task<IActionResult> VnPayReturn(CancellationToken ct)
         {
             var result = await _orderService.HandleVnPayReturnAsync(Request.Query, ct);
+            return Ok(result);
+        }
+
+        [AllowAnonymous]
+        [HttpGet("vnpay-ipn")]
+        [ProducesResponseType(typeof(VnPayIpnResponseDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> VnPayIpn(CancellationToken ct)
+        {
+            var result = await _orderService.HandleVnPayIpnAsync(Request.Query, ct);
             return Ok(result);
         }
 

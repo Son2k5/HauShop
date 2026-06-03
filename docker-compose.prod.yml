@@ -73,6 +73,7 @@ services:
       Jwt__Key: ${Jwt__Key:?set Jwt__Key}
       Jwt__AccessTokenExpirationMinutes: ${Jwt__AccessTokenExpirationMinutes:-15}
       Jwt__RefreshTokenExpirationDays: ${Jwt__RefreshTokenExpirationDays:-7}
+      Jwt__RefreshTokenIdleTimeoutHours: ${Jwt__RefreshTokenIdleTimeoutHours:-3}
       Cors__AllowedOrigins__0: ${FRONTEND_ORIGIN:-https://haushop.io.vn}
       Cors__AllowedOrigins__1: ${FRONTEND_WWW_ORIGIN:-https://www.haushop.io.vn}
       Google__RedirectUri: "${API_PUBLIC_ORIGIN:-https://api.haushop.io.vn}/api/auth/google/callback"

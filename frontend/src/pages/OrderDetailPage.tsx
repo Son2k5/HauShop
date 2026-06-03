@@ -53,10 +53,10 @@ export default function OrderDetailPage() {
     try {
       setCancelling(true);
       await cancelMyOrderApi(order.id);
-      showToast("Da huy don hang thanh cong", "success");
+      showToast("Đã hủy đơn hàng thành công", "success");
       await refetch();
     } catch (err: any) {
-      showToast(err?.response?.data?.message || "Khong the huy don hang", "error");
+      showToast(err?.response?.data?.message || "Không thể hủy đơn hàng", "error");
     } finally {
       setCancelling(false);
     }
@@ -68,11 +68,11 @@ export default function OrderDetailPage() {
     try {
       setCompleting(true);
       await completeMyOrderApi(order.id);
-      showToast("Da xac nhan nhan hang", "success");
+      showToast("Đã xác nhận nhận hàng", "success");
       await refetch();
       setReviewModalOpen(true);
     } catch (err: any) {
-      showToast(err?.response?.data?.message || "Khong the xac nhan nhan hang", "error");
+      showToast(err?.response?.data?.message || "Không thể xác nhận nhận hàng", "error");
     } finally {
       setCompleting(false);
     }
@@ -131,9 +131,9 @@ export default function OrderDetailPage() {
   if (isError || !order) {
     return (
       <div className="mx-auto max-w-container px-4 py-12 sm:px-6 lg:px-10">
-        <p className="mb-4 text-red-500">{error || "Khong tim thay don hang"}</p>
+        <p className="mb-4 text-red-500">{error || "Không tìm thấy đơn hàng"}</p>
         <button onClick={() => navigate("/orders")} className="border border-gray-300 px-6 py-3">
-          Quay lai
+        Quay lại
         </button>
       </div>
     );
@@ -148,13 +148,13 @@ export default function OrderDetailPage() {
         className="mb-6 flex items-center gap-2 text-sm text-gray-600 transition hover:text-primeColor"
       >
         <Icon icon="mdi:chevron-left" width={22} />
-        Quay lai danh sach don hang
+        Quay lại danh sách đơn hàng
       </button>
 
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-titleFont text-3xl font-bold">Chi tiet don hang</h1>
-          <p className="mt-2 text-lightText">Ma don: #{order.id.slice(-8).toUpperCase()}</p>
+          <h1 className="font-titleFont text-3xl font-bold">Chi tiết đơn hàng</h1>
+          <p className="mt-2 text-lightText">Mã đơn: #{order.id.slice(-8).toUpperCase()}</p>
         </div>
         <div className="text-left sm:text-right">
           <p className="text-xl font-semibold text-red-500">{formatPrice(order.total)}</p>
@@ -174,30 +174,30 @@ export default function OrderDetailPage() {
 
         <div className="space-y-6">
           <section className="border border-gray-200 p-5">
-            <h2 className="mb-4 text-lg font-semibold">Thong tin giao hang</h2>
+            <h2 className="mb-4 text-lg font-semibold">Thông tin giao hàng</h2>
             <div className="space-y-2 text-sm">
-              <p><span className="font-medium">Nguoi nhan:</span> {order.receiverName || "N/A"}</p>
-              <p><span className="font-medium">So dien thoai:</span> {order.receiverPhone || "N/A"}</p>
-              <p><span className="font-medium">Dia chi:</span> {order.addressLine || "N/A"}</p>
+              <p><span className="font-medium">Người nhận:</span> {order.receiverName || "N/A"}</p>
+              <p><span className="font-medium">Số điện thoại:</span> {order.receiverPhone || "N/A"}</p>
+              <p><span className="font-medium">Địa chỉ:</span> {order.addressLine || "N/A"}</p>
               <div className="mt-4 grid grid-cols-3 gap-3 border-t border-gray-100 pt-4">
-                <Amount label="Tam tinh" value={formatPrice(order.subtotal)} />
-                <Amount label="Phi ship" value={formatPrice(order.shippingFee)} />
-                <Amount label="Tong" value={formatPrice(order.total)} highlight />
+                <Amount label="Tạm tính" value={formatPrice(order.subtotal)} />
+                <Amount label="Phí ship" value={formatPrice(order.shippingFee)} />
+                <Amount label="Tổng" value={formatPrice(order.total)} highlight />
               </div>
             </div>
           </section>
 
           <section className="border border-gray-200 p-5">
-            <h2 className="mb-4 text-lg font-semibold">Thanh toan</h2>
+            <h2 className="mb-4 text-lg font-semibold">Thanh toán</h2>
             <div className="space-y-3">
               {order.payments.map((payment) => (
                 <div key={payment.id} className="border border-gray-100 p-3 text-sm">
-                  <InfoRow label="Phuong thuc" value={payment.method} />
-                  <InfoRow label="Trang thai" value={payment.status} valueClass={payment.status === "Paid" ? "text-green-600" : payment.status === "Failed" ? "text-red-600" : "text-yellow-600"} />
-                  <InfoRow label="So tien" value={formatPrice(payment.amount)} />
-                  <InfoRow label="Ma giao dich" value={payment.transactionNo} valueClass="text-xs" />
+                  <InfoRow label="Phương thức" value={payment.method} />
+                  <InfoRow label="Trạng thái" value={payment.status} valueClass={payment.status === "Paid" ? "text-green-600" : payment.status === "Failed" ? "text-red-600" : "text-yellow-600"} />
+                  <InfoRow label="Số tiền" value={formatPrice(payment.amount)} />
+                  <InfoRow label="Mã giao dịch" value={payment.transactionNo} valueClass="text-xs" />
                   {payment.vnpTransactionId ? <p className="mt-2 text-xs text-gray-500">VNPay: {payment.vnpTransactionId}</p> : null}
-                  {payment.vnpBankCode ? <p className="text-xs text-gray-500">Ngan hang: {payment.vnpBankCode}</p> : null}
+                  {payment.vnpBankCode ? <p className="text-xs text-gray-500">Ngân hàng: {payment.vnpBankCode}</p> : null}
                 </div>
               ))}
             </div>
@@ -212,7 +212,7 @@ export default function OrderDetailPage() {
             disabled={cancelling}
             className="rounded-lg bg-red-500 px-6 py-3 font-semibold text-white transition hover:bg-red-600 disabled:opacity-50"
           >
-            {cancelling ? "Dang huy..." : "Huy don hang"}
+            {cancelling ? "Đang hủy..." : "Hủy đơn hàng"}
           </button>
         ) : null}
         {order.status === "Delivered" ? (
@@ -221,7 +221,7 @@ export default function OrderDetailPage() {
             disabled={completing}
             className="rounded-lg bg-primeColor px-6 py-3 font-semibold text-white transition hover:bg-gray-800 disabled:opacity-50"
           >
-            {completing ? "Dang xac nhan..." : "Da nhan hang"}
+            {completing ? "Đang xác nhận..." : "Đã nhận hàng"}
           </button>
         ) : null}
         {order.status === "Completed" ? (
@@ -234,7 +234,7 @@ export default function OrderDetailPage() {
           </button>
         ) : null}
         <Link to="/cart" className="rounded-lg border border-gray-300 px-6 py-3 transition hover:bg-gray-50">
-          Tiep tuc mua sam
+          Tiếp tục mua sắm
         </Link>
       </div>
 
@@ -278,7 +278,7 @@ function OrderTimeline({ order }: { order: OrderDto }) {
   return (
     <section className="border border-gray-200 bg-white p-5">
       <div className="mb-5 flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Trang thai don hang</h2>
+        <h2 className="text-lg font-semibold">Trạng thái đơn hàng</h2>
         {isExceptionOrderStatus(order.status) ? (
           <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getCustomerOrderStatusTone(order.status, paid)}`}>
             {formatStatus(order.status, paid)}
@@ -306,7 +306,7 @@ function OrderTimeline({ order }: { order: OrderDto }) {
               </div>
               <div className="min-w-0 md:mt-3 md:text-center">
                 <p className="text-sm font-semibold text-gray-900">{step.label}</p>
-                <p className="mt-1 text-xs leading-5 text-lightText">{history ? formatDateTime(history.created) : completed ? "Da cap nhat" : "Dang cho"}</p>
+                <p className="mt-1 text-xs leading-5 text-lightText">{history ? formatDateTime(history.created) : completed ? "Đã cập nhật" : "Đang chờ"}</p>
               </div>
             </div>
           );
@@ -316,7 +316,7 @@ function OrderTimeline({ order }: { order: OrderDto }) {
       {isExceptionOrderStatus(order.status) ? (
         <div className="mt-5 border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
           <p className="font-semibold">{formatStatus(order.status, paid)}</p>
-          <p className="mt-1">{order.statusHistory[order.statusHistory.length - 1]?.description ?? "Don hang co cap nhat ngoai le."}</p>
+          <p className="mt-1">{order.statusHistory[order.statusHistory.length - 1]?.description ?? "Đơn hàng có cập nhật ngoại lệ."}</p>
         </div>
       ) : null}
     </section>
@@ -416,20 +416,20 @@ function ShippingTracker({
     <section className="border border-gray-200 p-5">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Theo doi van chuyen</h2>
-          <p className="text-sm text-lightText">{shipping?.carrierName || "Chua co don vi van chuyen"}</p>
+          <h2 className="text-lg font-semibold">Theo dõi vận chuyển</h2>
+          <p className="text-sm text-lightText">{shipping?.carrierName || "Chưa có đơn vị vận chuyển"}</p>
         </div>
         {shipping?.trackingUrl ? (
           <a href={shipping.trackingUrl} target="_blank" rel="noreferrer" className="text-sm font-semibold text-primeColor">
-            Mo tracking
+            Mở tracking
           </a>
         ) : null}
       </div>
 
       <div className="grid gap-3 text-sm sm:grid-cols-3">
-        <InfoBlock label="Ma van don" value={shipping?.trackingNumber || "Chua cap nhat"} />
-        <InfoBlock label="Vi tri hien tai" value={shipping?.currentLocation || "Chua cap nhat"} />
-        <InfoBlock label="Du kien giao" value={shipping?.estimatedDelivery ? formatDateTime(shipping.estimatedDelivery) : "Chua cap nhat"} />
+        <InfoBlock label="Mã vận đơn" value={shipping?.trackingNumber || "Chưa cập nhật"} />
+        <InfoBlock label="Vị trí hiện tại" value={shipping?.currentLocation || "Chưa cập nhật"} />
+        <InfoBlock label="Dự kiến giao" value={shipping?.estimatedDelivery ? formatDateTime(shipping.estimatedDelivery) : "Chưa cập nhật"} />
       </div>
 
       <div className="mt-5 space-y-4">
@@ -452,7 +452,7 @@ function ShippingTracker({
 function OrderItems({ order }: { order: OrderDto }) {
   return (
     <section className="border border-gray-200 p-5">
-      <h2 className="mb-4 text-lg font-semibold">San pham</h2>
+      <h2 className="mb-4 text-lg font-semibold">Sản phẩm</h2>
       <div className="space-y-4">
         {order.items.map((item) => (
           <div key={item.id} className="border-b border-gray-100 pb-4 last:border-none">
@@ -460,10 +460,10 @@ function OrderItems({ order }: { order: OrderDto }) {
             <p className="text-sm text-lightText">
               {item.variantSku ? `SKU: ${item.variantSku}` : ""}
               {item.variantSize ? ` | Size: ${item.variantSize}` : ""}
-              {item.variantColor ? ` | Mau: ${item.variantColor}` : ""}
+              {item.variantColor ? ` | Màu: ${item.variantColor}` : ""}
             </p>
             <div className="mt-2 flex items-center justify-between text-sm">
-              <span>So luong: {item.quantity}</span>
+              <span>Số lượng: {item.quantity}</span>
               <span>{formatPrice(item.total)}</span>
             </div>
           </div>

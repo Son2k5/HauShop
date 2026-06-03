@@ -233,9 +233,9 @@ export default function AdminOrdersPage() {
                 <tr className="border-b border-slate-200 text-left text-[11px] uppercase tracking-[0.18em] text-slate-500">
                   <th className="px-4 py-3 font-semibold">Đơn hàng</th>
                   <th className="px-4 py-3 font-semibold">Người nhận</th>
-                  <th className="px-4 py-3 font-semibold">Thanh toán</th>
-                  <th className="px-4 py-3 font-semibold">Tổng tiền</th>
-                  <th className="px-4 py-3 font-semibold">Trạng thái</th>
+                  <th className="px-4 py-3 text-center font-semibold">Thanh toán</th>
+                  <th className="px-4 py-3 text-right font-semibold">Tổng tiền</th>
+                  <th className="px-4 py-3 text-center font-semibold">Trạng thái</th>
                 </tr>
               </thead>
               <tbody>
@@ -257,18 +257,18 @@ export default function AdminOrdersPage() {
                       <p>{order.receiverName}</p>
                       <p className="text-xs text-slate-400">{order.receiverPhone}</p>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-4 text-center">
                       <AdminBadge className={statusTone(order.paymentStatus, "payment")}>
                         {order.paymentStatus}
                       </AdminBadge>
                     </td>
                     <td
-                      className="px-4 py-4 text-[1.05rem] font-semibold text-blue-700"
-                      style={{ fontFamily: "'Cormorant Garamond', serif" }}
+                      className="px-4 py-4 text-right text-[13px] font-semibold tabular-nums text-[#111111]"
+                      style={{ fontFamily: "'Poppins', sans-serif" }}
                     >
                       {formatPrice(order.total)}
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-4 text-center">
                       <AdminBadge className={statusTone(order.status)}>
                         {formatOrderStatusLabel(order.status)}
                       </AdminBadge>
@@ -365,9 +365,9 @@ export default function AdminOrdersPage() {
                 <div className="rounded-[24px] border border-slate-200/80 bg-white p-5">
                   <p className="text-sm font-semibold text-slate-800">Van chuyen</p>
                   <div className="mt-3 grid gap-3 text-sm text-slate-600">
-                    <InfoCard label="Don vi" value={orderDetail.shipping?.carrierName || "Chua cap nhat"} />
-                    <InfoCard label="Ma van don" value={orderDetail.shipping?.trackingNumber || "Chua cap nhat"} />
-                    <InfoCard label="Vi tri" value={orderDetail.shipping?.currentLocation || "Chua cap nhat"} />
+                    <InfoCard label="Đơn vị" value={orderDetail.shipping?.carrierName || "Chưa cập nhật"} />
+                    <InfoCard label="Mã vận đơn" value={orderDetail.shipping?.trackingNumber || "Chưa cập nhật"} />
+                    <InfoCard label="Vị trí" value={orderDetail.shipping?.currentLocation || "Chưa cập nhật"} />
                     <InfoCard label="Du kien" value={formatAdminDateTime(orderDetail.shipping?.estimatedDelivery)} />
                   </div>
                 </div>
@@ -410,7 +410,7 @@ export default function AdminOrdersPage() {
 
                     <div className="grid gap-3 sm:grid-cols-2">
                       <label className="block">
-                        <span className="mb-2 block text-sm font-semibold text-slate-800">Don vi van chuyen</span>
+                        <span className="mb-2 block text-sm font-semibold text-slate-800">Đơn vị vận chuyển</span>
                         <input
                           value={carrierName}
                           onChange={(event) => setCarrierName(event.target.value)}
@@ -435,7 +435,7 @@ export default function AdminOrdersPage() {
                         value={currentLocation}
                         onChange={(event) => setCurrentLocation(event.target.value)}
                         className="w-full rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400"
-                        placeholder="Kho Ho Chi Minh, Dang giao tai Quan 1..."
+                        placeholder="Kho Hồ Chí Minh, đang giao tại Quận 1..."
                       />
                     </label>
 
@@ -446,14 +446,12 @@ export default function AdminOrdersPage() {
                         onChange={(event) => setStatusNote(event.target.value)}
                         rows={3}
                         className="w-full resize-none rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400"
-                        placeholder="Thong tin se hien trong timeline cua khach hang"
+                        placeholder="Thông tin sẽ hiện trong timeline của khách hàng"
                       />
                     </label>
                   </div>
 
-                  <div className="mt-4 rounded-[18px] bg-sky-50 px-4 py-3 text-sm text-sky-700">
-                    Rule backend: OrderPlaced {"->"} SellerConfirmed {"->"} Packing {"->"} HandoverToCarrier {"->"} InTransit {"->"} OutForDelivery {"->"} Delivered {"->"} Completed.
-                  </div>
+                  
 
                   {formError ? (
                     <div className="mt-4 rounded-[18px] bg-red-50 px-4 py-3 text-sm text-red-700">

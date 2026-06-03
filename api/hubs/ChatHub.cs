@@ -157,11 +157,6 @@ namespace api.hubs
             {
                 await ValidateSendMessageAsync(dto);
 
-                if (IsAdmin())
-                {
-                    throw new HubException(ClientErrorMessages.HubCannotProcessDetail);
-                }
-
                 var userId = GetUserId();
                 var message = await _chatService.SendAiCustomerMessageAsync(
                     dto.ChatRoomId,

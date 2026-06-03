@@ -1,5 +1,6 @@
 using api.DTOs.order;
 using api.models.entities;
+using api.models.enums;
 
 namespace api.repositories.interfaces
 {
@@ -11,6 +12,7 @@ namespace api.repositories.interfaces
             string userId,
             int page,
             int pageSize,
+            IReadOnlyCollection<OrderStatus>? statuses = null,
             CancellationToken ct = default);
         Task<Order?> GetTrackedByTransactionNoAsync(string transactionNo, CancellationToken ct = default);
     }

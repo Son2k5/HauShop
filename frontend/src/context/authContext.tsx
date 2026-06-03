@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import { useLocation } from 'react-router-dom';
 import { queryClient } from '../lib/queryClient';
+import { AUTH_IDLE_TIMEOUT_MS } from '../lib/env';
 import type {
     ChangePasswordDto,
     LoginDto,
@@ -28,6 +29,9 @@ async function loadUserService() {
 // Chỉ lưu UserDto (thông tin hiển thị UI) vào localStorage.
 // accessToken và refreshToken luôn nằm trong HttpOnly cookie — KHÔNG lưu ở đây.
 const STORAGE_KEY = '_u';
+const ACTIVITY_STORAGE_KEY = '_auth_last_activity';
+const ACTIVITY_WRITE_THROTTLE_MS = 15 * 1000;
+const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'scroll', 'touchstart', 'focus'] as const;
 
 const storage = {
     load: (): UserDto | null => {
@@ -45,6 +49,10 @@ const storage = {
         localStorage.removeItem(STORAGE_KEY);
     },
 };
+
+function clearAuthActivity(): void {
+    localStorage.removeItem(ACTIVITY_STORAGE_KEY);
+}
 
 // ── State & Reducer ───────────────────────────────────────────────────────────
 function removeAccountScopedQueries(): void {
@@ -182,6 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (cancelled) return;
 
                 storage.clear();
+                clearAuthActivity();
                 dispatch({ type: 'SIGN_OUT' });
             }
         };
@@ -204,6 +213,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Sync nhiều tab: nếu tab khác logout (xóa _u) thì tab này cũng sign out
     useEffect(() => {
         const clearCurrentTab = () => {
+            clearAuthActivity();
             removeAccountScopedQueries();
             dispatch({ type: 'SIGN_OUT' });
         };
@@ -271,15 +281,84 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Dù API fail vẫn clear local state
         }
         storage.clear();
+        clearAuthActivity();
         removeAccountScopedQueries();
         dispatch({ type: 'SIGN_OUT' });
     }, []);
+
+    useEffect(() => {
+        if (state.status !== 'authenticated') return;
+
+        let timeoutId: ReturnType<typeof window.setTimeout> | undefined;
+        let lastActivityWrite = 0;
+
+        function readLastActivity(): number {
+            const raw = localStorage.getItem(ACTIVITY_STORAGE_KEY);
+            const parsed = raw ? Number(raw) : NaN;
+            return Number.isFinite(parsed) && parsed > 0 ? parsed : Date.now();
+        }
+
+        function clearIdleTimer(): void {
+            if (timeoutId !== undefined) {
+                window.clearTimeout(timeoutId);
+                timeoutId = undefined;
+            }
+        }
+
+        function expireIfIdle(): void {
+            const idleForMs = Date.now() - readLastActivity();
+            if (idleForMs >= AUTH_IDLE_TIMEOUT_MS) {
+                void logout();
+                return;
+            }
+
+            scheduleIdleCheck();
+        }
+
+        function scheduleIdleCheck(): void {
+            clearIdleTimer();
+            const idleForMs = Date.now() - readLastActivity();
+            const remainingMs = AUTH_IDLE_TIMEOUT_MS - idleForMs;
+            timeoutId = window.setTimeout(expireIfIdle, Math.max(remainingMs, 1000));
+        }
+
+        function markActivity(force = false): void {
+            const now = Date.now();
+            if (!force && now - lastActivityWrite < ACTIVITY_WRITE_THROTTLE_MS) return;
+
+            lastActivityWrite = now;
+            localStorage.setItem(ACTIVITY_STORAGE_KEY, String(now));
+            scheduleIdleCheck();
+        }
+
+        const handleActivity = () => markActivity();
+        const handleStorage = (event: StorageEvent) => {
+            if (event.key === ACTIVITY_STORAGE_KEY) {
+                scheduleIdleCheck();
+            }
+        };
+
+        markActivity(true);
+        ACTIVITY_EVENTS.forEach((eventName) => {
+            window.addEventListener(eventName, handleActivity, { passive: true });
+        });
+        window.addEventListener('storage', handleStorage);
+
+        return () => {
+            clearIdleTimer();
+            ACTIVITY_EVENTS.forEach((eventName) => {
+                window.removeEventListener(eventName, handleActivity);
+            });
+            window.removeEventListener('storage', handleStorage);
+        };
+    }, [logout, state.status]);
 
     const changePassword = useCallback(async (dto: ChangePasswordDto): Promise<void> => {
         const authService = await loadAuthService();
         await authService.changePassword(dto);
         // Đổi mật khẩu → revoke tất cả token → bắt login lại
         storage.clear();
+        clearAuthActivity();
         removeAccountScopedQueries();
         dispatch({ type: 'SIGN_OUT' });
     }, []);
@@ -339,6 +418,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch {
             // Nếu cookie hết hạn và refresh cũng fail, interceptor sẽ xử lý redirect /signin.
             storage.clear();
+            clearAuthActivity();
             removeAccountScopedQueries();
             dispatch({ type: 'SIGN_OUT' });
             return null;

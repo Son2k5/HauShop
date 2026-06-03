@@ -296,12 +296,13 @@ namespace api.services.implementations.order
             string userId,
             int page = 1,
             int pageSize = 10,
+            IReadOnlyCollection<OrderStatus>? statuses = null,
             CancellationToken ct = default)
         {
             page = Math.Max(page, 1);
             pageSize = Math.Clamp(pageSize, 1, 50);
 
-            var (items, total) = await _orderRepository.GetByUserIdAsync(userId, page, pageSize, ct);
+            var (items, total) = await _orderRepository.GetByUserIdAsync(userId, page, pageSize, statuses, ct);
             return new PagedOrderDto
             {
                 Items = items,
@@ -443,6 +444,14 @@ namespace api.services.implementations.order
                 ?? throw new KeyNotFoundException("Không tìm thấy payment tương ứng");
 
             var responseCode = query["vnp_ResponseCode"].ToString();
+            if (payment.Status != PaymentStatus.Pending)
+            {
+                var alreadyProcessed = await _orderRepository.GetByIdWithIncludesAsync(order.Id, ct)
+                    ?? throw new InvalidOperationException("Cannot reload already processed VNPay order");
+
+                return OrderMapping.MapToDto(alreadyProcessed);
+            }
+
             var previousStatus = order.Status;
 
             payment.ResponseCode = responseCode;
@@ -549,6 +558,56 @@ namespace api.services.implementations.order
                 ?? throw new InvalidOperationException("Không thể tải lại đơn hàng sau callback");
 
             return OrderMapping.MapToDto(updated);
+        }
+
+        public async Task<VnPayIpnResponseDto> HandleVnPayIpnAsync(IQueryCollection query, CancellationToken ct = default)
+        {
+            try
+            {
+                if (!_vnPayService.ValidateSignature(query))
+                    return new VnPayIpnResponseDto { RspCode = "97", Message = "Invalid Checksum" };
+
+                var transactionNo = query["vnp_TxnRef"].ToString();
+                if (string.IsNullOrWhiteSpace(transactionNo))
+                    return new VnPayIpnResponseDto { RspCode = "01", Message = "Order not found" };
+
+                var order = await _orderRepository.GetTrackedByTransactionNoAsync(transactionNo, ct);
+                if (order == null)
+                    return new VnPayIpnResponseDto { RspCode = "01", Message = "Order not found" };
+
+                var payment = order.Payments.FirstOrDefault(p => p.TransactionNo == transactionNo);
+                if (payment == null)
+                    return new VnPayIpnResponseDto { RspCode = "01", Message = "Order not found" };
+
+                if (!TryGetVnPayAmount(query, out var vnpAmount) || vnpAmount != ToVnPayAmount(payment.Amount))
+                    return new VnPayIpnResponseDto { RspCode = "04", Message = "Invalid Amount" };
+
+                if (payment.Status != PaymentStatus.Pending)
+                    return new VnPayIpnResponseDto { RspCode = "02", Message = "Order already confirmed" };
+
+                await HandleVnPayReturnAsync(query, ct);
+
+                return new VnPayIpnResponseDto { RspCode = "00", Message = "Confirm Success" };
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "VNPay IPN processing failed.");
+                return new VnPayIpnResponseDto { RspCode = "99", Message = "Unknown error" };
+            }
+        }
+
+        private static bool TryGetVnPayAmount(IQueryCollection query, out long amount)
+        {
+            return long.TryParse(query["vnp_Amount"].ToString(), out amount);
+        }
+
+        private static long ToVnPayAmount(decimal amount)
+        {
+            return decimal.ToInt64(decimal.Round(amount * 100M, 0, MidpointRounding.AwayFromZero));
         }
 
         public async Task<OrderDto> UpdateOrderStatusAsync(

@@ -89,7 +89,7 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = async () => {
     if (!isAuthenticated) {
-      showToast("Vui long dang nhap de them vao gio hang", "warning");
+      showToast("Vui lòng đăng nhập để thêm vào giỏ hàng", "warning");
       navigate(ROUTES.SIGN_IN);
       return;
     }

@@ -4,10 +4,10 @@ services:
     container_name: haushop-mysql
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: haushop
-      MYSQL_ROOT_PASSWORD: root_password
-      MYSQL_USER: haushop
-      MYSQL_PASSWORD: haushop_password
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-haushop}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER:-haushop}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD}
     ports:
       - "3306:3306"
     volumes:
@@ -15,7 +15,7 @@ services:
     networks:
       - haushop-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot_password"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -28,7 +28,7 @@ services:
       - redis-server
       - /usr/local/etc/redis/redis.conf
       - --requirepass
-      - haushop_redis_password
+      - ${REDIS_PASSWORD:?set REDIS_PASSWORD}
     expose:
       - "6379"
     ports:
@@ -39,7 +39,7 @@ services:
     networks:
       - haushop-network
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "haushop_redis_password", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -59,15 +59,15 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: "https://+:8443;http://+:8080"
       ASPNETCORE_Kestrel__Certificates__Default__Path: /https/aspnetapp.pfx
-      ASPNETCORE_Kestrel__Certificates__Default__Password: haushop-local-dev
-      ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=haushop;User=haushop;Password=haushop_password;"
+      ASPNETCORE_Kestrel__Certificates__Default__Password: ${ASPNETCORE_Kestrel__Certificates__Default__Password:?set ASPNETCORE_Kestrel__Certificates__Default__Password}
+      ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=${MYSQL_DATABASE:-haushop};User=${MYSQL_USER:-haushop};Password=${MYSQL_PASSWORD:?set MYSQL_PASSWORD};"
       Database__ServerVersion: "8.4.0-mysql"
       Database__ApplyMigrationsOnStartup: "false"
       Database__MaxRetryCount: 2
       Database__MaxRetryDelaySeconds: 5
       Warmup__ProductSearch__Enabled: "false"
       Warmup__ProductSearch__DelaySeconds: 30
-      Redis__Configuration: "redis:6379,password=haushop_redis_password,abortConnect=false,connectRetry=1,connectTimeout=1000,syncTimeout=1000,asyncTimeout=1000"
+      Redis__Configuration: "redis:6379,password=${REDIS_PASSWORD:?set REDIS_PASSWORD},abortConnect=false,connectRetry=1,connectTimeout=1000,syncTimeout=1000,asyncTimeout=1000"
       Redis__InstanceName: "haushop:"
       Redis__ProductListTtlMinutes: 10
       Redis__ProductDetailTtlMinutes: 30
@@ -77,14 +77,17 @@ services:
       Redis__OtpTtlMinutes: 15
       RateLimiting__Login__PermitLimit: 5
       RateLimiting__Login__WindowSeconds: 300
-      Jwt__Key: change-this-development-key-to-a-long-random-secret-with-at-least-sixty-four-characters-1234567890
+      Jwt__Key: ${Jwt__Key:?set Jwt__Key}
       Jwt__Issuer: HauShopAPI
       Jwt__Audience: HauShopClient
       Cors__AllowedOrigins__0: http://localhost:5173
       Cors__AllowedOrigins__1: https://localhost:3000
       Google__RedirectUri: "https://localhost:7288/api/auth/google/callback"
       Google__FrontendUrl: "http://localhost:5173"
-      VnPay__ReturnUrl: "https://localhost:7288/api/order/vnpay-return"
+      VnPay__TmnCode: ${VnPay__TmnCode:-}
+      VnPay__HashSecret: ${VnPay__HashSecret:-}
+      VnPay__BaseUrl: ${VnPay__BaseUrl:-https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+      VnPay__ReturnUrl: ${VnPay__ReturnUrl:-http://localhost:5173/payment/vnpay-return}
       AppUrl: "http://localhost:5173"
     volumes:
       - ./api/certs:/https:ro

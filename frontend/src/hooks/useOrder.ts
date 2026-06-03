@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import type { OrderStatus } from "../@types/enums.type";
 import type { OrderDto, PagedOrderDto } from "../@types/order.type";
 import { cachePolicy } from "../lib/cachePolicy";
 import { queryKeys } from "../lib/queryKeys";
@@ -13,10 +14,10 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return maybeApiError.response?.data?.message ?? maybeApiError.message ?? fallback;
 }
 
-export function useMyOrders(page = 1, pageSize = 10) {
+export function useMyOrders(page = 1, pageSize = 10, statuses?: readonly OrderStatus[]) {
   const result = useQuery<PagedOrderDto, unknown>({
-    queryKey: queryKeys.orders.mine(page, pageSize),
-    queryFn: () => getMyOrdersApi(page, pageSize),
+    queryKey: queryKeys.orders.mine(page, pageSize, statuses),
+    queryFn: () => getMyOrdersApi(page, pageSize, statuses),
     staleTime: cachePolicy.order.staleTime,
     gcTime: cachePolicy.order.gcTime,
   });

@@ -44,7 +44,7 @@ export default function CartPage() {
         await updateCartItem.mutateAsync({ cartItemId, quantity: currentQty - 1 });
       }
     } catch {
-      showToast("Khong the cap nhat gio hang", "error");
+      showToast("Không thể cập nhật giỏ hàng", "error");
     } finally {
       setSyncingId(null);
     }
@@ -61,7 +61,7 @@ export default function CartPage() {
       setSyncingId(cartItemId);
       await increaseCartItem.mutateAsync({ cartItemId, quantity: 1 });
     } catch {
-      showToast("Khong the cap nhat gio hang", "error");
+      showToast("Không thể cập nhật giỏ hàng", "error");
     } finally {
       setSyncingId(null);
     }
@@ -73,9 +73,9 @@ export default function CartPage() {
     try {
       setSyncingId(cartItemId);
       await removeCartItem.mutateAsync(cartItemId);
-      showToast("Da xoa san pham khoi gio hang", "success");
+      showToast("Đã xóa sản phẩm khỏi giỏ hàng", "success");
     } catch {
-      showToast("Khong the xoa san pham", "error");
+      showToast("Không thể xóa sản phẩm", "error");
     } finally {
       setSyncingId(null);
     }
@@ -83,14 +83,14 @@ export default function CartPage() {
 
   const handleClearCart = async () => {
     if (!items.length) return;
-    if (!window.confirm("Ban co chac muon xoa toan bo gio hang?")) return;
+    if (!window.confirm("Bạn có chắc muốn xóa toàn bộ giỏ hàng?")) return;
 
     try {
       setClearing(true);
       await clearCart.mutateAsync();
-      showToast("Da xoa toan bo gio hang", "success");
+      showToast("Đã xóa toàn bộ giỏ hàng", "success");
     } catch {
-      showToast("Khong the xoa toan bo gio hang", "error");
+      showToast("Không thể xóa toàn bộ giỏ hàng", "error");
     } finally {
       setClearing(false);
     }
@@ -125,15 +125,15 @@ export default function CartPage() {
       <section className="bg-[#fafafa] min-h-[calc(100vh-160px)]">
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 xl:px-10">
           <div className="rounded-2xl border border-gray-200 bg-white px-6 py-14 text-center shadow-sm sm:px-10">
-            <h1 className="mb-2 text-2xl font-bold text-gray-900">Gio hang dang trong</h1>
+            <h1 className="mb-2 text-2xl font-bold text-gray-900">Giỏ hàng đang trống</h1>
             <p className="mx-auto mb-8 max-w-xl text-sm text-gray-500 sm:text-base">
-              Kham pha them san pham va them mon ban thich vao gio hang.
+              Khám phá thêm sản phẩm và thêm món bạn thích vào giỏ hàng.
             </p>
             <Link
               to="/shop"
               className="inline-flex items-center justify-center rounded-xl bg-primeColor px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-gray-800"
             >
-              Tiep tuc mua sam
+              Tiếp tục mua sắm
             </Link>
           </div>
         </div>
@@ -149,10 +149,10 @@ export default function CartPage() {
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
               Your cart
             </p>
-            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Gio hang</h1>
+            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Giỏ hàng</h1>
             <p className="mt-2 text-sm text-gray-500">
-              Ban dang co <span className="font-semibold text-gray-700">{totalQty}</span> san
-              pham trong gio.
+              Bạn đang có <span className="font-semibold text-gray-700">{totalQty}</span> sản
+              phẩm trong giỏ.
             </p>
           </div>
 
@@ -161,7 +161,7 @@ export default function CartPage() {
               to="/shop"
               className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
-              Tiep tuc mua sam
+              Tiếp tục mua sắm
             </Link>
             <button
               type="button"
@@ -169,7 +169,7 @@ export default function CartPage() {
               disabled={clearing}
               className="inline-flex items-center justify-center rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
             >
-              {clearing ? "Dang xoa..." : "Xoa toan bo"}
+              {clearing ? "Đang xóa..." : "Xóa toàn bộ"}
             </button>
           </div>
         </div>
@@ -230,7 +230,7 @@ export default function CartPage() {
                               )}
                               {item.variantColor && (
                                 <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
-                                  Mau: {item.variantColor}
+                                  Màu: {item.variantColor}
                                 </span>
                               )}
                             </div>
@@ -238,7 +238,7 @@ export default function CartPage() {
                         </div>
 
                         <div className="shrink-0 text-left sm:text-right">
-                          <p className="text-sm text-gray-500">Don gia</p>
+                          <p className="text-sm text-gray-500">Đơn giá</p>
                           <p className="text-lg font-bold text-red-500">
                             {formatPrice(item.unitPrice)}
                           </p>
@@ -247,7 +247,7 @@ export default function CartPage() {
 
                       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                         <div>
-                          <p className="mb-2 text-sm text-gray-500">So luong</p>
+                          <p className="mb-2 text-sm text-gray-500">Số lượng</p>
                           <div className="inline-flex h-11 items-center rounded-xl border border-gray-200 bg-white">
                             <button
                               type="button"
@@ -273,7 +273,7 @@ export default function CartPage() {
 
                         <div className="flex items-center justify-between gap-4 sm:block sm:text-right">
                           <div>
-                            <p className="text-sm text-gray-500">Thanh tien</p>
+                            <p className="text-sm text-gray-500">Thành tiền</p>
                             <p className="text-xl font-bold text-gray-900">
                               {formatPrice(item.unitPrice * item.qty)}
                             </p>
@@ -285,7 +285,7 @@ export default function CartPage() {
                             disabled={isSyncing}
                             className="inline-flex items-center gap-2 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-40 sm:mt-3"
                           >
-                            Xoa
+                            Xóa
                           </button>
                         </div>
                       </div>
@@ -297,19 +297,19 @@ export default function CartPage() {
           </div>
 
           <aside className="h-fit rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6 xl:sticky xl:top-24">
-            <h2 className="mb-6 text-2xl font-bold text-gray-900">Tom tat don hang</h2>
+            <h2 className="mb-6 text-2xl font-bold text-gray-900">Tóm tắt đơn hàng</h2>
             <div className="space-y-4">
               <div className="flex items-center justify-between text-sm text-gray-600">
-                <span>Tam tinh</span>
+                <span>Tạm tính</span>
                 <span className="font-semibold text-gray-900">{formatPrice(subtotal)}</span>
               </div>
               <div className="flex items-center justify-between text-sm text-gray-600">
-                <span>Phi van chuyen</span>
+                <span>Phí vận chuyển</span>
                 <span className="font-semibold text-gray-900">{formatPrice(shipping)}</span>
               </div>
               <div className="h-px bg-gray-100" />
               <div className="flex items-center justify-between">
-                <span className="text-base font-semibold text-gray-900">Tong cong</span>
+                <span className="text-base font-semibold text-gray-900">Tổng cộng</span>
                 <span className="text-2xl font-bold text-red-500">{formatPrice(total)}</span>
               </div>
             </div>
@@ -319,14 +319,14 @@ export default function CartPage() {
               onClick={() => navigate("/checkout")}
               className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-primeColor px-5 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800"
             >
-              Tien hanh thanh toan
+              Tiến hành thanh toán
             </button>
 
             <Link
               to="/orders"
               className="mt-3 inline-flex w-full items-center justify-center rounded-2xl border border-primeColor bg-white px-5 py-3.5 text-sm font-medium text-primeColor transition-colors hover:bg-primeColor hover:text-white"
             >
-              Xem don hang cua toi
+              Xem đơn hàng của tôi
             </Link>
           </aside>
         </div>

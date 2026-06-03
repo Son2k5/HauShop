@@ -1,6 +1,7 @@
 import { Icon } from "@iconify/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { memo, startTransition, useEffect, useMemo, useState } from "react";
+import type { AdminPagedResultDto } from "../../@types/admin.type";
 import type { CreateProductDto, ProductDto, ProductSummaryDto, UpdateProductDto } from "../../@types/product.type";
 import { useDebounce } from "../../hooks/useDebounce";
 import { cachePolicy } from "../../lib/cachePolicy";
@@ -54,6 +55,38 @@ const emptyForm: ProductFormState = {
   categoryIds: [],
 };
 
+function updateProductInPagedResult(
+  current: AdminPagedResultDto<ProductSummaryDto> | undefined,
+  product: ProductDto
+) {
+  if (!current) return current;
+
+  return {
+    ...current,
+    items: current.items.map((item) =>
+      item.id === product.id
+        ? {
+            ...item,
+            sku: product.sku,
+            name: product.name,
+            slug: product.slug,
+            imageUrl: product.imageUrl,
+            price: product.price,
+            minVariantPrice: product.minVariantPrice ?? null,
+            totalStock: product.totalStock ?? null,
+            isActive: product.isActive,
+            brandId: product.brandId,
+            brandName: product.brand?.name ?? null,
+            categories: product.categories,
+            stock: product.stock,
+            averageRating: product.averageRating,
+            reviewCount: product.reviewCount,
+          }
+        : item
+    ),
+  };
+}
+
 export default function AdminProductsPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -104,6 +137,10 @@ export default function AdminProductsPage() {
     mutationFn: ({ id, dto }: { id: string; dto: UpdateProductDto }) => adminService.updateProduct(id, dto),
     onSuccess: (product) => {
       queryClient.setQueryData(queryKeys.admin.product(product.id), product);
+      queryClient.setQueriesData<AdminPagedResultDto<ProductSummaryDto>>(
+        { queryKey: ["admin", "products"] },
+        (current) => updateProductInPagedResult(current, product)
+      );
       queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
       queryClient.invalidateQueries({ queryKey: ["products", "list"] });
       queryClient.invalidateQueries({ queryKey: ["products", "detail"] });
@@ -614,7 +651,9 @@ const ProductRow = memo(function ProductRow({
           <p className="text-xs text-gray-500">Tạo ngày {formatAdminDate(product.created)}</p>
         </button>
       </td>
-      <td className="px-4 py-4 font-medium text-black">{formatPrice(product.minVariantPrice ?? product.price)}</td>
+      <td className="px-4 py-4">
+        <p className="text-[13px] font-semibold tabular-nums text-black">{formatPrice(product.price)}</p>
+      </td>
       <td className="px-4 py-4 text-gray-700">{product.totalStock ?? product.stock}</td>
       <td className="px-4 py-4">
         <AdminBadge className={product.isActive ? "min-w-[96px] items-center justify-center text-center leading-5 bg-emerald-100 text-emerald-700" : "min-w-[96px] items-center justify-center text-center leading-5 bg-gray-100 text-gray-700"}>

@@ -228,16 +228,22 @@ namespace api.services.implementations.seed
         private async Task<int> ClearCustomerOrderDataAsync()
         {
             var orderIds = OrderSeedDataStore.OrderIds;
+            var addressIds = OrderSeedDataStore.AddressIds;
+            var userIds = OrderSeedDataStore.UserIds;
             var orders = await _context.Orders
                 .Where(o => orderIds.Contains(o.Id))
                 .ToListAsync();
-
-            if (orders.Count == 0)
-            {
-                return 0;
-            }
+            var addresses = await _context.Addresses
+                .Where(a => addressIds.Contains(a.Id))
+                .ToListAsync();
+            var users = await _context.Users
+                .Where(u => userIds.Contains(u.Id))
+                .ToListAsync();
 
             _context.Orders.RemoveRange(orders);
+            _context.Addresses.RemoveRange(addresses);
+            _context.Users.RemoveRange(users);
+
             return orders.Count;
         }
     }

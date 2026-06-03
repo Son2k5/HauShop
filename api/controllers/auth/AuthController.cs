@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using api.common;
+using api.services.interfaces;
 using api.services.interfaces.auth;
 using api.DTOs.user;
 using FluentValidation;
@@ -15,6 +16,7 @@ namespace api.controllers
         private readonly IAuthService _authService;
         private readonly ILogger<AuthController> _logger;
         private readonly IConfiguration _config;
+        private readonly ITokenService _tokenService;
         private readonly IGoogleAuthService _googleAuthService;
         private readonly IValidator<RegisterDto> _registerValidator;
         private readonly IValidator<LoginDto> _loginValidator;
@@ -24,6 +26,7 @@ namespace api.controllers
             IAuthService authService,
             ILogger<AuthController> logger,
             IConfiguration configuration,
+            ITokenService tokenService,
             IGoogleAuthService googleAuthService,
             IValidator<RegisterDto> registerValidator,
             IValidator<LoginDto> loginValidator,
@@ -32,6 +35,7 @@ namespace api.controllers
             _authService = authService;
             _logger = logger;
             _config = configuration;
+            _tokenService = tokenService;
             _googleAuthService = googleAuthService;
             _registerValidator = registerValidator;
             _loginValidator = loginValidator;
@@ -244,7 +248,7 @@ namespace api.controllers
 
         private void SetRefreshTokenCookie(string token)
         {
-            var refreshTokenExpiration = _config.GetValue<int>("Jwt:RefreshTokenExpirationDays", 7);
+            var refreshTokenLifetime = _tokenService.GetRefreshTokenLifetime();
             bool isDev = _config.GetValue<string>("ASPNETCORE_ENVIRONMENT") == "Development";
 
             Response.Cookies.Append("refreshToken", token, new CookieOptions
@@ -252,7 +256,7 @@ namespace api.controllers
                 HttpOnly = true,
                 Secure = !isDev,
                 SameSite = SameSiteMode.Lax,
-                Expires = DateTimeOffset.UtcNow.AddDays(refreshTokenExpiration),
+                Expires = DateTimeOffset.UtcNow.Add(refreshTokenLifetime),
                 Path = "/"
             });
         }

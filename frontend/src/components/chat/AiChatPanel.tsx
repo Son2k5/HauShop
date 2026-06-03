@@ -178,7 +178,7 @@ export default function AiChatPanel({ onClose }: Props) {
           {[
             "Tư vấn áo khoác dưới 500k",
             "Lọc màu đen size L",
-            "Kiem tra don hang cua toi",
+            "Kiểm tra đơn hàng của tôi",
             "Chính sách đổi trả",
             "Gợi ý combo",
           ].map((suggestion) => (

@@ -114,7 +114,7 @@ export default function UserMenu({
               className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50"
             >
               <TrashIcon />
-              Remove Avatar
+              Xóa ảnh đại diện
             </button>
           )}
         </div>
@@ -135,10 +135,10 @@ export default function UserMenu({
             </Link>
           )}
 
-          <UserMenuLink to={ROUTES.PROFILE} onClose={onClose} label="My Profile">
+          <UserMenuLink to={ROUTES.PROFILE} onClose={onClose} label="Hồ sơ của tôi">
             <UserIcon className="h-4 w-4" />
           </UserMenuLink>
-          <UserMenuLink to={ROUTES.ORDERS} onClose={onClose} label="My Orders">
+          <UserMenuLink to={ROUTES.ORDERS} onClose={onClose} label="Đơn hàng của tôi">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
@@ -148,13 +148,13 @@ export default function UserMenu({
               />
             </svg>
           </UserMenuLink>
-          <UserMenuLink to="/cancellations" onClose={onClose} label="My Cancellations">
+          <UserMenuLink to={ROUTES.CANCELLATIONS} onClose={onClose} label="Đơn đã hủy">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <circle cx="12" cy="12" r="9" strokeWidth={1.5} />
               <circle cx="12" cy="12" r="3" fill="currentColor" />
             </svg>
           </UserMenuLink>
-          <UserMenuLink to="/reviews" onClose={onClose} label="My Reviews">
+          <UserMenuLink to={ROUTES.REVIEWS} onClose={onClose} label="Đánh giá của tôi">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -165,7 +165,7 @@ export default function UserMenu({
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50"
           >
             <LogoutIcon />
-            Logout
+            Đăng xuất
           </button>
         </div>
       </div>
