@@ -34,7 +34,7 @@ namespace api.validators
                 .When(x => !string.IsNullOrEmpty(x.LastName));
 
             RuleFor(x => x.PhoneNumber)
-                .Matches(@"^(\+84|0)[3|5|7|8|9][0-9]{8}$").WithMessage("Số điện thoại Việt Nam không hợp lệ")
+                .Matches(@"^(\+84|0)[35789][0-9]{8}$").WithMessage("Số điện thoại không hợp lệ")
                 .When(x => !string.IsNullOrEmpty(x.PhoneNumber));
         }
     }

@@ -19,6 +19,22 @@ const SLIDES = [
   },
 ];
 
+const VIETNAM_PHONE_PATTERN = /^(\+84|0)[35789][0-9]{8}$/;
+
+const validatePhoneNumber = (value: string) => {
+  const normalizedValue = value.trim();
+
+  if (!normalizedValue) {
+    return "Vui lòng nhập số điện thoại";
+  }
+
+  if (!VIETNAM_PHONE_PATTERN.test(normalizedValue)) {
+    return "Số điện thoại không hợp lệ.";
+  }
+
+  return "";
+};
+
 const validatePassword = (value: string) => {
   const missingRequirements: string[] = [];
 
@@ -123,7 +139,11 @@ const SignUp = () => {
     let hasClientError = false;
     if (!firstName) { setErrFirstName("Vui lòng nhập tên"); hasClientError = true; }
     if (!email) { setErrEmail("Vui lòng nhập email"); hasClientError = true; }
-    if (!phone) { setErrPhone("Vui lòng nhập số điện thoại"); hasClientError = true; }
+    const phoneError = validatePhoneNumber(phone);
+    if (phoneError) {
+      setErrPhone(phoneError);
+      hasClientError = true;
+    }
     if (!password) {
       setErrPassword("Vui lòng nhập mật khẩu");
       hasClientError = true;
