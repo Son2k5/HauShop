@@ -4,11 +4,14 @@ using api.models.entities;
 using api.repositories.interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
+using System.Globalization;
+using System.Text;
 
 namespace api.repositories.implementations
 {
     public class ProductRepository : Repository<Product>, IProductRepository
     {
+        private const int FullTextMinTermLength = 3;
         private static readonly SemaphoreSlim FullTextIndexLock = new(1, 1);
         private static bool? HasProductFullTextIndexCache;
 
@@ -72,32 +75,47 @@ namespace api.repositories.implementations
             {
                 var raw = q.Search.Trim();
                 var trimmed = raw.Length > 200 ? raw[..200] : raw;
+                var searchTerms = GetSearchTerms(trimmed);
 
-                if (trimmed.Length <= 2)
+                if (searchTerms.Length == 0)
                 {
-                    var pattern = $"{EscapeLike(trimmed)}%";
-
-                    query = query.Where(p =>
-                        EF.Functions.Like(p.Name, pattern, "\\") ||
-                        EF.Functions.Like(p.Sku, pattern, "\\"));
+                    query = query.Where(_ => false);
                 }
                 else
                 {
-                    var fullTextQuery = BuildFullTextQuery(trimmed);
+                    var fullTextTerms = searchTerms
+                        .Where(term => term.Length >= FullTextMinTermLength)
+                        .ToArray();
+                    var shortTerms = searchTerms
+                        .Where(term => term.Length < FullTextMinTermLength)
+                        .ToArray();
 
-                    if (!string.IsNullOrWhiteSpace(fullTextQuery))
+                    if (fullTextTerms.Length > 0)
                     {
+                        var fullTextQuery = BuildFullTextQuery(fullTextTerms);
+
                         query = await HasProductFullTextIndexAsync(ct)
                             ? query.Where(p =>
-                                EF.Functions.IsMatch(
-                                    new[] { p.Name, p.Sku, p.Description },
-                                    fullTextQuery,
-                                    MySqlMatchSearchMode.Boolean))
-                            : ApplyLikeSearch(query, trimmed);
+                            EF.Functions.IsMatch(
+                                new[] { p.Name, p.Sku, p.Description },
+                                fullTextQuery,
+                                MySqlMatchSearchMode.Boolean))
+                            : ApplyPrefixSearch(query, searchTerms);
                     }
-                    else
+
+                    if (shortTerms.Length > 0)
                     {
-                        query = query.Where(_ => false);
+                        var matchingCategoryIds = await GetMatchingCategoryIdsAsync(shortTerms, ct);
+
+                        if (matchingCategoryIds.Length > 0)
+                        {
+                            query = query.Where(p =>
+                                p.ProductCategories.Any(pc => matchingCategoryIds.Contains(pc.CategoryId)));
+                        }
+                        else if (fullTextTerms.Length == 0)
+                        {
+                            query = ApplyPrefixSearch(query, searchTerms);
+                        }
                     }
                 }
             }
@@ -181,16 +199,46 @@ namespace api.repositories.implementations
                 .Replace("%", "\\%")
                 .Replace("_", "\\_");
 
-        private static IQueryable<Product> ApplyLikeSearch(IQueryable<Product> query, string value)
+        private static IQueryable<Product> ApplyPrefixSearch(
+            IQueryable<Product> query,
+            IEnumerable<string> searchTerms)
         {
-            var escaped = EscapeLike(value);
-            var prefixPattern = $"{escaped}%";
-            var descriptionPrefixPattern = $"{escaped}%";
+            var phrase = string.Join(' ', searchTerms);
+            var pattern = $"{EscapeLike(phrase)}%";
 
             return query.Where(p =>
-                EF.Functions.Like(p.Name, prefixPattern, "\\") ||
-                EF.Functions.Like(p.Sku, prefixPattern, "\\") ||
-                EF.Functions.Like(p.Description, descriptionPrefixPattern, "\\"));
+                EF.Functions.Like(p.Name, pattern, "\\") ||
+                EF.Functions.Like(p.Sku, pattern, "\\"));
+        }
+
+        private async Task<string[]> GetMatchingCategoryIdsAsync(
+            IEnumerable<string> searchTerms,
+            CancellationToken ct)
+        {
+            var slugTerms = searchTerms
+                .Select(NormalizeSlugTerm)
+                .Where(term => term.Length > 0)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+
+            if (slugTerms.Length == 0)
+                return [];
+
+            var categories = _context.Categories
+                .AsNoTracking()
+                .Where(category => category.IsActive);
+
+            foreach (var term in slugTerms)
+            {
+                var pattern = $"%{EscapeLike(term)}%";
+                categories = categories.Where(category =>
+                    EF.Functions.Like(category.Slug, pattern, "\\"));
+            }
+
+            return await categories
+                .Select(category => category.Id)
+                .Take(50)
+                .ToArrayAsync(ct);
         }
 
         private async Task<bool> HasProductFullTextIndexAsync(CancellationToken ct)
@@ -247,16 +295,38 @@ namespace api.repositories.implementations
             }
         }
 
-        private static string BuildFullTextQuery(string value)
+        private static string[] GetSearchTerms(string value)
         {
-            var terms = value
+            return value
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Select(term => new string(term.Where(char.IsLetterOrDigit).ToArray()))
                 .Where(term => term.Length > 0)
                 .Take(8)
-                .Select(term => $"+{term}*");
+                .ToArray();
+        }
 
-            return string.Join(' ', terms);
+        private static string BuildFullTextQuery(IEnumerable<string> searchTerms)
+        {
+            return string.Join(' ', searchTerms.Select(term => $"+{term}*"));
+        }
+
+        private static string NormalizeSlugTerm(string value)
+        {
+            var normalized = value.ToLowerInvariant().Normalize(NormalizationForm.FormD);
+            var builder = new StringBuilder(normalized.Length);
+
+            foreach (var character in normalized)
+            {
+                if (CharUnicodeInfo.GetUnicodeCategory(character) == UnicodeCategory.NonSpacingMark)
+                    continue;
+
+                if (character == '\u0111')
+                    builder.Append('d');
+                else if (char.IsLetterOrDigit(character))
+                    builder.Append(character);
+            }
+
+            return builder.ToString().Normalize(NormalizationForm.FormC);
         }
 
         public async Task<Product?> GetByIdWithIncludesAsync(string id, CancellationToken ct = default) =>

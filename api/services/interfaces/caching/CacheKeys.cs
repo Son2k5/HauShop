@@ -10,7 +10,7 @@ public static class CacheKeys
     public const string AppPrefix = "haushop:v1";
 
     public static string ProductPrefix => $"{AppPrefix}:product:";
-    public static string ProductListPrefix => $"{AppPrefix}:product:list:";
+    public static string ProductListPrefix => $"{AppPrefix}:product:list:v3:";
     public static string ProductSlugPrefix => $"{AppPrefix}:product:slug:";
     public static string CategoryPrefix => $"{AppPrefix}:category:";
     public static string HomepagePrefix => $"{AppPrefix}:homepage:";
