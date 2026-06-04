@@ -313,9 +313,9 @@ const Profile: React.FC = () => {
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50 flex items-center justify-center">
+            <div className="min-h-screen bg-gradient-to-br from-[#fff5f5] via-white to-[#fffafa] flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
-                    <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-10 h-10 border-4 border-[#F14F4F] border-t-transparent rounded-full animate-spin" />
                     <p className="text-sm text-gray-500">Đang tải hồ sơ...</p>
                 </div>
             </div>
@@ -326,15 +326,15 @@ const Profile: React.FC = () => {
     const initials = `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase();
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50 px-4 py-8 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-gradient-to-br from-[#fff5f5] via-white to-[#fffafa] px-4 py-8 sm:px-6 lg:px-8">
             <div className="max-w-6xl mx-auto">
-                <div className="relative mb-8 overflow-hidden rounded-[28px] border border-orange-100 bg-gradient-to-br from-orange-300 via-orange-400 to-amber-400 shadow-[0_24px_80px_rgba(251,146,60,0.28)]">
+                <div className="relative mb-8 overflow-hidden rounded-[28px] border border-[#f8dddd] bg-gradient-to-br from-[#f98f8f] via-[#f56a6a] to-[#F14F4F] shadow-[0_18px_50px_rgba(241,79,79,0.16)]">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.55),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.3),transparent_54%)]" />
                     <div className="relative px-6 py-8 sm:px-8 sm:py-10">
                         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                             <div className="flex items-center gap-4">
                                 <div className="relative">
-                                    <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-orange-500 to-amber-400 text-2xl font-bold text-white shadow-lg ring-4 ring-white/70">
+                                    <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-[#F14F4F] to-[#e95d5d] text-2xl font-bold text-white shadow-[0_10px_24px_rgba(241,79,79,0.20)] ring-4 ring-white/70">
                                         {user.avatar ? (
                                             <img
                                                 src={`${user.avatar}?t=${Date.now()}`}
@@ -356,7 +356,7 @@ const Profile: React.FC = () => {
                                 </div>
 
                                 <div>
-                                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-orange-950/60">
+                                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-[#7a3030]/60">
                                         Hồ sơ tài khoản
                                     </p>
                                     <h1 className="text-3xl sm:text-4xl font-bold text-white drop-shadow-sm">
@@ -364,10 +364,10 @@ const Profile: React.FC = () => {
                                     </h1>
                                     <p className="mt-1 font-medium text-white/90">{user.email}</p>
                                     <div className="mt-3 flex flex-wrap gap-2">
-                                        <span className="inline-flex items-center rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-orange-700 ring-1 ring-white/70">
+                                        <span className="inline-flex items-center rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-[#b63b3b] ring-1 ring-white/70">
                                             {translateRole(user.role)}
                                         </span>
-                                        <span className="inline-flex items-center rounded-full bg-orange-950/10 px-3 py-1 text-xs font-semibold text-orange-950 ring-1 ring-orange-950/10">
+                                        <span className="inline-flex items-center rounded-full bg-[#7a3030]/10 px-3 py-1 text-xs font-semibold text-[#682b2b] ring-1 ring-[#7a3030]/10">
                                             {translateProvider(user.provider)}
                                         </span>
                                     </div>
@@ -376,14 +376,14 @@ const Profile: React.FC = () => {
 
                             <div className="grid grid-cols-2 gap-3 sm:flex sm:items-center">
                                 <div className="rounded-2xl border border-white/60 bg-white/70 px-4 py-3 shadow-sm backdrop-blur">
-                                    <p className="text-xs uppercase tracking-wide text-orange-950/50">Thành viên từ</p>
-                                    <p className="mt-1 text-sm font-semibold text-orange-950">
+                                    <p className="text-xs uppercase tracking-wide text-[#7a3030]/50">Thành viên từ</p>
+                                    <p className="mt-1 text-sm font-semibold text-[#682b2b]">
                                         {formatDate(user.created)}
                                     </p>
                                 </div>
                                 <div className="rounded-2xl border border-white/60 bg-white/70 px-4 py-3 shadow-sm backdrop-blur">
-                                    <p className="text-xs uppercase tracking-wide text-orange-950/50">Số điện thoại</p>
-                                    <p className="mt-1 text-sm font-semibold text-orange-950">
+                                    <p className="text-xs uppercase tracking-wide text-[#7a3030]/50">Số điện thoại</p>
+                                    <p className="mt-1 text-sm font-semibold text-[#682b2b]">
                                         {user.phoneNumber || 'Chưa cập nhật'}
                                     </p>
                                 </div>
@@ -421,8 +421,8 @@ const Profile: React.FC = () => {
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                     {/* Left Column */}
                     <div className="space-y-6">
-                        <div className="overflow-hidden rounded-[26px] border border-white/80 bg-white/95 shadow-lg">
-                            <div className="bg-gradient-to-r from-orange-400 via-orange-500 to-amber-400 px-6 py-4">
+                        <div className="overflow-hidden rounded-[26px] border border-[#f4e6e6] bg-white/95 shadow-[0_12px_32px_rgba(31,41,55,0.07)]">
+                            <div className="bg-gradient-to-r from-[#f56a6a] to-[#F14F4F] px-6 py-4">
                                 <h2 className="text-lg font-semibold text-white">Ảnh đại diện</h2>
                                 <p className="mt-1 text-sm text-white/80">Cập nhật ảnh rõ mặt để tài khoản dễ nhận diện hơn.</p>
                             </div>
@@ -431,7 +431,7 @@ const Profile: React.FC = () => {
                                 <div className="flex flex-col items-center">
                                     <div className="relative group w-36 h-36 mb-5">
                                         <div
-                                            className="w-full h-full rounded-full overflow-hidden bg-gray-100 cursor-pointer ring-4 ring-orange-100 shadow-lg transition-all duration-300 group-hover:scale-[1.02] group-hover:ring-orange-200"
+                                            className="w-full h-full rounded-full overflow-hidden bg-gray-100 cursor-pointer ring-4 ring-[#fde3e3] shadow-[0_10px_28px_rgba(31,41,55,0.10)] transition-all duration-300 group-hover:scale-[1.02] group-hover:ring-[#f9caca]"
                                             onClick={handleAvatarClick}
                                         >
                                             {user.avatar ? (
@@ -441,7 +441,7 @@ const Profile: React.FC = () => {
                                                     className="w-full h-full object-cover"
                                                 />
                                             ) : (
-                                                <div className="w-full h-full bg-gradient-to-br from-orange-500 to-amber-400 flex items-center justify-center text-white text-4xl font-bold">
+                                                <div className="w-full h-full bg-gradient-to-br from-[#f56a6a] to-[#F14F4F] flex items-center justify-center text-white text-4xl font-bold">
                                                     {initials || 'U'}
                                                 </div>
                                             )}
@@ -479,7 +479,7 @@ const Profile: React.FC = () => {
                                         <button
                                             onClick={handleAvatarClick}
                                             disabled={uploadingAvatar}
-                                            className="w-full rounded-xl bg-gradient-to-r from-orange-500 to-amber-400 px-4 py-3 text-white font-semibold shadow-md hover:shadow-lg hover:scale-[1.01] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="w-full rounded-xl bg-[#F14F4F] px-4 py-3 text-white font-semibold shadow-[0_8px_18px_rgba(241,79,79,0.18)] transition-all hover:bg-[#df4646] hover:shadow-[0_10px_22px_rgba(241,79,79,0.22)] disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             {uploadingAvatar ? 'Đang tải ảnh...' : 'Tải ảnh mới'}
                                         </button>
@@ -506,7 +506,7 @@ const Profile: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="rounded-[26px] border border-white/80 bg-white/95 p-6 shadow-lg">
+                        <div className="rounded-[26px] border border-[#f4e6e6] bg-white/95 p-6 shadow-[0_12px_32px_rgba(31,41,55,0.07)]">
                             <div className="flex items-center justify-between mb-5">
                                 <h2 className="text-lg font-semibold text-gray-900">Thông tin tài khoản</h2>
                                 <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
@@ -544,7 +544,7 @@ const Profile: React.FC = () => {
 
                     {/* Right Column */}
                     <div className="xl:col-span-2 space-y-6">
-                        <div className="overflow-hidden rounded-[26px] border border-white/80 bg-white/95 shadow-lg">
+                        <div className="overflow-hidden rounded-[26px] border border-[#f4e6e6] bg-white/95 shadow-[0_12px_32px_rgba(31,41,55,0.07)]">
                             <div className="px-6 py-5 border-b border-gray-100 bg-white/70">
                                 <h2 className="text-xl font-semibold text-gray-900">Thông tin cá nhân</h2>
                                 <p className="mt-1 text-sm text-gray-500">
@@ -557,7 +557,7 @@ const Profile: React.FC = () => {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                         <div>
                                             <label htmlFor="firstName" className="block text-sm font-semibold text-gray-700 mb-2">
-                                                Tên <span className="text-orange-500">*</span>
+                                                Tên <span className="text-[#F14F4F]">*</span>
                                             </label>
                                             <input
                                                 type="text"
@@ -566,14 +566,14 @@ const Profile: React.FC = () => {
                                                 value={formData.firstName}
                                                 onChange={handleChange}
                                                 required
-                                                className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all"
+                                                className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#F14F4F]/15 focus:border-[#F14F4F] outline-none transition-all"
                                                 placeholder="Nhập tên"
                                             />
                                         </div>
 
                                         <div>
                                             <label htmlFor="lastName" className="block text-sm font-semibold text-gray-700 mb-2">
-                                                Họ <span className="text-orange-500">*</span>
+                                                Họ <span className="text-[#F14F4F]">*</span>
                                             </label>
                                             <input
                                                 type="text"
@@ -582,7 +582,7 @@ const Profile: React.FC = () => {
                                                 value={formData.lastName}
                                                 onChange={handleChange}
                                                 required
-                                                className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all"
+                                                className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#F14F4F]/15 focus:border-[#F14F4F] outline-none transition-all"
                                                 placeholder="Nhập họ"
                                             />
                                         </div>
@@ -598,7 +598,7 @@ const Profile: React.FC = () => {
                                             name="phoneNumber"
                                             value={formData.phoneNumber}
                                             onChange={handleChange}
-                                            className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all"
+                                            className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#F14F4F]/15 focus:border-[#F14F4F] outline-none transition-all"
                                             placeholder="Nhập số điện thoại"
                                         />
                                     </div>
@@ -617,7 +617,7 @@ const Profile: React.FC = () => {
                                             </div>
 
                                             {hasChanges() && (
-                                                <span className="inline-flex w-fit items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+                                                <span className="inline-flex w-fit items-center rounded-full bg-[#fff1f1] px-3 py-1 text-xs font-semibold text-[#b63b3b]">
                                                     Chờ lưu
                                                 </span>
                                             )}
@@ -628,7 +628,7 @@ const Profile: React.FC = () => {
                                         <button
                                             type="submit"
                                             disabled={loading || !hasChanges()}
-                                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-400 px-6 py-3 text-white font-semibold shadow-md hover:shadow-lg hover:scale-[1.01] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#F14F4F] px-6 py-3 text-white font-semibold shadow-[0_8px_18px_rgba(241,79,79,0.18)] transition-all hover:bg-[#df4646] hover:shadow-[0_10px_22px_rgba(241,79,79,0.22)] disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             {loading && (
                                                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -649,7 +649,7 @@ const Profile: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="overflow-hidden rounded-[26px] border border-white/80 bg-white/95 shadow-lg">
+                        <div className="overflow-hidden rounded-[26px] border border-[#f4e6e6] bg-white/95 shadow-[0_12px_32px_rgba(31,41,55,0.07)]">
                             <div className="px-6 py-5 border-b border-gray-100 bg-white/70">
                                 <h2 className="text-xl font-semibold text-gray-900">Địa chỉ giao hàng</h2>
                                 <p className="mt-1 text-sm text-gray-500">
@@ -661,7 +661,7 @@ const Profile: React.FC = () => {
                                 <form onSubmit={handleSaveAddress} className="space-y-5">
                                     <div>
                                         <label htmlFor="addressLine" className="block text-sm font-semibold text-gray-700 mb-2">
-                                            Địa chỉ cụ thể <span className="text-orange-500">*</span>
+                                            Địa chỉ cụ thể <span className="text-[#F14F4F]">*</span>
                                         </label>
                                         <input
                                             type="text"
@@ -670,7 +670,7 @@ const Profile: React.FC = () => {
                                             value={addressForm.addressLine}
                                             onChange={handleAddressChange}
                                             required
-                                            className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all"
+                                            className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#F14F4F]/15 focus:border-[#F14F4F] outline-none transition-all"
                                             placeholder="Số nhà, đường, phường/xã..."
                                         />
                                     </div>
@@ -678,7 +678,7 @@ const Profile: React.FC = () => {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                         <div>
                                             <label htmlFor="city" className="block text-sm font-semibold text-gray-700 mb-2">
-                                                Tỉnh/Thành phố <span className="text-orange-500">*</span>
+                                                Tỉnh/Thành phố <span className="text-[#F14F4F]">*</span>
                                             </label>
                                             <input
                                                 type="text"
@@ -687,7 +687,7 @@ const Profile: React.FC = () => {
                                                 value={addressForm.city}
                                                 onChange={handleAddressChange}
                                                 required
-                                                className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all"
+                                                className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#F14F4F]/15 focus:border-[#F14F4F] outline-none transition-all"
                                                 placeholder="Nhập tỉnh/thành phố"
                                             />
                                         </div>
@@ -702,7 +702,7 @@ const Profile: React.FC = () => {
                                                 name="state"
                                                 value={addressForm.state}
                                                 onChange={handleAddressChange}
-                                                className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all"
+                                                className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#F14F4F]/15 focus:border-[#F14F4F] outline-none transition-all"
                                                 placeholder="Nhập quận/huyện"
                                             />
                                         </div>
@@ -719,7 +719,7 @@ const Profile: React.FC = () => {
                                                 name="country"
                                                 value={addressForm.country}
                                                 onChange={handleAddressChange}
-                                                className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all"
+                                                className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#F14F4F]/15 focus:border-[#F14F4F] outline-none transition-all"
                                                 placeholder="Việt Nam"
                                             />
                                         </div>
@@ -734,7 +734,7 @@ const Profile: React.FC = () => {
                                                 name="zipCode"
                                                 value={addressForm.zipCode}
                                                 onChange={handleAddressChange}
-                                                className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all"
+                                                className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#F14F4F]/15 focus:border-[#F14F4F] outline-none transition-all"
                                                 placeholder="Nhập mã bưu chính"
                                             />
                                         </div>
@@ -746,7 +746,7 @@ const Profile: React.FC = () => {
                                             name="isDefault"
                                             checked={addressForm.isDefault}
                                             onChange={handleAddressChange}
-                                            className="h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+                                            className="h-4 w-4 rounded border-gray-300 text-[#F14F4F] focus:ring-[#F14F4F]"
                                         />
                                         Đặt làm địa chỉ giao hàng mặc định
                                     </label>
@@ -755,7 +755,7 @@ const Profile: React.FC = () => {
                                         <button
                                             type="submit"
                                             disabled={savingAddress}
-                                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-400 px-6 py-3 text-white font-semibold shadow-md hover:shadow-lg hover:scale-[1.01] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#F14F4F] px-6 py-3 text-white font-semibold shadow-[0_8px_18px_rgba(241,79,79,0.18)] transition-all hover:bg-[#df4646] hover:shadow-[0_10px_22px_rgba(241,79,79,0.22)] disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             {savingAddress && (
                                                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -836,12 +836,12 @@ const Profile: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="rounded-[26px] border border-white/80 bg-white/95 p-6 shadow-lg">
+                        <div className="rounded-[26px] border border-[#f4e6e6] bg-white/95 p-6 shadow-[0_12px_32px_rgba(31,41,55,0.07)]">
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                 <div>
                                     <div className="flex items-center gap-3">
-                                        <div className="w-11 h-11 rounded-2xl bg-orange-100 flex items-center justify-center">
-                                            <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <div className="w-11 h-11 rounded-2xl bg-[#fff1f1] flex items-center justify-center">
+                                            <svg className="w-5 h-5 text-[#F14F4F]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 11c1.657 0 3-1.567 3-3.5S13.657 4 12 4 9 5.567 9 7.5 10.343 11 12 11zm0 0v2m-6 7h12a2 2 0 002-2v-3a4 4 0 00-4-4H8a4 4 0 00-4 4v3a2 2 0 002 2z" />
                                             </svg>
                                         </div>
@@ -857,7 +857,7 @@ const Profile: React.FC = () => {
 
                                 <button
                                     onClick={() => navigate('/change-password')}
-                                    className="rounded-2xl border border-orange-200 bg-white px-5 py-3 text-orange-600 font-semibold hover:bg-orange-50 transition-colors"
+                                    className="rounded-2xl border border-[#f7cccc] bg-white px-5 py-3 text-[#F14F4F] font-semibold shadow-[0_6px_16px_rgba(31,41,55,0.05)] transition-colors hover:bg-[#fff5f5]"
                                 >
                                     Đổi mật khẩu
                                 </button>
