@@ -323,9 +323,7 @@ const ContactUs = () => {
                 <h2 className="mt-4 text-3xl font-bold font-titleFont text-primeColor">
                   Ghé thăm hoặc kết nối trực tuyến
                 </h2>
-                <p className="mt-3 text-lightText leading-7">
-                  Bạn có thể nhúng Google Maps sau này, còn hiện tại phần này đã được thiết kế như một block nổi bật hơn nhiều.
-                </p>
+                
               </div>
 
               <div className="relative h-[420px] bg-gradient-to-br from-primeColor via-[#2c2c2c] to-[#4b4b4b] overflow-hidden">
@@ -339,9 +337,6 @@ const ContactUs = () => {
                   </div>
 
                   <h3 className="text-3xl font-bold font-titleFont">HauShop Contact Point</h3>
-                  <p className="mt-4 text-white/80 max-w-md leading-8">
-                    Khu vực này có thể thay thế bằng bản đồ thật, hình ảnh văn phòng hoặc showroom để tăng độ tin cậy cho thương hiệu.
-                  </p>
 
                   <div className="mt-8 inline-flex items-center gap-2 rounded-full bg-white text-primeColor px-5 py-3 font-medium shadow-xl">
                     <Icon icon="lucide:navigation" />
