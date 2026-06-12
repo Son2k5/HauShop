@@ -165,16 +165,12 @@ export default function AdminDashboardPage() {
     <div className="min-w-0 space-y-5 text-slate-950">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-sm font-medium text-slate-500">Business Intelligence</p>
           <h2 className="mt-1 text-2xl font-semibold tracking-[-0.01em] text-slate-950 sm:text-3xl">
-            Ecommerce Analytics
+            Phân tích hệ thống
           </h2>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <SegmentedControl value={trendMode} onChange={setTrendMode} />
-          <AdminBadge className="bg-white text-slate-600 ring-1 ring-inset ring-slate-200">
-            Cập nhật realtime qua API
-          </AdminBadge>
         </div>
       </div>
 
@@ -248,7 +244,7 @@ export default function AdminDashboardPage() {
       <div className="grid gap-5 xl:grid-cols-[minmax(0,7fr)_minmax(320px,3fr)]">
         <AnalyticsCard
           title="Doanh Thu Theo Thời Gian"
-          subtitle="Area + line chart, so sánh với kỳ trước và hiển thị tăng trưởng khi hover."
+          subtitle="So sánh với kỳ trước và hiển thị tăng trưởng khi hover."
           action={<GrowthPill value={activeGrowth} />}
           className="min-h-[440px]"
         >
