@@ -44,7 +44,7 @@ export default function AdminInventoryPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <label className="inline-flex w-fit items-center gap-3 rounded-xl border border-sky-200 bg-white/90 px-4 py-3 text-sm font-medium text-slate-700 shadow-[0_12px_24px_rgba(37,99,235,0.08)]">
+        <label className="inline-flex w-full items-center gap-3 rounded-xl border border-sky-200 bg-white/90 px-4 py-3 text-sm font-medium text-slate-700 shadow-[0_12px_24px_rgba(37,99,235,0.08)] sm:w-fit">
           <Icon icon="mdi:tune-variant" width={18} className="text-sky-600" />
           <span>Ngưỡng cảnh báo</span>
           <input
@@ -123,12 +123,12 @@ export default function AdminInventoryPage() {
                   key={product.id}
                   className="rounded-2xl border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4"
                 >
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <p className="truncate text-base font-semibold text-slate-900">{product.name}</p>
                       <p className="text-xs text-slate-500">{product.sku}</p>
                     </div>
-                    <div className="flex flex-wrap justify-end gap-2">
+                    <div className="flex flex-wrap gap-2 sm:justify-end">
                       <AdminBadge
                         className={
                           product.stock <= 0 ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"

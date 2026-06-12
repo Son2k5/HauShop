@@ -30,6 +30,43 @@ export interface AdminDashboardDto {
   orderStatusCounts: Partial<Record<OrderStatus, number>>;
   lowStockProducts: LowStockProductDto[];
   recentOrders: RecentOrderDto[];
+  revenueGrowthPercent: number;
+  averageOrderValue: number;
+  conversionRate: number | null;
+  conversionRateNote?: string | null;
+  returningCustomers: number;
+  returningCustomerRate: number;
+  dailyRevenueTrend: RevenueTrendPointDto[];
+  weeklyRevenueTrend: RevenueTrendPointDto[];
+  monthlyRevenueTrend: RevenueTrendPointDto[];
+  orderStatusAnalytics: OrderStatusAnalyticsDto[];
+  topSellingProducts: TopSellingProductDto[];
+}
+
+export interface RevenueTrendPointDto {
+  label: string;
+  periodStart: string;
+  revenue: number;
+  previousRevenue: number;
+  growthPercent: number;
+  orders: number;
+  averageOrderValue: number;
+}
+
+export interface OrderStatusAnalyticsDto {
+  key: string;
+  label: string;
+  count: number;
+  percent: number;
+  color: string;
+}
+
+export interface TopSellingProductDto {
+  productId: string;
+  name: string;
+  imageUrl?: string | null;
+  quantitySold: number;
+  revenue: number;
 }
 
 export interface AdminPagedResultDto<T> {

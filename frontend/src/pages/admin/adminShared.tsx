@@ -152,7 +152,7 @@ export function AdminPanel({
   return (
     <section
       className={[
-        "rounded-[28px] border border-slate-200/80 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.06)]",
+        "min-w-0 rounded-[22px] border border-slate-200/80 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.06)] sm:rounded-[28px]",
         className,
       ].join(" ")}
     >
@@ -171,17 +171,17 @@ export function AdminPanelHeader({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-3 border-b border-slate-200/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-      <div>
+    <div className="flex flex-col gap-3 border-b border-slate-200/80 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className="min-w-0">
         <h3
-          className="text-xl font-semibold text-slate-900"
+          className="text-lg font-semibold text-slate-900 sm:text-xl"
           style={{ fontFamily: "'Poppins', sans-serif" }}
         >
           {title}
         </h3>
         {subtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}
       </div>
-      {action ? <div className="flex items-center gap-2">{action}</div> : null}
+      {action ? <div className="flex flex-wrap items-center gap-2">{action}</div> : null}
     </div>
   );
 }
@@ -220,9 +220,9 @@ export function AdminStatCard({
   accentClass?: string;
 }) {
   return (
-    <div className="rounded-[26px] border border-slate-200/80 bg-white p-5 shadow-[0_16px_32px_rgba(14,165,233,0.08)]">
+    <div className="min-w-0 rounded-[22px] border border-slate-200/80 bg-white p-4 shadow-[0_16px_32px_rgba(14,165,233,0.08)] sm:rounded-[26px] sm:p-5">
       <div className="flex items-start justify-between gap-4">
-        <div className={["inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em]", accentClass].join(" ")}>
+        <div className={["inline-flex max-w-full items-center rounded-full px-3 py-1 text-xs font-semibold uppercase leading-5 tracking-[0.14em]", accentClass].join(" ")}>
           {label}
         </div>
         {icon ? (
@@ -232,7 +232,7 @@ export function AdminStatCard({
         ) : null}
       </div>
       <p
-        className="mt-4 text-3xl font-semibold text-slate-900"
+        className="mt-4 break-words text-2xl font-semibold text-slate-900 sm:text-3xl"
         style={{ fontFamily: "'Poppins', sans-serif" }}
       >
         {value}
@@ -270,7 +270,7 @@ export function AdminPrimaryButton({
     <button
       {...props}
       className={[
-        "inline-flex items-center justify-center rounded-xl bg-[linear-gradient(135deg,#2563eb,#0ea5e9)] px-4 py-2.5 text-sm font-medium text-white shadow-[0_12px_24px_rgba(37,99,235,0.22)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex min-h-11 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#2563eb,#0ea5e9)] px-4 py-2.5 text-sm font-medium text-white shadow-[0_12px_24px_rgba(37,99,235,0.22)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60",
         className,
       ].join(" ")}
     >
@@ -288,7 +288,7 @@ export function AdminSecondaryButton({
     <button
       {...props}
       className={[
-        "inline-flex items-center justify-center rounded-xl border border-sky-200 bg-white px-4 py-2.5 text-sm font-medium text-sky-700 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex min-h-11 items-center justify-center rounded-xl border border-sky-200 bg-white px-4 py-2.5 text-sm font-medium text-sky-700 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60",
         className,
       ].join(" ")}
     >

@@ -114,7 +114,7 @@ export default function AdminChatPage() {
   };
 
   return (
-    <div className="grid min-h-[calc(100vh-132px)] overflow-hidden rounded-[28px] border border-sky-200 bg-white shadow-[0_20px_54px_rgba(15,23,42,0.08)] lg:grid-cols-[340px_minmax(0,1fr)]">
+    <div className="grid min-h-[calc(100vh-112px)] overflow-hidden rounded-[22px] border border-sky-200 bg-white shadow-[0_20px_54px_rgba(15,23,42,0.08)] sm:rounded-[28px] lg:grid-cols-[340px_minmax(0,1fr)]">
       <aside className="border-b border-sky-100 bg-slate-50/70 lg:border-b-0 lg:border-r">
         <div className="flex items-center justify-between border-b border-sky-100 px-5 py-4">
           <div>
@@ -124,7 +124,7 @@ export default function AdminChatPage() {
           <Icon icon="mdi:headset" width={24} className="text-sky-700" />
         </div>
 
-        <div className="max-h-[calc(100vh-210px)] overflow-y-auto p-3">
+        <div className="max-h-72 overflow-y-auto p-3 lg:max-h-[calc(100vh-210px)]">
           {loading ? (
             <div className="p-4 text-sm text-slate-500">Đang tải...</div>
           ) : rooms.length === 0 ? (
@@ -156,7 +156,7 @@ export default function AdminChatPage() {
         </div>
       </aside>
 
-      <section className="grid min-h-[560px] grid-rows-[auto_minmax(0,1fr)_auto]">
+      <section className="grid min-h-[520px] grid-rows-[auto_minmax(0,1fr)_auto] sm:min-h-[560px]">
         <div className="flex items-center justify-between border-b border-sky-100 px-5 py-4">
           <div className="min-w-0">
             <h2 className="truncate text-lg font-semibold text-slate-950">{activeRoom?.customerName ?? "Chọn hội thoại"}</h2>
@@ -194,7 +194,7 @@ export default function AdminChatPage() {
 
         {error ? <div className="border-t border-red-100 bg-red-50 px-5 py-2 text-sm text-red-700">{error}</div> : null}
 
-        <form onSubmit={onSubmit} className="flex gap-3 border-t border-sky-100 p-4">
+        <form onSubmit={onSubmit} className="flex gap-2 border-t border-sky-100 p-3 sm:gap-3 sm:p-4">
           <input
             value={text}
             onChange={(event) => setText(event.target.value)}

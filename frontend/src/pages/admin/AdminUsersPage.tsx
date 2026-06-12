@@ -45,15 +45,15 @@ export default function AdminUsersPage() {
   const selectedUserQuery = useAdminUser(selectedUserId);
   const updateRoleMutation = useUpdateAdminUserRole();
   const selectedUser = selectedUserQuery.data;
+  const users = usersQuery.data?.items ?? [];
 
   const roleSummary = useMemo(() => {
-    const items = usersQuery.data?.items ?? [];
     return {
-      admin: items.filter((item) => item.role === "Admin").length,
-      merchant: items.filter((item) => item.role === "Merchant").length,
-      member: items.filter((item) => item.role === "Member").length,
+      admin: users.filter((item) => item.role === "Admin").length,
+      merchant: users.filter((item) => item.role === "Merchant").length,
+      member: users.filter((item) => item.role === "Member").length,
     };
-  }, [usersQuery.data?.items]);
+  }, [users]);
 
   useEffect(() => {
     if (!selectedUser) return;
@@ -145,7 +145,7 @@ export default function AdminUsersPage() {
                 setPage(1);
                 setRole(event.target.value as Role | "");
               }}
-              className="rounded-xl border border-sky-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400"
+              className="w-full rounded-xl border border-sky-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400 sm:w-auto"
             >
               <option value="">Tất cả vai trò</option>
               <option value="Admin">Admin</option>
@@ -154,8 +154,61 @@ export default function AdminUsersPage() {
             </select>
           </div>
 
-          <div className="overflow-x-auto px-2 pb-4 pt-2 sm:px-4">
-            <table className="min-w-full text-sm">
+          <div className="px-4 pb-4 pt-4 md:hidden">
+            {users.length ? (
+              <div className="space-y-3">
+                {users.map((user) => (
+                  <button
+                    key={user.id}
+                    type="button"
+                    onClick={() => setSelectedUserId(user.id)}
+                    className={[
+                      "w-full rounded-2xl border p-4 text-left transition",
+                      selectedUserId === user.id
+                        ? "border-blue-200 bg-blue-50/80"
+                        : "border-slate-200 bg-white hover:border-sky-200 hover:bg-sky-50/60",
+                    ].join(" ")}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#2563eb,#06b6d4)] text-sm font-semibold text-white">
+                        {getInitials(user.fullName)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold text-slate-900">
+                          {user.fullName || "Chưa cập nhật tên"}
+                        </p>
+                        <p className="truncate text-sm text-slate-600">{user.email}</p>
+                        <p className="truncate text-xs text-slate-400">
+                          {user.phoneNumber || "Chưa có số điện thoại"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <AdminBadge className={roleBadgeClass[user.role]}>
+                        {formatRoleLabel(user.role)}
+                      </AdminBadge>
+                      <AdminBadge className={user.isOnline ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}>
+                        {user.isOnline ? "Online" : "Offline"}
+                      </AdminBadge>
+                      <span className="text-xs font-medium text-slate-400">
+                        Tạo ngày {formatAdminDate(user.created)}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <AdminEmptyState
+                icon="mdi:account-search-outline"
+                title="Không có tài khoản phù hợp"
+                description="Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc hiện tại."
+              />
+            )}
+          </div>
+
+          <div className="hidden overflow-x-auto px-2 pb-4 pt-2 sm:px-4 md:block">
+            <table className="min-w-[760px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-left text-[11px] uppercase tracking-[0.18em] text-slate-500">
                   <th className="px-4 py-3 font-semibold">Người dùng</th>
@@ -165,7 +218,7 @@ export default function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {(usersQuery.data?.items ?? []).map((user) => (
+                {users.map((user) => (
                   <tr
                     key={user.id}
                     onClick={() => setSelectedUserId(user.id)}
@@ -206,7 +259,7 @@ export default function AdminUsersPage() {
               </tbody>
             </table>
 
-            {!usersQuery.data?.items.length ? (
+            {!users.length ? (
               <div className="px-2 py-4">
                 <AdminEmptyState
                   icon="mdi:account-search-outline"
@@ -277,7 +330,7 @@ export default function AdminUsersPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <InfoCard label="Tổng đơn" value={String(selectedUser.totalOrders)} />
                   <InfoCard label="Tổng chi tiêu" value={formatPrice(selectedUser.totalSpent)} />
                   <InfoCard label="Ngày tạo" value={formatAdminDate(selectedUser.created)} />

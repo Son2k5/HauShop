@@ -33,7 +33,7 @@ export default function AdminLayout() {
   const fullName = `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() || "Admin";
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#dbeafe_0%,#eff6ff_28%,#f8fbff_58%,#eef2ff_100%)] text-slate-950">
+    <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,#dbeafe_0%,#eff6ff_28%,#f8fbff_58%,#eef2ff_100%)] text-slate-950">
       <div
         className={[
           "fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-[2px] lg:hidden",
@@ -114,9 +114,9 @@ export default function AdminLayout() {
         </div>
       </aside>
 
-      <div className="lg:pl-[278px]">
+      <div className="min-w-0 lg:pl-[278px]">
         <header className="sticky top-0 z-30 border-b border-sky-200/80 bg-white/80 backdrop-blur-xl">
-          <div className="mx-auto flex max-w-[1440px] items-center gap-4 px-4 py-2 sm:px-6 lg:px-8">
+          <div className="mx-auto flex max-w-[1440px] items-center gap-3 px-3 py-2 sm:gap-4 sm:px-6 lg:px-8">
             <button
               type="button"
               onClick={() => setSidebarOpen((current) => !current)}
@@ -128,7 +128,7 @@ export default function AdminLayout() {
 
             <div className="min-w-0 flex-1">
               <h1
-                className="truncate text-[1.75rem] font-semibold text-slate-900"
+                className="truncate text-xl font-semibold text-slate-900 sm:text-[1.75rem]"
                 style={{ fontFamily: "'Poppins', sans-serif" }}
               >
                 {pageMeta.title}
@@ -144,7 +144,7 @@ export default function AdminLayout() {
 
               <button
                 type="button"
-                className="flex items-center gap-3 rounded-full px-3 py-1.5 text-left transition hover:bg-sky-50"
+                className="flex min-w-0 items-center gap-3 rounded-full px-1.5 py-1.5 text-left transition hover:bg-sky-50 sm:px-3"
                 aria-label="Thông tin người dùng"
               >
                 <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(135deg,#2563eb,#06b6d4)] text-sm font-semibold text-white shadow-[0_10px_22px_rgba(37,99,235,0.18)]">
@@ -167,7 +167,7 @@ export default function AdminLayout() {
           </div>
         </header>
 
-        <main className="mx-auto max-w-[1440px] px-4 py-5 sm:px-6 lg:px-8">
+        <main className="mx-auto w-full max-w-[1440px] min-w-0 px-3 py-4 sm:px-6 sm:py-5 lg:px-8">
           <Outlet />
         </main>
       </div>

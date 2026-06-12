@@ -121,7 +121,7 @@ export default function BulkUpload() {
 
           <div className="space-y-6 p-5 sm:p-6">
             <div
-              className="relative overflow-hidden rounded-[28px] border border-dashed border-sky-300 bg-[radial-gradient(circle_at_top,#eff6ff_0%,#f8fbff_45%,#ffffff_100%)] p-8"
+              className="relative overflow-hidden rounded-[22px] border border-dashed border-sky-300 bg-[radial-gradient(circle_at_top,#eff6ff_0%,#f8fbff_45%,#ffffff_100%)] p-5 sm:rounded-[28px] sm:p-8"
               onDragOver={(e) => e.preventDefault()}
               onDrop={onDrop}
             >
@@ -133,7 +133,7 @@ export default function BulkUpload() {
                   <Icon icon="mdi:cloud-upload-outline" width={38} />
                 </div>
                 <h2
-                  className="mt-5 text-2xl font-semibold text-slate-900"
+                  className="mt-5 text-xl font-semibold text-slate-900 sm:text-2xl"
                   style={{ fontFamily: "'Poppins', sans-serif" }}
                 >
                   Kéo thả ảnh hoặc thư mục vào đây
@@ -142,12 +142,12 @@ export default function BulkUpload() {
                   Hỗ trợ chọn nhiều ảnh cùng lúc để đẩy thẳng lên Cloudinary. Bạn có thể kết hợp kéo thả và chọn file thủ công.
                 </p>
 
-                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                  <AdminPrimaryButton type="button" onClick={() => fileRef.current?.click()}>
+                <div className="mt-6 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                  <AdminPrimaryButton type="button" onClick={() => fileRef.current?.click()} className="w-full sm:w-auto">
                     <Icon icon="mdi:image-plus-outline" width={18} className="mr-2" />
                     Chọn ảnh
                   </AdminPrimaryButton>
-                  <AdminSecondaryButton type="button" onClick={() => folderRef.current?.click()}>
+                  <AdminSecondaryButton type="button" onClick={() => folderRef.current?.click()} className="w-full sm:w-auto">
                     <Icon icon="mdi:folder-outline" width={18} className="mr-2" />
                     Chọn thư mục
                   </AdminSecondaryButton>
@@ -193,12 +193,12 @@ export default function BulkUpload() {
 
             {items.length ? (
               <div className="space-y-4">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-slate-900">Danh sách xem trước</p>
                     <p className="text-sm text-slate-500">Kiểm tra nhanh ảnh trước khi tải lên.</p>
                   </div>
-                  <AdminSecondaryButton type="button" onClick={() => setItems([])} disabled={loading}>
+                  <AdminSecondaryButton type="button" onClick={() => setItems([])} disabled={loading} className="w-full sm:w-auto">
                     <Icon icon="mdi:delete-outline" width={18} className="mr-2" />
                     Dọn danh sách
                   </AdminSecondaryButton>
@@ -281,10 +281,10 @@ export default function BulkUpload() {
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-        <AdminSecondaryButton type="button" onClick={() => setItems([])} disabled={loading || items.length === 0}>
+        <AdminSecondaryButton type="button" onClick={() => setItems([])} disabled={loading || items.length === 0} className="w-full sm:w-auto">
           Dọn danh sách
         </AdminSecondaryButton>
-        <AdminPrimaryButton type="button" onClick={handleUpload} disabled={loading || items.length === 0}>
+        <AdminPrimaryButton type="button" onClick={handleUpload} disabled={loading || items.length === 0} className="w-full sm:w-auto">
           <Icon icon="mdi:cloud-upload-outline" width={18} className="mr-2" />
           {loading ? "Đang tải lên..." : `Bắt đầu tải ${items.length} ảnh`}
         </AdminPrimaryButton>

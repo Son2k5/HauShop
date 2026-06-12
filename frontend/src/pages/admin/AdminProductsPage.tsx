@@ -122,6 +122,7 @@ export default function AdminProductsPage() {
     enabled: !!selectedProductId,
   });
   const isLoadingSelectedProduct = formMode === "edit" && selectedProductQuery.isLoading;
+  const products = productsQuery.data?.items ?? [];
 
   const createMutation = useMutation({
     mutationFn: (dto: CreateProductDto) => adminService.createProduct(dto),
@@ -175,13 +176,12 @@ export default function AdminProductsPage() {
   });
 
   const stats = useMemo(() => {
-    const items = productsQuery.data?.items ?? [];
     return {
-      active: items.filter((item) => item.isActive).length,
-      inactive: items.filter((item) => !item.isActive).length,
-      totalStock: items.reduce((sum, item) => sum + (item.totalStock ?? item.stock ?? 0), 0),
+      active: products.filter((item) => item.isActive).length,
+      inactive: products.filter((item) => !item.isActive).length,
+      totalStock: products.reduce((sum, item) => sum + (item.totalStock ?? item.stock ?? 0), 0),
     };
-  }, [productsQuery.data?.items]);
+  }, [products]);
 
   const fillForm = (product: ProductDto) => {
     setFormMode("edit");
@@ -302,7 +302,7 @@ export default function AdminProductsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <AdminStatCard
           icon="mdi:package-variant-closed"
           label="Tổng sản phẩm"
@@ -347,8 +347,85 @@ export default function AdminProductsPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto px-2 pb-4 pt-2 sm:px-4">
-            <table className="min-w-full text-sm">
+          <div className="px-4 pb-4 pt-4 md:hidden">
+            {products.length ? (
+              <div className="space-y-3">
+                {products.map((product) => (
+                  <div
+                    key={product.id}
+                    className={[
+                      "rounded-2xl border p-4 transition",
+                      selectedProductId === product.id
+                        ? "border-blue-200 bg-blue-50/80"
+                        : "border-gray-200 bg-white",
+                    ].join(" ")}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormMode("edit");
+                        setSelectedProductId(product.id);
+                        setFormError(null);
+                      }}
+                      className="block w-full text-left"
+                    >
+                      <p className="truncate font-semibold text-black">{product.name}</p>
+                      <p className="mt-1 truncate text-xs text-gray-500">
+                        {product.sku} · {product.slug}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500">Tạo ngày {formatAdminDate(product.created)}</p>
+                    </button>
+
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-xs text-gray-500">Giá</p>
+                        <p className="font-semibold tabular-nums text-black">{formatPrice(product.price)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Kho</p>
+                        <p className="font-semibold text-gray-900">{product.totalStock ?? product.stock}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <AdminBadge className={product.isActive ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-700"}>
+                        {product.isActive ? "Đang bán" : "Tạm ẩn"}
+                      </AdminBadge>
+                      <button
+                        type="button"
+                        onClick={() => void toggleMutation.mutateAsync(product.id)}
+                        className="inline-flex min-h-9 items-center rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700"
+                      >
+                        <Icon icon="mdi:eye-outline" width={16} className="mr-1.5" />
+                        Ẩn/Hiện
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`Xóa sản phẩm "${product.name}"?`)) {
+                            void deleteMutation.mutateAsync(product.id);
+                          }
+                        }}
+                        className="inline-flex min-h-9 items-center rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700"
+                      >
+                        <Icon icon="mdi:delete-outline" width={16} className="mr-1.5" />
+                        Xóa
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <AdminEmptyState
+                icon="mdi:package-variant-closed"
+                title="Không có sản phẩm phù hợp"
+                description="Thử thay đổi từ khóa tìm kiếm hoặc tạo mới sản phẩm."
+              />
+            )}
+          </div>
+
+          <div className="hidden overflow-x-auto px-2 pb-4 pt-2 sm:px-4 md:block">
+            <table className="min-w-[820px] text-sm">
               <thead>
                 <tr className="border-b border-gray-200 text-left text-[11px] uppercase tracking-[0.18em] text-gray-500">
                   <th className="px-4 py-3 font-semibold">Sản phẩm</th>
@@ -359,7 +436,7 @@ export default function AdminProductsPage() {
                 </tr>
               </thead>
               <tbody>
-                {(productsQuery.data?.items ?? []).map((product) => (
+                {products.map((product) => (
                   <ProductRow
                     key={product.id}
                     product={product}
@@ -376,7 +453,7 @@ export default function AdminProductsPage() {
               </tbody>
             </table>
 
-            {!productsQuery.data?.items.length ? (
+            {!products.length ? (
               <div className="px-2 py-4">
                 <AdminEmptyState
                   icon="mdi:package-variant-closed"
@@ -571,9 +648,9 @@ export default function AdminProductsPage() {
                 <p className="text-sm font-medium text-gray-800">Biến thể hiện có</p>
                 <div className="mt-3 space-y-2">
                   {selectedProductQuery.data.variants.map((variant) => (
-                    <div key={variant.id} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm">
-                      <span>{variant.sku}</span>
-                      <span>
+                    <div key={variant.id} className="flex flex-col gap-1 rounded-lg bg-gray-50 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+                      <span className="break-words">{variant.sku}</span>
+                      <span className="shrink-0">
                         {formatPrice(variant.price)} · Kho {variant.stock}
                       </span>
                     </div>
@@ -594,7 +671,7 @@ export default function AdminProductsPage() {
               </div>
             ) : null}
 
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <AdminPrimaryButton
                 type="button"
                 onClick={() => void handleSubmit()}

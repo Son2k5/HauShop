@@ -100,6 +100,7 @@ export default function AdminOrdersPage() {
   const orderDetailQuery = useAdminOrder(selectedOrderId);
   const updateStatusMutation = useUpdateAdminOrderStatus();
   const orderDetail = orderDetailQuery.data;
+  const orders = ordersQuery.data?.items ?? [];
 
   useEffect(() => {
     const orderId = new URLSearchParams(location.search).get("orderId");
@@ -109,13 +110,12 @@ export default function AdminOrdersPage() {
   }, [location.search]);
 
   const stats = useMemo(() => {
-    const items = ordersQuery.data?.items ?? [];
     return {
-      pending: items.filter((item) => item.status === "Pending").length,
-      shipping: items.filter((item) => item.status === "Shipping").length,
-      completed: items.filter((item) => item.status === "Completed").length,
+      pending: orders.filter((item) => item.status === "Pending").length,
+      shipping: orders.filter((item) => item.status === "Shipping").length,
+      completed: orders.filter((item) => item.status === "Completed").length,
     };
-  }, [ordersQuery.data?.items]);
+  }, [orders]);
 
   useEffect(() => {
     if (!orderDetail) return;
@@ -216,7 +216,7 @@ export default function AdminOrdersPage() {
                 setPage(1);
                 setStatus(event.target.value as AdminUpdateOrderStatusDto["status"] | "");
               }}
-              className="rounded-xl border border-sky-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400"
+              className="w-full rounded-xl border border-sky-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400 sm:w-auto"
             >
               <option value="">Tất cả trạng thái</option>
               {statusOptions.map((item) => (
@@ -227,8 +227,72 @@ export default function AdminOrdersPage() {
             </select>
           </div>
 
-          <div className="overflow-x-auto px-2 pb-4 pt-2 sm:px-4">
-            <table className="min-w-full text-sm">
+          <div className="px-4 pb-4 pt-4 md:hidden">
+            {orders.length ? (
+              <div className="space-y-3">
+                {orders.map((order) => (
+                  <button
+                    key={order.id}
+                    type="button"
+                    onClick={() => setSelectedOrderId(order.id)}
+                    className={[
+                      "w-full rounded-2xl border p-4 text-left transition",
+                      selectedOrderId === order.id
+                        ? "border-blue-200 bg-blue-50/80"
+                        : "border-slate-200 bg-white hover:border-sky-200 hover:bg-sky-50/60",
+                    ].join(" ")}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-slate-900">{order.id}</p>
+                        <p className="truncate text-sm text-slate-600">
+                          {order.customerName || "Khách lẻ"}
+                        </p>
+                        <p className="text-xs text-slate-400">{formatAdminDateTime(order.created)}</p>
+                      </div>
+                      <p
+                        className="shrink-0 text-right text-sm font-semibold tabular-nums text-slate-950"
+                        style={{ fontFamily: "'Poppins', sans-serif" }}
+                      >
+                        {formatPrice(order.total)}
+                      </p>
+                    </div>
+
+                    <div className="mt-4 grid gap-2 text-sm text-slate-600">
+                      <div className="flex justify-between gap-3">
+                        <span>Người nhận</span>
+                        <span className="min-w-0 truncate text-right font-medium text-slate-900">
+                          {order.receiverName}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span>Điện thoại</span>
+                        <span className="font-medium text-slate-900">{order.receiverPhone}</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <AdminBadge className={statusTone(order.paymentStatus, "payment")}>
+                        {order.paymentStatus}
+                      </AdminBadge>
+                      <AdminBadge className={statusTone(order.status)}>
+                        {formatOrderStatusLabel(order.status)}
+                      </AdminBadge>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <AdminEmptyState
+                icon="mdi:shopping-off"
+                title="Không có đơn hàng phù hợp"
+                description="Thử đổi từ khóa tìm kiếm hoặc bỏ bộ lọc trạng thái hiện tại."
+              />
+            )}
+          </div>
+
+          <div className="hidden overflow-x-auto px-2 pb-4 pt-2 sm:px-4 md:block">
+            <table className="min-w-[880px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-left text-[11px] uppercase tracking-[0.18em] text-slate-500">
                   <th className="px-4 py-3 font-semibold">Đơn hàng</th>
@@ -239,7 +303,7 @@ export default function AdminOrdersPage() {
                 </tr>
               </thead>
               <tbody>
-                {(ordersQuery.data?.items ?? []).map((order) => (
+                {orders.map((order) => (
                   <tr
                     key={order.id}
                     onClick={() => setSelectedOrderId(order.id)}
@@ -278,7 +342,7 @@ export default function AdminOrdersPage() {
               </tbody>
             </table>
 
-            {!ordersQuery.data?.items.length ? (
+            {!orders.length ? (
               <div className="px-2 py-4">
                 <AdminEmptyState
                   icon="mdi:shopping-off"
@@ -341,7 +405,7 @@ export default function AdminOrdersPage() {
                       {formatOrderStatusLabel(orderDetail.status)}
                     </AdminBadge>
                   </div>
-                  <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <InfoCard label="Tổng tiền" value={formatPrice(orderDetail.total)} />
                     <InfoCard label="Thanh toán" value={orderDetail.paymentStatus} />
                     <InfoCard label="Tạm tính" value={formatPrice(orderDetail.subtotal)} />
@@ -483,14 +547,14 @@ export default function AdminOrdersPage() {
                         key={`${item.productId}-${index}`}
                         className="rounded-[18px] border border-slate-200/70 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4"
                       >
-                        <div className="flex items-start justify-between gap-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                           <div className="min-w-0">
                             <p className="truncate font-semibold text-slate-900">{item.productName}</p>
                             <p className="text-xs text-slate-400">
                               {item.variantSku || "Không có SKU"} · {item.variantSize || "-"} · {item.variantColor || "-"}
                             </p>
                           </div>
-                          <div className="text-right">
+                          <div className="sm:text-right">
                             <p className="font-semibold text-blue-700">{formatPrice(item.total)}</p>
                             <p className="text-xs text-slate-400">SL {item.quantity}</p>
                           </div>
@@ -518,7 +582,7 @@ function InfoCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-[20px] border border-slate-200/80 bg-white p-4">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</p>
-      <p className="mt-2 text-base font-semibold text-slate-900">{value}</p>
+      <p className="mt-2 break-words text-base font-semibold text-slate-900">{value}</p>
     </div>
   );
 }

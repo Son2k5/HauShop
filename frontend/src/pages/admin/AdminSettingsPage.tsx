@@ -260,8 +260,8 @@ export default function AdminSettingsPage() {
 
           <div className="space-y-5 p-5 sm:p-6">
             <div className="rounded-[26px] border border-sky-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f0f9ff_100%)] p-5">
-              <div className="flex items-start gap-4">
-                <div className="relative">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                <div className="relative shrink-0">
                   <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[26px] bg-[linear-gradient(135deg,#2563eb,#06b6d4)] text-2xl font-semibold text-white shadow-[0_18px_40px_rgba(37,99,235,0.2)]">
                     {user?.avatar ? (
                       <img src={user.avatar} alt="Avatar" className="h-full w-full object-cover" />
@@ -297,11 +297,11 @@ export default function AdminSettingsPage() {
                   onChange={handleAvatarChange}
                 />
                 <div className="flex flex-col gap-3 sm:flex-row">
-                  <AdminPrimaryButton type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingAvatar}>
+                  <AdminPrimaryButton type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingAvatar} className="w-full sm:w-auto">
                     <Icon icon="mdi:camera-outline" width={18} className="mr-2" />
                     Đổi ảnh đại diện
                   </AdminPrimaryButton>
-                  <AdminSecondaryButton type="button" onClick={() => void handleRemoveAvatar()} disabled={uploadingAvatar || !user?.avatar}>
+                  <AdminSecondaryButton type="button" onClick={() => void handleRemoveAvatar()} disabled={uploadingAvatar || !user?.avatar} className="w-full sm:w-auto">
                     <Icon icon="mdi:trash-can-outline" width={18} className="mr-2" />
                     Xóa ảnh
                   </AdminSecondaryButton>
@@ -355,7 +355,7 @@ export default function AdminSettingsPage() {
               Backend hiện hỗ trợ cập nhật 3 trường: <strong>Tên</strong>, <strong>Họ</strong>, <strong>Số điện thoại</strong>.
             </div>
 
-            <AdminPrimaryButton type="button" onClick={() => void handleSaveProfile()} disabled={savingProfile || !hasProfileChanges}>
+            <AdminPrimaryButton type="button" onClick={() => void handleSaveProfile()} disabled={savingProfile || !hasProfileChanges} className="w-full">
               {savingProfile ? "Đang cập nhật tài khoản..." : "Lưu thông tin tài khoản"}
             </AdminPrimaryButton>
           </div>
@@ -483,7 +483,7 @@ function ToggleRow({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 px-4 py-3">
+    <div className="flex flex-col gap-3 rounded-xl border border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <span className="text-sm font-medium text-gray-800">{label}</span>
       <button
         type="button"

@@ -295,20 +295,11 @@ export default function CheckoutPage() {
                     <div className="flex shrink-0 gap-2">
                       <button
                         type="button"
-                        onClick={() => openAddressModal("select")}
+                        onClick={() => selectedAddress ? openAddressModal("edit", selectedAddress) : openAddressModal("select")}
                         className="border border-gray-300 px-3 py-2 text-sm font-medium transition hover:bg-gray-50"
                       >
-                        Thay đổi
+                        Thay đổi địa chỉ
                       </button>
-                      {selectedAddress ? (
-                        <button
-                          type="button"
-                          onClick={() => openAddressModal("edit", selectedAddress)}
-                          className="border border-gray-300 px-3 py-2 text-sm font-medium transition hover:bg-gray-50"
-                        >
-                          Sửa
-                        </button>
-                      ) : null}
                       <button
                         type="button"
                         onClick={() => openAddressModal("create")}
