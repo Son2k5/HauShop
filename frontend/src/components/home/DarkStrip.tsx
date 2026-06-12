@@ -69,7 +69,7 @@ export default function DarkStrip() {
               Premium Jacket
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <p className="font-bodyFont text-xl font-semibold text-white">2.499.000đ</p>
+              <p className="font-bodyFont text-xl font-semibold text-white">299.000đ</p>
               <span className="bg-white px-3.5 py-1.5 font-bodyFont text-xs font-bold text-primeColor">
                 -30%
               </span>
