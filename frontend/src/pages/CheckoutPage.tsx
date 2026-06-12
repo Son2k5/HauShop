@@ -7,7 +7,7 @@ import { checkoutApi } from "../services/orderService";
 import { userService } from "../services/userService";
 import { useToast } from "../context/toastContext";
 import { formatPrice } from "../utils/formatPrice";
-import type { AddressDto, CreateAddressDto } from "../@types/address.type";
+import type { AddressDto, CreateAddressDto, UpdateAddressDto } from "../@types/address.type";
 import { queryKeys } from "../lib/queryKeys";
 import { logger } from "../lib/logger";
 import { useAuth } from "../hooks/useAuth";
@@ -43,7 +43,8 @@ export default function CheckoutPage() {
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [addressModalOpen, setAddressModalOpen] = useState(false);
-  const [addressModalMode, setAddressModalMode] = useState<"select" | "create">("select");
+  const [addressModalMode, setAddressModalMode] = useState<"select" | "create" | "edit">("select");
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [addressForm, setAddressForm] = useState<CreateAddressDto>(emptyAddressForm);
   const [savingAddress, setSavingAddress] = useState(false);
 
@@ -79,12 +80,25 @@ export default function CheckoutPage() {
     fetchAddresses();
   }, [isAuthenticated, showToast]);
 
-  const openAddressModal = (mode: "select" | "create") => {
+  const openAddressModal = (mode: "select" | "create" | "edit", address?: AddressDto) => {
     setAddressModalMode(mode);
-    setAddressForm({
-      ...emptyAddressForm,
-      isDefault: addresses.length === 0,
-    });
+    if (mode === "edit" && address) {
+      setEditingAddressId(address.id);
+      setAddressForm({
+        addressLine: address.addressLine,
+        city: address.city,
+        state: address.state,
+        country: address.country || "Vietnam",
+        zipCode: address.zipCode,
+        isDefault: address.isDefault,
+      });
+    } else {
+      setEditingAddressId(null);
+      setAddressForm({
+        ...emptyAddressForm,
+        isDefault: addresses.length === 0,
+      });
+    }
     setAddressModalOpen(true);
   };
 
@@ -122,6 +136,45 @@ export default function CheckoutPage() {
     } catch (error) {
       logger.error("Failed to create address", error);
       showToast("Không thể thêm địa chỉ", "error");
+    } finally {
+      setSavingAddress(false);
+    }
+  };
+
+  const handleUpdateAddress = async () => {
+    if (!editingAddressId) return;
+
+    if (!addressForm.addressLine.trim() || !addressForm.city.trim()) {
+      showToast("Vui lòng nhập địa chỉ và tỉnh/thành phố", "warning");
+      return;
+    }
+
+    const payload: UpdateAddressDto = {
+      ...addressForm,
+      addressLine: addressForm.addressLine.trim(),
+      city: addressForm.city.trim(),
+      state: addressForm.state?.trim(),
+      country: addressForm.country?.trim() || "Vietnam",
+      zipCode: addressForm.zipCode?.trim(),
+    };
+
+    try {
+      setSavingAddress(true);
+      const updated = await userService.updateAddress(editingAddressId, payload);
+
+      setAddresses((current) =>
+        current.map((address) => {
+          if (address.id === updated.id) return updated;
+          return updated.isDefault ? { ...address, isDefault: false } : address;
+        })
+      );
+      setShippingAddressId(updated.id);
+      setEditingAddressId(null);
+      setAddressModalOpen(false);
+      showToast("Đã cập nhật địa chỉ giao hàng", "success");
+    } catch (error) {
+      logger.error("Failed to update address", error);
+      showToast("Không thể cập nhật địa chỉ", "error");
     } finally {
       setSavingAddress(false);
     }
@@ -247,6 +300,15 @@ export default function CheckoutPage() {
                       >
                         Thay đổi
                       </button>
+                      {selectedAddress ? (
+                        <button
+                          type="button"
+                          onClick={() => openAddressModal("edit", selectedAddress)}
+                          className="border border-gray-300 px-3 py-2 text-sm font-medium transition hover:bg-gray-50"
+                        >
+                          Sửa
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => openAddressModal("create")}
@@ -358,6 +420,7 @@ export default function CheckoutPage() {
           form={addressForm}
           onFormChange={handleAddressFormChange}
           onCreate={handleCreateAddress}
+          onUpdate={handleUpdateAddress}
           onClose={() => setAddressModalOpen(false)}
           saving={savingAddress}
         />
@@ -375,20 +438,24 @@ function AddressModal({
   form,
   onFormChange,
   onCreate,
+  onUpdate,
   onClose,
   saving,
 }: {
-  mode: "select" | "create";
-  setMode: (mode: "select" | "create") => void;
+  mode: "select" | "create" | "edit";
+  setMode: (mode: "select" | "create" | "edit") => void;
   addresses: AddressDto[];
   selectedAddressId: string;
   onSelect: (id: string) => void;
   form: CreateAddressDto;
   onFormChange: (key: keyof CreateAddressDto, value: string | boolean) => void;
   onCreate: () => void;
+  onUpdate: () => void;
   onClose: () => void;
   saving: boolean;
 }) {
+  const isEditing = mode === "edit";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
       <div className="w-full max-w-2xl bg-white shadow-2xl">
@@ -422,10 +489,10 @@ function AddressModal({
             onClick={() => setMode("create")}
             className={[
               "flex-1 px-4 py-3 text-sm font-semibold",
-              mode === "create" ? "border-b-2 border-primeColor text-primeColor" : "text-gray-500",
+              mode === "create" || mode === "edit" ? "border-b-2 border-primeColor text-primeColor" : "text-gray-500",
             ].join(" ")}
           >
-            Thêm địa chỉ mới
+            {isEditing ? "Sửa địa chỉ" : "Thêm địa chỉ mới"}
           </button>
         </div>
 
@@ -528,11 +595,11 @@ function AddressModal({
                 </button>
                 <button
                   type="button"
-                  onClick={onCreate}
+                  onClick={isEditing ? onUpdate : onCreate}
                   disabled={saving}
                   className="bg-primeColor px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {saving ? "Đang lưu..." : "Lưu địa chỉ"}
+                  {saving ? "Đang lưu..." : isEditing ? "Cập nhật địa chỉ" : "Lưu địa chỉ"}
                 </button>
               </div>
             </div>
