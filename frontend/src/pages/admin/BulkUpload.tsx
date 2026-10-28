@@ -71,7 +71,7 @@ export default function BulkUpload() {
       setFailedCount(result.errors.length);
       setMessage(`Hoàn tất tải ảnh. Thành công ${result.uploaded.length}, thất bại ${result.errors.length}.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Không thể tải ảnh lên Cloudinary.");
+      setMessage(error instanceof Error ? error.message : "Không thể tải ảnh lên đám mây.");
     } finally {
       setLoading(false);
       setPercent(0);
@@ -114,14 +114,14 @@ export default function BulkUpload() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_380px]">
         <AdminPanel>
           <AdminPanelHeader
-            title="Tải ảnh lên Cloudinary"
+            title="Quản lý & Tải ảnh lên đám mây"
             subtitle="Kéo thả ảnh hoặc thư mục, xem trước và tải hàng loạt."
-            action={<AdminBadge className="bg-sky-100 text-sky-700">Cloudinary</AdminBadge>}
+            action={<AdminBadge className="bg-sky-100 text-sky-700">Lưu trữ đám mây</AdminBadge>}
           />
 
           <div className="space-y-6 p-5 sm:p-6">
             <div
-              className="relative overflow-hidden rounded-[22px] border border-dashed border-sky-300 bg-[radial-gradient(circle_at_top,#eff6ff_0%,#f8fbff_45%,#ffffff_100%)] p-5 sm:rounded-[28px] sm:p-8"
+              className="relative overflow-hidden rounded-lg border border-dashed border-sky-300 bg-[radial-gradient(circle_at_top,#eff6ff_0%,#f8fbff_45%,#ffffff_100%)] p-5 sm:rounded-lg sm:p-8"
               onDragOver={(e) => e.preventDefault()}
               onDrop={onDrop}
             >
@@ -129,17 +129,16 @@ export default function BulkUpload() {
               <div className="absolute bottom-0 left-0 h-32 w-32 rounded-full bg-cyan-200/35 blur-3xl" />
 
               <div className="relative flex flex-col items-center text-center">
-                <div className="flex h-20 w-20 items-center justify-center rounded-[26px] bg-[linear-gradient(135deg,#2563eb,#06b6d4)] text-white shadow-[0_18px_40px_rgba(37,99,235,0.25)]">
+                <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-[linear-gradient(135deg,#2563eb,#06b6d4)] text-white shadow-[0_18px_40px_rgba(37,99,235,0.25)]">
                   <Icon icon="mdi:cloud-upload-outline" width={38} />
                 </div>
                 <h2
-                  className="mt-5 text-xl font-semibold text-slate-900 sm:text-2xl"
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
+                  className="mt-5 font-inter text-xl font-semibold text-slate-900 sm:text-2xl"
                 >
                   Kéo thả ảnh hoặc thư mục vào đây
                 </h2>
                 <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
-                  Hỗ trợ chọn nhiều ảnh cùng lúc để đẩy thẳng lên Cloudinary. Bạn có thể kết hợp kéo thả và chọn file thủ công.
+                  Hỗ trợ chọn nhiều ảnh cùng lúc để tải thẳng lên hệ thống lưu trữ. Bạn có thể kết hợp kéo thả và chọn tệp thủ công.
                 </p>
 
                 <div className="mt-6 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
@@ -166,9 +165,9 @@ export default function BulkUpload() {
             </div>
 
             {loading ? (
-              <div className="rounded-[24px] border border-sky-200 bg-white p-4">
+              <div className="rounded-lg border border-sky-200 bg-white p-4">
                 <div className="mb-3 flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-slate-800">Đang tải lên Cloudinary</p>
+                  <p className="text-sm font-semibold text-slate-800">Đang tải ảnh lên hệ thống</p>
                   <span className="text-sm font-medium text-sky-700">{percent}%</span>
                 </div>
                 <div className="h-3 overflow-hidden rounded-full bg-slate-100">
@@ -183,7 +182,7 @@ export default function BulkUpload() {
             {message ? (
               <div
                 className={[
-                  "rounded-[22px] px-4 py-3 text-sm",
+                  "rounded-lg px-4 py-3 text-sm",
                   failedCount > 0 ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-700",
                 ].join(" ")}
               >
@@ -208,7 +207,7 @@ export default function BulkUpload() {
                   {items.map((item) => (
                     <div
                       key={item.id}
-                      className="group overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-[0_12px_26px_rgba(15,23,42,0.05)]"
+                      className="group overflow-hidden rounded-lg border border-slate-200/80 bg-white shadow-[0_12px_26px_rgba(15,23,42,0.05)]"
                     >
                       <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
                         <img
@@ -230,7 +229,7 @@ export default function BulkUpload() {
                         <p className="truncate text-sm font-semibold text-slate-900">{item.file.name}</p>
                         <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
                           <span>{(item.file.size / 1024 / 1024).toFixed(2)} MB</span>
-                          <span>{item.file.type || "image/*"}</span>
+                          <span>{item.file.type || "Hình ảnh"}</span>
                         </div>
                       </div>
                     </div>
@@ -241,7 +240,7 @@ export default function BulkUpload() {
               <AdminEmptyState
                 icon="mdi:image-multiple-outline"
                 title="Chưa có ảnh nào trong danh sách"
-                description="Chọn ảnh hoặc thư mục để bắt đầu tải hàng loạt lên Cloudinary."
+                description="Chọn ảnh hoặc thư mục để bắt đầu tải hàng loạt lên hệ thống."
               />
             )}
           </div>
@@ -254,10 +253,10 @@ export default function BulkUpload() {
               {[
                 ["1", "Chọn ảnh", "Thêm ảnh lẻ hoặc cả thư mục cần tải lên."],
                 ["2", "Xem trước", "Rà nhanh dung lượng và loại bỏ ảnh chưa cần dùng."],
-                ["3", "Tải lên", "Đẩy toàn bộ ảnh lên Cloudinary theo một lần xử lý."],
+                ["3", "Tải lên", "Đẩy toàn bộ ảnh lên đám mây theo một lần xử lý."],
               ].map(([step, title, desc]) => (
-                <div key={step} className="flex gap-4 rounded-[22px] border border-slate-200/80 bg-slate-50/70 p-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#2563eb,#0ea5e9)] text-sm font-semibold text-white">
+                <div key={step} className="flex gap-4 rounded-lg border border-slate-200/80 bg-slate-50/70 p-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[linear-gradient(135deg,#2563eb,#0ea5e9)] text-sm font-semibold text-white">
                     {step}
                   </div>
                   <div>
@@ -272,9 +271,9 @@ export default function BulkUpload() {
           <AdminPanel>
             <AdminPanelHeader title="Lưu ý" />
             <div className="space-y-3 p-5 text-sm leading-6 text-slate-600 sm:p-6">
-              <p>Ảnh quá lớn sẽ làm thời gian upload chậm hơn đáng kể.</p>
+              <p>Ảnh quá lớn sẽ làm thời gian tải lên chậm hơn đáng kể.</p>
               <p>Nếu có ảnh lỗi, hệ thống vẫn tiếp tục các ảnh còn lại thay vì dừng toàn bộ.</p>
-              <p>Sau khi upload xong, bạn có thể dán URL ảnh vào form sản phẩm để dùng ngay.</p>
+              <p>Sau khi tải xong, bạn có thể dán đường dẫn ảnh vào biểu mẫu sản phẩm để dùng ngay.</p>
             </div>
           </AdminPanel>
         </div>

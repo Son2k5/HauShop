@@ -14,6 +14,8 @@ namespace api.services.interfaces.admin
 
         Task<AdminUserDetailDto> GetUserByIdAsync(string userId, CancellationToken ct = default);
 
+        Task DeleteUserAsync(string userId, CancellationToken ct = default);
+
         Task<AdminUserDetailDto> UpdateUserRoleAsync(
             string userId,
             AdminUpdateUserRoleDto dto,

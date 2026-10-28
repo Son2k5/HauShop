@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using api.data;
 using api.DTOs.admin;
+using api.DTOs.order;
 using api.DTOs.product;
 using api.mappings;
 using api.models.entities;
@@ -110,6 +111,14 @@ namespace api.services.implementations.admin
             };
         }
 
+        public async Task DeleteUserAsync(string userId, CancellationToken ct = default)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId, ct)
+                ?? throw new KeyNotFoundException("User not found");
+            _context.Users.Remove(user);
+            await _context.SaveChangesAsync(ct);
+        }
+
         public async Task<AdminUserDetailDto> GetUserByIdAsync(string userId, CancellationToken ct = default)
         {
             var user = await _context.Users
@@ -142,7 +151,8 @@ namespace api.services.implementations.admin
                 LastSeen = user.LastSeen,
                 TotalOrders = orderStats?.TotalOrders ?? 0,
                 TotalSpent = orderStats?.TotalSpent ?? 0m,
-                LastOrderAt = orderStats?.LastOrderAt
+                LastOrderAt = orderStats?.LastOrderAt,
+                RecentOrders = await _context.Orders.AsNoTracking().Where(o => o.UserId == userId).OrderByDescending(o => o.Created).Take(5).Select(o => new RecentOrderDto { Id = o.Id, CustomerName = ((user.FirstName ?? string.Empty) + " " + (user.LastName ?? string.Empty)).Trim(), TotalAmount = o.Total, Status = o.Status.ToString(), Created = o.Created }).ToListAsync(ct)
             };
         }
 

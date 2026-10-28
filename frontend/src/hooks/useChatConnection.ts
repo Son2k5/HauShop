@@ -1,20 +1,23 @@
 import * as signalR from "@microsoft/signalr";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ChatMessageDto, SendChatMessageDto } from "../@types/chat.type";
+import type { ChatMessageDto, MessagesReadEventDto, SendChatMessageDto } from "../@types/chat.type";
 import { SIGNALR_HUB_URL } from "../lib/env";
 
 export function useChatConnection({
   enabled,
   onMessage,
   onRoomUpdated,
+  onMessagesRead,
 }: {
   enabled: boolean;
   onMessage?: (message: ChatMessageDto) => void;
   onRoomUpdated?: (roomId: string) => void;
+  onMessagesRead?: (event: MessagesReadEventDto) => void;
 }) {
   const connectionRef = useRef<signalR.HubConnection | null>(null);
   const onMessageRef = useRef<typeof onMessage>(onMessage);
   const onRoomUpdatedRef = useRef<typeof onRoomUpdated>(onRoomUpdated);
+  const onMessagesReadRef = useRef<typeof onMessagesRead>(onMessagesRead);
   const [status, setStatus] = useState<"idle" | "connecting" | "connected" | "disconnected">("idle");
 
   useEffect(() => {
@@ -24,6 +27,10 @@ export function useChatConnection({
   useEffect(() => {
     onRoomUpdatedRef.current = onRoomUpdated;
   }, [onRoomUpdated]);
+
+  useEffect(() => {
+    onMessagesReadRef.current = onMessagesRead;
+  }, [onMessagesRead]);
 
   const connection = useMemo(() => {
     if (!enabled) return null;
@@ -46,6 +53,7 @@ export function useChatConnection({
 
     connection.on("ReceiveMessage", (message: ChatMessageDto) => onMessageRef.current?.(message));
     connection.on("RoomUpdated", (roomId: string) => onRoomUpdatedRef.current?.(roomId));
+    connection.on("MessagesRead", (payload: MessagesReadEventDto) => onMessagesReadRef.current?.(payload));
     connection.onreconnecting(() => setStatus("connecting"));
     connection.onreconnected(() => setStatus("connected"));
     connection.onclose(() => setStatus("disconnected"));
@@ -66,6 +74,7 @@ export function useChatConnection({
       cancelled = true;
       connection.off("ReceiveMessage");
       connection.off("RoomUpdated");
+      connection.off("MessagesRead");
       void connection.stop();
       if (connectionRef.current === connection) {
         connectionRef.current = null;

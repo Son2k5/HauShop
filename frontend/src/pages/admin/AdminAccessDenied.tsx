@@ -4,18 +4,18 @@ import { Link } from "react-router-dom";
 export default function AdminAccessDenied() {
   return (
     <div className="min-h-screen bg-[#fff8f0] px-4 py-10 text-[#342110] sm:px-6 sm:py-16">
-      <div className="mx-auto max-w-2xl rounded-[24px] border border-[#f4d3ae] bg-white p-6 shadow-[0_30px_80px_rgba(231,146,24,0.08)] sm:rounded-[32px] sm:p-10">
-        <div className="flex h-16 w-16 items-center justify-center rounded-[20px] bg-[#fff2df] text-[#d97904]">
+      <div className="mx-auto max-w-2xl rounded-lg border border-[#f4d3ae] bg-white p-6 shadow-[0_30px_80px_rgba(231,146,24,0.08)] sm:rounded-lg sm:p-10">
+        <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-[#fff2df] text-[#d97904]">
           <Icon icon="mdi:shield-alert-outline" width={34} />
         </div>
         <p className="mt-6 text-sm font-semibold uppercase tracking-[0.25em] text-[#d97904]">
-          Admin Access
+          Quyền truy cập quản trị
         </p>
         <h1 className="mt-4 text-3xl font-bold leading-tight sm:text-4xl">
           Bạn không có quyền truy cập khu vực quản trị.
         </h1>
         <p className="mt-4 text-base leading-7 text-[#6d5133]">
-          Tài khoản hiện tại không phải Admin
+          Tài khoản hiện tại không có quyền quản trị viên.
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
           <Link

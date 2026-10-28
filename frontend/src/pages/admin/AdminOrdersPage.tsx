@@ -14,9 +14,12 @@ import {
   AdminPrimaryButton,
   AdminSecondaryButton,
   AdminStatCard,
+  ResizableTh,
   formatAdminDateTime,
   formatOrderStatusLabel,
+  formatPaymentStatusLabel,
   statusTone,
+  useResizableColumns,
 } from "./adminShared";
 
 const statuses: Array<AdminUpdateOrderStatusDto["status"] | ""> = [
@@ -42,6 +45,7 @@ const statuses: Array<AdminUpdateOrderStatusDto["status"] | ""> = [
 ];
 
 const statusOptions = statuses.slice(1) as AdminUpdateOrderStatusDto["status"][];
+const PAGE_SIZE = 10;
 
 const validTransitions: Partial<Record<AdminUpdateOrderStatusDto["status"], AdminUpdateOrderStatusDto["status"][]>> = {
   Pending: [OrderStatuses.Pending, OrderStatuses.OrderPlaced, OrderStatuses.SellerConfirmed, OrderStatuses.Cancelled],
@@ -85,13 +89,17 @@ export default function AdminOrdersPage() {
   const [statusNote, setStatusNote] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
+  const { widths, startResize } = useResizableColumns([
+    56, 120, 150, 150, 125, 145, 130, 130, 150,
+  ]);
+
   const debouncedSearch = useDebounce(search, 350);
   const filters = useMemo(
     () => ({
       search: debouncedSearch,
       status: status || undefined,
       page,
-      pageSize: 10,
+      pageSize: PAGE_SIZE,
     }),
     [debouncedSearch, page, status]
   );
@@ -136,7 +144,9 @@ export default function AdminOrdersPage() {
 
     const currentStatus = orderDetail.status as AdminUpdateOrderStatusDto["status"];
     if (!validTransitions[currentStatus]?.includes(draftStatus)) {
-      setFormError(`Không thể chuyển trạng thái từ ${currentStatus} sang ${draftStatus}.`);
+      setFormError(
+        `Không thể chuyển trạng thái từ ${formatOrderStatusLabel(currentStatus)} sang ${formatOrderStatusLabel(draftStatus)}.`
+      );
       return;
     }
 
@@ -163,21 +173,18 @@ export default function AdminOrdersPage() {
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <AdminStatCard
-          icon="mdi:clipboard-text-outline"
           label="Tổng đơn trong trang"
           value={String(ordersQuery.data?.items.length ?? 0)}
           meta={`Tổng kết quả ${ordersQuery.data?.total ?? 0}`}
           accentClass="bg-blue-50 text-blue-700"
         />
         <AdminStatCard
-          icon="mdi:clock-outline"
           label="Đang chờ / xử lý"
           value={String(stats.pending)}
           meta="Cần theo dõi tiếp"
           accentClass="bg-red-50 text-red-700"
         />
         <AdminStatCard
-          icon="mdi:truck-delivery-outline"
           label="Đang giao / hoàn tất"
           value={String(stats.shipping + stats.completed)}
           meta={`${stats.completed} đã hoàn thành`}
@@ -186,10 +193,10 @@ export default function AdminOrdersPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_420px]">
-        <AdminPanel>
+        <AdminPanel className="self-start">
           <AdminPanelHeader title="Danh sách đơn hàng" />
 
-          <div className="flex flex-col gap-3 border-b border-slate-200/80 px-5 py-5 sm:flex-row sm:px-6">
+          <div className="flex flex-col gap-3 border-b border-slate-200/80 px-5 py-4 sm:flex-row sm:px-6">
             <div className="relative flex-1">
               <Icon
                 icon="mdi:magnify"
@@ -205,8 +212,8 @@ export default function AdminOrdersPage() {
                     setSearch(value);
                   });
                 }}
-                placeholder="Tìm theo mã đơn, email, tên người nhận"
-                className="w-full rounded-xl border border-sky-200 bg-slate-50 px-11 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400 focus:bg-white"
+                placeholder="Tìm theo mã đơn, thư điện tử, tên người nhận"
+                className="w-full rounded-lg border border-sky-200 bg-slate-50 px-11 py-2.5 text-sm text-slate-800 outline-none transition focus:border-blue-400 focus:bg-white"
               />
             </div>
 
@@ -216,7 +223,7 @@ export default function AdminOrdersPage() {
                 setPage(1);
                 setStatus(event.target.value as AdminUpdateOrderStatusDto["status"] | "");
               }}
-              className="w-full rounded-xl border border-sky-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400 sm:w-auto"
+              className="w-full rounded-lg border border-sky-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-blue-400 sm:w-auto"
             >
               <option value="">Tất cả trạng thái</option>
               {statusOptions.map((item) => (
@@ -227,118 +234,99 @@ export default function AdminOrdersPage() {
             </select>
           </div>
 
-          <div className="px-4 pb-4 pt-4 md:hidden">
-            {orders.length ? (
-              <div className="space-y-3">
-                {orders.map((order) => (
-                  <button
-                    key={order.id}
-                    type="button"
-                    onClick={() => setSelectedOrderId(order.id)}
-                    className={[
-                      "w-full rounded-2xl border p-4 text-left transition",
-                      selectedOrderId === order.id
-                        ? "border-blue-200 bg-blue-50/80"
-                        : "border-slate-200 bg-white hover:border-sky-200 hover:bg-sky-50/60",
-                    ].join(" ")}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-slate-900">{order.id}</p>
-                        <p className="truncate text-sm text-slate-600">
-                          {order.customerName || "Khách lẻ"}
-                        </p>
-                        <p className="text-xs text-slate-400">{formatAdminDateTime(order.created)}</p>
-                      </div>
-                      <p
-                        className="shrink-0 text-right text-sm font-semibold tabular-nums text-slate-950"
-                        style={{ fontFamily: "'Poppins', sans-serif" }}
-                      >
-                        {formatPrice(order.total)}
-                      </p>
-                    </div>
-
-                    <div className="mt-4 grid gap-2 text-sm text-slate-600">
-                      <div className="flex justify-between gap-3">
-                        <span>Người nhận</span>
-                        <span className="min-w-0 truncate text-right font-medium text-slate-900">
-                          {order.receiverName}
-                        </span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span>Điện thoại</span>
-                        <span className="font-medium text-slate-900">{order.receiverPhone}</span>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <AdminBadge className={statusTone(order.paymentStatus, "payment")}>
-                        {order.paymentStatus}
-                      </AdminBadge>
-                      <AdminBadge className={statusTone(order.status)}>
-                        {formatOrderStatusLabel(order.status)}
-                      </AdminBadge>
-                    </div>
-                  </button>
+          <div className="overflow-x-auto px-2 pt-2 sm:px-4">
+            <table className="w-full table-fixed border-collapse font-inter text-sm font-normal">
+              <colgroup>
+                {widths.map((w, i) => (
+                  <col key={i} style={{ width: w }} />
                 ))}
-              </div>
-            ) : (
-              <AdminEmptyState
-                icon="mdi:shopping-off"
-                title="Không có đơn hàng phù hợp"
-                description="Thử đổi từ khóa tìm kiếm hoặc bỏ bộ lọc trạng thái hiện tại."
-              />
-            )}
-          </div>
-
-          <div className="hidden overflow-x-auto px-2 pb-4 pt-2 sm:px-4 md:block">
-            <table className="min-w-[880px] text-sm">
+              </colgroup>
               <thead>
-                <tr className="border-b border-slate-200 text-left text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                  <th className="px-4 py-3 font-semibold">Đơn hàng</th>
-                  <th className="px-4 py-3 font-semibold">Người nhận</th>
-                  <th className="px-4 py-3 text-center font-semibold">Thanh toán</th>
-                  <th className="px-4 py-3 text-right font-semibold">Tổng tiền</th>
-                  <th className="px-4 py-3 text-center font-semibold">Trạng thái</th>
+                <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] uppercase tracking-[0.12em] text-slate-500">
+                  <ResizableTh align="center" onResizeStart={startResize(0)}>
+                    STT
+                  </ResizableTh>
+                  <ResizableTh onResizeStart={startResize(1)}>Mã đơn</ResizableTh>
+                  <ResizableTh onResizeStart={startResize(2)}>Khách hàng</ResizableTh>
+                  <ResizableTh onResizeStart={startResize(3)}>Người nhận</ResizableTh>
+                  <ResizableTh onResizeStart={startResize(4)}>Số điện thoại</ResizableTh>
+                  <ResizableTh onResizeStart={startResize(5)}>Thời gian đặt</ResizableTh>
+                  <ResizableTh align="center" onResizeStart={startResize(6)}>
+                    Thanh toán
+                  </ResizableTh>
+                  <ResizableTh align="right" onResizeStart={startResize(7)}>
+                    Tổng tiền
+                  </ResizableTh>
+                  <ResizableTh align="center" showDivider={false}>
+                    Trạng thái
+                  </ResizableTh>
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => (
-                  <tr
-                    key={order.id}
-                    onClick={() => setSelectedOrderId(order.id)}
-                    className={[
-                      "cursor-pointer border-b border-slate-100 transition last:border-b-0 hover:bg-sky-50/70",
-                      selectedOrderId === order.id ? "bg-blue-50/70" : "",
-                    ].join(" ")}
-                  >
-                    <td className="px-4 py-4">
-                      <p className="font-semibold text-slate-900">{order.id}</p>
-                      <p className="text-slate-600">{order.customerName || "Khách lẻ"}</p>
-                      <p className="text-xs text-slate-400">{formatAdminDateTime(order.created)}</p>
-                    </td>
-                    <td className="px-4 py-4 text-slate-600">
-                      <p>{order.receiverName}</p>
-                      <p className="text-xs text-slate-400">{order.receiverPhone}</p>
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <AdminBadge className={statusTone(order.paymentStatus, "payment")}>
-                        {order.paymentStatus}
-                      </AdminBadge>
-                    </td>
-                    <td
-                      className="px-4 py-4 text-right text-[13px] font-semibold tabular-nums text-[#111111]"
-                      style={{ fontFamily: "'Poppins', sans-serif" }}
+                {orders.map((order, index) => {
+                  const stt = (page - 1) * PAGE_SIZE + index + 1;
+                  return (
+                    <tr
+                      key={order.id}
+                      onClick={() => setSelectedOrderId(order.id)}
+                      className={[
+                        "cursor-pointer border-b border-slate-100 transition last:border-b-0 hover:bg-sky-50/70",
+                        selectedOrderId === order.id ? "bg-blue-50/70" : "",
+                      ].join(" ")}
                     >
-                      {formatPrice(order.total)}
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <AdminBadge className={statusTone(order.status)}>
-                        {formatOrderStatusLabel(order.status)}
-                      </AdminBadge>
-                    </td>
-                  </tr>
-                ))}
+                      <td className="whitespace-nowrap px-3 py-3 text-center font-normal text-slate-500">
+                        {stt}
+                      </td>
+                      <td
+                        className="truncate whitespace-nowrap px-3 py-3 font-medium text-slate-800"
+                        title={order.id}
+                      >
+                        {order.id}
+                      </td>
+                      <td
+                        className="truncate whitespace-nowrap px-3 py-3 font-normal text-slate-700"
+                        title={order.customerName || "Khách lẻ"}
+                      >
+                        {order.customerName || "Khách lẻ"}
+                      </td>
+                      <td
+                        className="truncate whitespace-nowrap px-3 py-3 font-normal text-slate-600"
+                        title={order.receiverName}
+                      >
+                        {order.receiverName}
+                      </td>
+                      <td
+                        className="truncate whitespace-nowrap px-3 py-3 font-normal text-slate-600"
+                        title={order.receiverPhone}
+                      >
+                        {order.receiverPhone}
+                      </td>
+                      <td
+                        className="truncate whitespace-nowrap px-3 py-3 text-xs font-normal text-slate-500"
+                        title={formatAdminDateTime(order.created)}
+                      >
+                        {formatAdminDateTime(order.created)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3 text-center">
+                        <AdminBadge
+                          className={[statusTone(order.paymentStatus, "payment"), "max-w-full truncate"].join(" ")}
+                        >
+                          {formatPaymentStatusLabel(order.paymentStatus)}
+                        </AdminBadge>
+                      </td>
+                      <td
+                        className="truncate whitespace-nowrap px-3 py-3 text-right font-inter text-[13px] font-medium tabular-nums text-slate-800"
+                      >
+                        {formatPrice(order.total)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3 text-center">
+                        <AdminBadge className={[statusTone(order.status), "max-w-full truncate"].join(" ")}>
+                          {formatOrderStatusLabel(order.status)}
+                        </AdminBadge>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
 
@@ -379,26 +367,27 @@ export default function AdminOrdersPage() {
           </div>
         </AdminPanel>
 
-        <AdminPanel>
-          <AdminPanelHeader title="Chi tiết đơn" />
+        <div className="min-h-[520px] xl:relative xl:self-stretch">
+          <AdminPanel className="flex max-h-[680px] flex-col overflow-hidden xl:absolute xl:inset-0 xl:max-h-none">
+            <AdminPanelHeader title="Chi tiết đơn hàng" />
 
-          <div className="px-5 pb-6 pt-5 sm:px-6">
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-5 sm:px-6">
             {!selectedOrderId ? (
               <AdminEmptyState
                 icon="mdi:shopping-outline"
                 title="Chọn một đơn hàng"
-                description="Chi tiết giao nhận, item và thao tác cập nhật trạng thái sẽ hiển thị tại đây."
+                description="Chi tiết giao nhận, sản phẩm và thao tác cập nhật trạng thái sẽ hiển thị tại đây."
               />
             ) : orderDetailQuery.isLoading ? (
-              <div className="h-72 animate-pulse rounded-[24px] bg-slate-100" />
+              <div className="h-72 animate-pulse rounded-lg bg-slate-100" />
             ) : orderDetail ? (
               <div className="space-y-5">
-                <div className="rounded-[24px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f0f9ff_100%)] p-5">
+                <div className="rounded-lg border border-slate-200/80 bg-white p-5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="text-lg font-semibold text-slate-900">{orderDetail.id}</p>
+                      <p className="truncate text-lg font-semibold text-slate-900">{orderDetail.id}</p>
                       <p className="truncate text-sm text-slate-600">
-                        {orderDetail.customerName || "Khách lẻ"} · {orderDetail.customerEmail || "Không có email"}
+                        {orderDetail.customerName || "Khách lẻ"} · {orderDetail.customerEmail || "Không có thư điện tử"}
                       </p>
                     </div>
                     <AdminBadge className={statusTone(orderDetail.status)}>
@@ -407,13 +396,13 @@ export default function AdminOrdersPage() {
                   </div>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <InfoCard label="Tổng tiền" value={formatPrice(orderDetail.total)} />
-                    <InfoCard label="Thanh toán" value={orderDetail.paymentStatus} />
+                    <InfoCard label="Thanh toán" value={formatPaymentStatusLabel(orderDetail.paymentStatus)} />
                     <InfoCard label="Tạm tính" value={formatPrice(orderDetail.subtotal)} />
-                    <InfoCard label="Phí ship" value={formatPrice(orderDetail.shippingFee)} />
+                    <InfoCard label="Phí vận chuyển" value={formatPrice(orderDetail.shippingFee)} />
                   </div>
                 </div>
 
-                <div className="rounded-[24px] border border-slate-200/80 bg-white p-5">
+                <div className="rounded-lg border border-slate-200/80 bg-white p-5">
                   <p className="text-sm font-semibold text-slate-800">Người nhận</p>
                   <div className="mt-3 space-y-2 text-sm text-slate-600">
                     <p>
@@ -426,17 +415,17 @@ export default function AdminOrdersPage() {
                   </div>
                 </div>
 
-                <div className="rounded-[24px] border border-slate-200/80 bg-white p-5">
-                  <p className="text-sm font-semibold text-slate-800">Van chuyen</p>
+                <div className="rounded-lg border border-slate-200/80 bg-white p-5">
+                  <p className="text-sm font-semibold text-slate-800">Vận chuyển</p>
                   <div className="mt-3 grid gap-3 text-sm text-slate-600">
                     <InfoCard label="Đơn vị" value={orderDetail.shipping?.carrierName || "Chưa cập nhật"} />
                     <InfoCard label="Mã vận đơn" value={orderDetail.shipping?.trackingNumber || "Chưa cập nhật"} />
                     <InfoCard label="Vị trí" value={orderDetail.shipping?.currentLocation || "Chưa cập nhật"} />
-                    <InfoCard label="Du kien" value={formatAdminDateTime(orderDetail.shipping?.estimatedDelivery)} />
+                    <InfoCard label="Dự kiến" value={formatAdminDateTime(orderDetail.shipping?.estimatedDelivery)} />
                   </div>
                 </div>
 
-                <div className="rounded-[24px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5">
+                <div className="rounded-lg border border-slate-200/80 bg-white p-5">
                   <label className="block">
                     <span className="mb-2 block text-sm font-semibold text-slate-800">Trạng thái mới</span>
                     <select
@@ -445,7 +434,7 @@ export default function AdminOrdersPage() {
                         setDraftStatus(event.target.value as AdminUpdateOrderStatusDto["status"]);
                         setFormError(null);
                       }}
-                      className="w-full rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400"
+                      className="w-full rounded-lg border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400"
                     >
                       {statusOptions
                         .filter((item) =>
@@ -463,11 +452,11 @@ export default function AdminOrdersPage() {
 
                   <div className="mt-4 grid gap-3">
                     <label className="block">
-                      <span className="mb-2 block text-sm font-semibold text-slate-800">Ma van don</span>
+                      <span className="mb-2 block text-sm font-semibold text-slate-800">Mã vận đơn</span>
                       <input
                         value={trackingNumber}
                         onChange={(event) => setTrackingNumber(event.target.value)}
-                        className="w-full rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400"
+                        className="w-full rounded-lg border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400"
                         placeholder="VD: GHN123456789"
                       />
                     </label>
@@ -478,53 +467,51 @@ export default function AdminOrdersPage() {
                         <input
                           value={carrierName}
                           onChange={(event) => setCarrierName(event.target.value)}
-                          className="w-full rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400"
+                          className="w-full rounded-lg border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400"
                           placeholder="GHN, GHTK, Viettel Post..."
                         />
                       </label>
                       <label className="block">
-                        <span className="mb-2 block text-sm font-semibold text-slate-800">Du kien giao</span>
+                        <span className="mb-2 block text-sm font-semibold text-slate-800">Dự kiến giao</span>
                         <input
                           type="datetime-local"
                           value={estimatedDelivery}
                           onChange={(event) => setEstimatedDelivery(event.target.value)}
-                          className="w-full rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400"
+                          className="w-full rounded-lg border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400"
                         />
                       </label>
                     </div>
 
                     <label className="block">
-                      <span className="mb-2 block text-sm font-semibold text-slate-800">Vi tri hien tai</span>
+                      <span className="mb-2 block text-sm font-semibold text-slate-800">Vị trí hiện tại</span>
                       <input
                         value={currentLocation}
                         onChange={(event) => setCurrentLocation(event.target.value)}
-                        className="w-full rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400"
+                        className="w-full rounded-lg border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400"
                         placeholder="Kho Hồ Chí Minh, đang giao tại Quận 1..."
                       />
                     </label>
 
                     <label className="block">
-                      <span className="mb-2 block text-sm font-semibold text-slate-800">Ghi chu tracking</span>
+                      <span className="mb-2 block text-sm font-semibold text-slate-800">Ghi chú vận chuyển</span>
                       <textarea
                         value={statusNote}
                         onChange={(event) => setStatusNote(event.target.value)}
                         rows={3}
-                        className="w-full resize-none rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400"
-                        placeholder="Thông tin sẽ hiện trong timeline của khách hàng"
+                        className="w-full resize-none rounded-lg border border-sky-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400"
+                        placeholder="Thông tin sẽ hiển thị trong lịch trình đơn hàng của khách hàng"
                       />
                     </label>
                   </div>
 
-                  
-
                   {formError ? (
-                    <div className="mt-4 rounded-[18px] bg-red-50 px-4 py-3 text-sm text-red-700">
+                    <div className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
                       {formError}
                     </div>
                   ) : null}
 
                   {updateStatusMutation.isSuccess ? (
-                    <div className="mt-4 rounded-[18px] bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                    <div className="mt-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
                       Đã cập nhật trạng thái đơn hàng thành công.
                     </div>
                   ) : null}
@@ -539,28 +526,45 @@ export default function AdminOrdersPage() {
                   </AdminPrimaryButton>
                 </div>
 
-                <div className="rounded-[24px] border border-slate-200/80 bg-white p-5">
+                <div className="rounded-lg border border-slate-200/80 bg-white p-5">
                   <p className="text-sm font-semibold text-slate-800">Sản phẩm trong đơn</p>
-                  <div className="mt-4 space-y-3">
-                    {orderDetail.items.map((item, index) => (
-                      <div
-                        key={`${item.productId}-${index}`}
-                        className="rounded-[18px] border border-slate-200/70 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4"
-                      >
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                          <div className="min-w-0">
-                            <p className="truncate font-semibold text-slate-900">{item.productName}</p>
-                            <p className="text-xs text-slate-400">
-                              {item.variantSku || "Không có SKU"} · {item.variantSize || "-"} · {item.variantColor || "-"}
-                            </p>
-                          </div>
-                          <div className="sm:text-right">
-                            <p className="font-semibold text-blue-700">{formatPrice(item.total)}</p>
-                            <p className="text-xs text-slate-400">SL {item.quantity}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="mt-3 overflow-x-auto">
+                    <table className="w-full table-fixed border-collapse font-inter text-xs font-normal">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-left uppercase tracking-wider text-slate-400">
+                          <th className="w-36 whitespace-nowrap py-2 pr-2 font-medium">Sản phẩm</th>
+                          <th className="w-24 whitespace-nowrap px-2 py-2 font-medium">Mã SP</th>
+                          <th className="w-16 whitespace-nowrap px-2 py-2 text-center font-medium">Cỡ</th>
+                          <th className="w-16 whitespace-nowrap px-2 py-2 text-center font-medium">Màu</th>
+                          <th className="w-12 whitespace-nowrap px-2 py-2 text-center font-medium">SL</th>
+                          <th className="w-24 whitespace-nowrap py-2 pl-2 text-right font-medium">Thành tiền</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(orderDetail.items ?? []).map((item, index) => (
+                          <tr key={`${item.productId}-${index}`} className="border-b border-slate-100 last:border-b-0">
+                            <td className="truncate whitespace-nowrap py-2.5 pr-2 font-medium text-slate-800" title={item.productName}>
+                              {item.productName}
+                            </td>
+                            <td className="truncate whitespace-nowrap px-2 py-2.5 font-normal text-slate-500" title={item.variantSku || "--"}>
+                              {item.variantSku || "--"}
+                            </td>
+                            <td className="truncate whitespace-nowrap px-2 py-2.5 text-center font-normal text-slate-600">
+                              {item.variantSize || "-"}
+                            </td>
+                            <td className="truncate whitespace-nowrap px-2 py-2.5 text-center font-normal text-slate-600">
+                              {item.variantColor || "-"}
+                            </td>
+                            <td className="whitespace-nowrap px-2 py-2.5 text-center font-normal text-slate-700">
+                              {item.quantity}
+                            </td>
+                            <td className="truncate whitespace-nowrap py-2.5 pl-2 text-right font-medium text-blue-700">
+                              {formatPrice(item.total ?? 0)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
@@ -572,7 +576,8 @@ export default function AdminOrdersPage() {
               />
             )}
           </div>
-        </AdminPanel>
+          </AdminPanel>
+        </div>
       </div>
     </div>
   );
@@ -580,9 +585,9 @@ export default function AdminOrdersPage() {
 
 function InfoCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[20px] border border-slate-200/80 bg-white p-4">
+    <div className="rounded-lg border border-slate-200/80 bg-white p-4">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</p>
-      <p className="mt-2 break-words text-base font-semibold text-slate-900">{value}</p>
+      <p className="mt-2 truncate text-base font-semibold text-slate-900" title={value}>{value}</p>
     </div>
   );
 }

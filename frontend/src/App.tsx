@@ -130,13 +130,14 @@ function ChatLaunchButtons({
   disabled?: boolean;
 }) {
   return (
-    <div className="fixed bottom-4 right-4 z-[80] flex flex-col gap-3 sm:bottom-6 sm:right-6">
+    <div className="fixed bottom-4 right-4 z-[80] flex flex-col gap-2.5 sm:bottom-6 sm:right-6">
       <button
         type="button"
         disabled={disabled}
         onClick={() => onOpen?.("ai")}
-        className="ml-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-500 text-white shadow-[0_14px_34px_rgba(15,23,42,0.22)] transition hover:-translate-y-0.5 hover:bg-red-600 focus:outline-none focus:ring-4 focus:ring-red-200 disabled:cursor-wait disabled:opacity-70 sm:h-16 sm:w-16"
-        aria-label="Mo AI chat"
+        className="group relative ml-auto flex h-13 w-13 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-600 text-white shadow-[0_12px_30px_rgba(15,23,42,0.25)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-indigo-200 disabled:cursor-wait disabled:opacity-70 sm:h-14 sm:w-14"
+        aria-label="Mở Trợ lý AI"
+        title="Trợ lý AI 24/7"
       >
         <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 3v3m0 12v3M5.64 5.64l2.12 2.12m8.48 8.48 2.12 2.12M3 12h3m12 0h3M5.64 18.36l2.12-2.12m8.48-8.48 2.12-2.12M12 8.5A3.5 3.5 0 1 1 12 15.5 3.5 3.5 0 0 1 12 8.5Z" />
@@ -146,8 +147,9 @@ function ChatLaunchButtons({
         type="button"
         disabled={disabled}
         onClick={() => onOpen?.("support")}
-        className="ml-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-white shadow-[0_14px_34px_rgba(15,23,42,0.22)] transition hover:-translate-y-0.5 hover:bg-slate-700 focus:outline-none focus:ring-4 focus:ring-slate-200 disabled:cursor-wait disabled:opacity-70 sm:h-16 sm:w-16"
-        aria-label="Mo chat nhan vien"
+        className="group relative ml-auto flex h-13 w-13 items-center justify-center rounded-full bg-gradient-to-br from-[#0084ff] to-[#0068ff] text-white shadow-[0_12px_30px_rgba(15,23,42,0.25)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-blue-200 disabled:cursor-wait disabled:opacity-70 sm:h-14 sm:w-14"
+        aria-label="Mở chat nhân viên"
+        title="Chat với CSKH"
       >
         <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path

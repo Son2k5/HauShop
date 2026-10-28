@@ -93,6 +93,7 @@ export interface AdminUserDetailDto extends AdminUserListItemDto {
   totalOrders: number;
   totalSpent: number;
   lastOrderAt?: string | null;
+  recentOrders?: RecentOrderDto[];
 }
 
 export interface AdminUpdateUserRoleDto {

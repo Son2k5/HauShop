@@ -5,6 +5,7 @@ export interface ChatMessageDto {
   chatRoomId: string;
   senderId: string;
   senderName: string;
+  senderAvatar?: string | null;
   senderRole: string;
   message: string;
   messageType: ChatMessageType;
@@ -20,6 +21,10 @@ export interface ChatRoomDto {
   customerId: string;
   customerName: string;
   customerEmail: string;
+  customerAvatar?: string | null;
+  customerPhone?: string | null;
+  customerIsOnline?: boolean;
+  customerLastSeen?: string | null;
   assignedToId?: string | null;
   status: string;
   priority: string;
@@ -33,4 +38,9 @@ export interface SendChatMessageDto {
   chatRoomId: string;
   message: string;
   messageType?: ChatMessageType;
+}
+
+export interface MessagesReadEventDto {
+  chatRoomId: string;
+  readerId: string;
 }

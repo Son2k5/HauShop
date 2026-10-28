@@ -8,6 +8,10 @@ namespace api.DTOs.chat
         public string CustomerId { get; set; } = string.Empty;
         public string CustomerName { get; set; } = string.Empty;
         public string CustomerEmail { get; set; } = string.Empty;
+        public string? CustomerAvatar { get; set; }
+        public string? CustomerPhone { get; set; }
+        public bool CustomerIsOnline { get; set; }
+        public DateTime? CustomerLastSeen { get; set; }
         public string? AssignedToId { get; set; }
         public string Status { get; set; } = string.Empty;
         public string Priority { get; set; } = string.Empty;
@@ -23,6 +27,7 @@ namespace api.DTOs.chat
         public string ChatRoomId { get; set; } = string.Empty;
         public string SenderId { get; set; } = string.Empty;
         public string SenderName { get; set; } = string.Empty;
+        public string? SenderAvatar { get; set; }
         public string SenderRole { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
         public string MessageType { get; set; } = string.Empty;

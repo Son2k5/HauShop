@@ -30,9 +30,11 @@ import {
   AdminBadge,
   AdminEmptyState,
   AdminPanel,
+  ResizableTh,
   formatAdminDateTime,
   formatOrderStatusLabel,
   statusTone,
+  useResizableColumns,
 } from "./adminShared";
 
 type TrendMode = "day" | "week" | "month";
@@ -102,9 +104,12 @@ function truncateText(value: string, maxLength: number) {
 }
 
 function getStatusPresentation(item: OrderStatusAnalyticsDto) {
-  const fallback = fallbackStatusMeta[item.key];
+  const fallback = fallbackStatusMeta[item.key.toLowerCase()];
+  const mappedLabel = formatOrderStatusLabel(item.key);
+  const resolvedLabel =
+    fallback?.label ?? (mappedLabel !== item.key ? mappedLabel : item.label);
   return {
-    label: fallback?.label ?? item.label,
+    label: resolvedLabel,
     color: item.color || fallback?.color || PRIMARY,
   };
 }
@@ -151,11 +156,11 @@ export default function AdminDashboardPage() {
 
   if (dashboardQuery.isError || !dashboard) {
     return (
-      <AdminPanel className="rounded-2xl p-6">
+      <AdminPanel className="rounded-lg p-6">
         <AdminEmptyState
           icon="mdi:alert-circle-outline"
-          title="Không thể tải dashboard"
-          description="Kiểm tra lại kết nối API hoặc quyền truy cập Admin."
+          title="Không thể tải bảng thống kê"
+          description="Kiểm tra lại kết nối hệ thống hoặc quyền truy cập quản trị."
         />
       </AdminPanel>
     );
@@ -165,16 +170,13 @@ export default function AdminDashboardPage() {
     <div className="min-w-0 space-y-5 text-slate-950">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-sm font-medium text-slate-500">Business Intelligence</p>
+          <p className="text-sm font-medium text-slate-500">Phân tích kinh doanh</p>
           <h2 className="mt-1 text-2xl font-semibold tracking-[-0.01em] text-slate-950 sm:text-3xl">
-            Ecommerce Analytics
+            Báo cáo & Thống kê thương mại
           </h2>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <SegmentedControl value={trendMode} onChange={setTrendMode} />
-          <AdminBadge className="bg-white text-slate-600 ring-1 ring-inset ring-slate-200">
-            Cập nhật realtime qua API
-          </AdminBadge>
         </div>
       </div>
 
@@ -191,7 +193,7 @@ export default function AdminDashboardPage() {
           icon="mdi:clipboard-text-outline"
           label="Tổng đơn hàng"
           value={numberFormatter.format(dashboard.totalOrders)}
-          meta={`AOV ${formatPrice(dashboard.averageOrderValue)}`}
+          meta={`Giá trị đơn TB ${formatPrice(dashboard.averageOrderValue)}`}
           accent="emerald"
         />
         <MetricCard
@@ -212,19 +214,19 @@ export default function AdminDashboardPage() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <KpiCard
-          label="Revenue Growth"
+          label="Tăng trưởng doanh thu"
           value={formatSignedPercent(dashboard.revenueGrowthPercent)}
           description="So với tháng trước"
           tone={dashboard.revenueGrowthPercent >= 0 ? "success" : "danger"}
         />
         <KpiCard
-          label="Average Order Value"
+          label="Giá trị đơn hàng trung bình"
           value={formatPrice(dashboard.averageOrderValue)}
           description="Doanh thu / tổng đơn"
           tone="primary"
         />
         <KpiCard
-          label="Conversion Rate"
+          label="Tỷ lệ chuyển đổi"
           value={
             hasConversionRate
               ? formatSignedPercent(dashboard.conversionRate).replace("+", "")
@@ -233,12 +235,12 @@ export default function AdminDashboardPage() {
           description={
             hasConversionRate
               ? "Số đơn hàng / lượt truy cập"
-              : "Cần tracking lượt truy cập"
+              : "Cần theo dõi lượt truy cập"
           }
           tone="warning"
         />
         <KpiCard
-          label="Returning Customers"
+          label="Khách hàng quay lại"
           value={formatSignedPercent(dashboard.returningCustomerRate).replace("+", "")}
           description="Tỷ lệ khách mua lại"
           tone="success"
@@ -248,7 +250,7 @@ export default function AdminDashboardPage() {
       <div className="grid gap-5 xl:grid-cols-[minmax(0,7fr)_minmax(320px,3fr)]">
         <AnalyticsCard
           title="Doanh Thu Theo Thời Gian"
-          subtitle="Area + line chart, so sánh với kỳ trước và hiển thị tăng trưởng khi hover."
+          subtitle="Biểu đồ vùng kết hợp đường, so sánh với kỳ trước và hiển thị mức tăng trưởng khi di chuột."
           action={<GrowthPill value={activeGrowth} />}
           className="min-h-[440px]"
         >
@@ -265,15 +267,15 @@ export default function AdminDashboardPage() {
       </div>
 
       <AnalyticsCard
-        title="Revenue vs Orders Trend"
-        subtitle="Đối chiếu doanh thu với số lượng đơn để nhận diện tăng trưởng từ volume hay AOV."
+        title="Xu Hướng Doanh Thu & Đơn Hàng"
+        subtitle="Đối chiếu doanh thu với số lượng đơn để nhận diện tăng trưởng từ sản lượng hay giá trị đơn trung bình."
         className="min-h-[420px]"
       >
         <RevenueOrdersChart data={trendData} />
       </AnalyticsCard>
 
       <AnalyticsCard
-        title="Top 10 Sản Phẩm Bán Chạy"
+        title="10 Sản Phẩm Bán Chạy Nhất"
         subtitle="Sắp xếp giảm dần theo số lượng bán, kèm doanh thu tạo ra."
         className="min-h-[460px]"
       >
@@ -307,14 +309,14 @@ function SegmentedControl({
   onChange: (value: TrendMode) => void;
 }) {
   return (
-    <div className="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm">
+    <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
       {trendOptions.map((option) => (
         <button
           key={option.value}
           type="button"
           onClick={() => onChange(option.value)}
           className={[
-            "min-h-9 rounded-full px-4 text-sm font-semibold transition",
+            "min-h-8 rounded-md px-3.5 text-sm font-semibold transition",
             value === option.value ? "bg-[#4F46E5] text-white shadow-sm" : "text-slate-500 hover:text-slate-950",
           ].join(" ")}
         >
@@ -341,7 +343,7 @@ function AnalyticsCard({
   return (
     <section
       className={[
-        "min-w-0 rounded-2xl border border-slate-200/80 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.06)]",
+        "min-w-0 rounded-lg border border-slate-200/80 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.06)]",
         className,
       ].join(" ")}
     >
@@ -358,37 +360,25 @@ function AnalyticsCard({
 }
 
 function MetricCard({
-  icon,
   label,
   value,
   meta,
-  accent,
   trend,
 }: {
-  icon: string;
+  icon?: string;
   label: string;
   value: string;
   meta: string;
-  accent: "indigo" | "emerald" | "sky" | "amber";
+  accent?: "indigo" | "emerald" | "sky" | "amber";
   trend?: number;
 }) {
-  const accentClass = {
-    indigo: "bg-indigo-50 text-indigo-600",
-    emerald: "bg-emerald-50 text-emerald-600",
-    sky: "bg-sky-50 text-sky-600",
-    amber: "bg-amber-50 text-amber-600",
-  }[accent];
-
   return (
-    <section className="min-w-0 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
-      <div className="flex items-start justify-between gap-3">
-        <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${accentClass}`}>
-          <Icon icon={icon} width={21} />
-        </span>
+    <section className="min-w-0 rounded-lg border border-slate-200/80 bg-white p-4 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-medium text-slate-500">{label}</p>
         {trend !== undefined ? <GrowthPill value={trend} compact /> : null}
       </div>
-      <p className="mt-4 text-sm font-medium text-slate-500">{label}</p>
-      <p className="mt-1 break-words text-2xl font-semibold tracking-[-0.01em] text-slate-950">
+      <p className="mt-2 break-words text-2xl font-semibold tracking-[-0.01em] text-slate-950">
         {value}
       </p>
       <p className="mt-2 text-sm text-slate-500">{meta}</p>
@@ -415,7 +405,7 @@ function KpiCard({
   }[tone];
 
   return (
-    <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+    <section className="rounded-lg border border-slate-200/80 bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium text-slate-500">{label}</p>
         <span className={`h-2.5 w-2.5 rounded-full ${toneClass.split(" ")[0]}`} />
@@ -610,7 +600,7 @@ function OrderDistributionChart({
 
       <div className="grid gap-2">
         {data.map((item) => (
-          <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+          <div key={item.key} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
             <div className="flex min-w-0 items-center gap-2">
               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
               <span className="truncate text-sm font-medium text-slate-700">{item.label}</span>
@@ -631,7 +621,7 @@ function TopProductsChart({ products }: { products: TopSellingProductDto[] }) {
       <AdminEmptyState
         icon="mdi:shopping-outline"
         title="Chưa có sản phẩm bán chạy"
-        description="Khi đơn hàng phát sinh, top sản phẩm theo doanh thu và số lượng sẽ xuất hiện tại đây."
+        description="Khi đơn hàng phát sinh, danh sách sản phẩm bán chạy theo doanh thu và số lượng sẽ xuất hiện tại đây."
       />
     );
   }
@@ -707,6 +697,8 @@ function ProductAxisTick({ x = 0, y = 0, payload, products }: ProductAxisTickPro
 }
 
 function LowStockList({ products }: { products: LowStockProductDto[] }) {
+  const { widths, startResize } = useResizableColumns([56, 130, 260, 110]);
+
   if (!products.length) {
     return (
       <AdminEmptyState
@@ -718,34 +710,70 @@ function LowStockList({ products }: { products: LowStockProductDto[] }) {
   }
 
   return (
-    <div className="grid gap-3">
-      {products.slice(0, 8).map((product) => {
-        const isOut = product.stock <= 0;
-        return (
-          <div
-            key={product.id}
-            className="flex items-center justify-between gap-4 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"
-          >
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-950">{product.name}</p>
-              <p className="mt-0.5 text-xs uppercase tracking-[0.14em] text-slate-400">{product.sku}</p>
-            </div>
-            <span
-              className={[
-                "shrink-0 rounded-full px-3 py-1 text-xs font-semibold",
-                isOut ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700",
-              ].join(" ")}
-            >
-              {product.stock} cái
-            </span>
-          </div>
-        );
-      })}
+    <div className="min-w-0 overflow-x-auto">
+      <table className="w-full table-fixed border-collapse font-inter text-sm font-normal">
+        <colgroup>
+          {widths.map((w, i) => (
+            <col key={i} style={{ width: w }} />
+          ))}
+        </colgroup>
+        <thead>
+          <tr className="border-b border-slate-200 bg-slate-50/70 text-xs uppercase tracking-[0.1em] text-slate-500">
+            <ResizableTh align="center" onResizeStart={startResize(0)}>
+              STT
+            </ResizableTh>
+            <ResizableTh onResizeStart={startResize(1)}>Mã SP</ResizableTh>
+            <ResizableTh onResizeStart={startResize(2)}>Tên sản phẩm</ResizableTh>
+            <ResizableTh align="center" showDivider={false}>
+              Tồn kho
+            </ResizableTh>
+          </tr>
+        </thead>
+        <tbody>
+          {products.slice(0, 8).map((product, index) => {
+            const isOut = product.stock <= 0;
+            return (
+              <tr
+                key={product.id}
+                className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50"
+              >
+                <td className="whitespace-nowrap px-3 py-3 text-center font-normal text-slate-500">
+                  {index + 1}
+                </td>
+                <td
+                  className="truncate whitespace-nowrap px-3 py-3 font-normal text-slate-600"
+                  title={product.sku}
+                >
+                  {product.sku}
+                </td>
+                <td
+                  className="truncate whitespace-nowrap px-3 py-3 font-medium text-slate-800"
+                  title={product.name}
+                >
+                  {product.name}
+                </td>
+                <td className="whitespace-nowrap px-3 py-3 text-center">
+                  <span
+                    className={[
+                      "inline-block whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium",
+                      isOut ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700",
+                    ].join(" ")}
+                  >
+                    {product.stock} cái
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
 
 function RecentOrdersTable({ orders }: { orders: RecentOrderDto[] }) {
+  const { widths, startResize } = useResizableColumns([56, 130, 160, 150, 130, 150]);
+
   if (!orders.length) {
     return (
       <AdminEmptyState
@@ -758,28 +786,57 @@ function RecentOrdersTable({ orders }: { orders: RecentOrderDto[] }) {
 
   return (
     <div className="min-w-0 overflow-x-auto">
-      <table className="min-w-[620px] text-sm">
+      <table className="w-full table-fixed border-collapse font-inter text-sm font-normal">
+        <colgroup>
+          {widths.map((w, i) => (
+            <col key={i} style={{ width: w }} />
+          ))}
+        </colgroup>
         <thead>
-          <tr className="border-b border-slate-100 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-            <th className="px-3 py-3">Mã đơn</th>
-            <th className="px-3 py-3">Khách hàng</th>
-            <th className="px-3 py-3 text-right">Tổng tiền</th>
-            <th className="px-3 py-3 text-center">Trạng thái</th>
+          <tr className="border-b border-slate-200 bg-slate-50/70 text-xs uppercase tracking-[0.1em] text-slate-500">
+            <ResizableTh align="center" onResizeStart={startResize(0)}>
+              STT
+            </ResizableTh>
+            <ResizableTh onResizeStart={startResize(1)}>Mã đơn</ResizableTh>
+            <ResizableTh onResizeStart={startResize(2)}>Khách hàng</ResizableTh>
+            <ResizableTh onResizeStart={startResize(3)}>Thời gian</ResizableTh>
+            <ResizableTh align="right" onResizeStart={startResize(4)}>
+              Tổng tiền
+            </ResizableTh>
+            <ResizableTh align="center" showDivider={false}>
+              Trạng thái
+            </ResizableTh>
           </tr>
         </thead>
         <tbody>
-          {orders.map((order) => (
+          {orders.map((order, index) => (
             <tr key={order.id} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50">
-              <td className="px-3 py-3 font-semibold text-slate-950">{order.id}</td>
-              <td className="px-3 py-3">
-                <p className="font-medium text-slate-700">{order.customerName || "Khách lẻ"}</p>
-                <p className="mt-0.5 text-xs text-slate-400">{formatAdminDateTime(order.created)}</p>
+              <td className="whitespace-nowrap px-3 py-3 text-center font-normal text-slate-500">
+                {index + 1}
               </td>
-              <td className="px-3 py-3 text-right font-semibold tabular-nums text-slate-950">
+              <td
+                className="truncate whitespace-nowrap px-3 py-3 font-medium text-slate-800"
+                title={order.id}
+              >
+                {order.id}
+              </td>
+              <td
+                className="truncate whitespace-nowrap px-3 py-3 font-normal text-slate-700"
+                title={order.customerName || "Khách lẻ"}
+              >
+                {order.customerName || "Khách lẻ"}
+              </td>
+              <td
+                className="truncate whitespace-nowrap px-3 py-3 text-xs font-normal text-slate-500"
+                title={formatAdminDateTime(order.created)}
+              >
+                {formatAdminDateTime(order.created)}
+              </td>
+              <td className="truncate whitespace-nowrap px-3 py-3 text-right font-medium tabular-nums text-slate-800">
                 {formatPrice(order.totalAmount)}
               </td>
-              <td className="px-3 py-3 text-center">
-                <AdminBadge className={[statusTone(order.status), "min-w-[116px]"].join(" ")}>
+              <td className="whitespace-nowrap px-3 py-3 text-center">
+                <AdminBadge className={[statusTone(order.status), "max-w-full truncate"].join(" ")}>
                   {formatOrderStatusLabel(order.status)}
                 </AdminBadge>
               </td>
@@ -796,7 +853,7 @@ function RevenueTooltip({ active, payload, label }: ChartTooltipProps) {
   const point = payload[0]?.payload as RevenueTrendPointDto | undefined;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/10">
+    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/10">
       <p className="text-sm font-semibold text-slate-950">{label}</p>
       <div className="mt-2 grid gap-1.5 text-sm">
         <TooltipRow color={PRIMARY} label="Doanh thu" value={formatPrice(point?.revenue ?? 0)} />
@@ -813,12 +870,12 @@ function RevenueOrdersTooltip({ active, payload, label }: ChartTooltipProps) {
   const point = payload[0]?.payload as RevenueTrendPointDto | undefined;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/10">
+    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/10">
       <p className="text-sm font-semibold text-slate-950">{label}</p>
       <div className="mt-2 grid gap-1.5 text-sm">
         <TooltipRow color={PRIMARY} label="Doanh thu" value={formatPrice(point?.revenue ?? 0)} />
         <TooltipRow color="#94A3B8" label="Số đơn" value={numberFormatter.format(point?.orders ?? 0)} />
-        <TooltipRow color={WARNING} label="AOV" value={formatPrice(point?.averageOrderValue ?? 0)} />
+        <TooltipRow color={WARNING} label="Giá trị đơn TB" value={formatPrice(point?.averageOrderValue ?? 0)} />
       </div>
     </div>
   );
@@ -830,7 +887,7 @@ function StatusTooltip({ active, payload }: ChartTooltipProps) {
   if (!item) return null;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/10">
+    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/10">
       <p className="text-sm font-semibold text-slate-950">{item.label}</p>
       <div className="mt-2 grid gap-1.5 text-sm">
         <TooltipRow color={item.color} label="Số lượng" value={numberFormatter.format(item.count)} />
@@ -846,7 +903,7 @@ function TopProductTooltip({ active, payload }: ChartTooltipProps) {
   if (!product) return null;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/10">
+    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/10">
       <p className="max-w-[260px] text-sm font-semibold text-slate-950">{product.name}</p>
       <div className="mt-2 grid gap-1.5 text-sm">
         <TooltipRow color={PRIMARY} label="Doanh thu" value={formatPrice(product.revenue)} />
@@ -873,14 +930,14 @@ function DashboardSkeleton() {
     <div className="space-y-5">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 8 }).map((_, index) => (
-          <div key={index} className="h-32 animate-pulse rounded-2xl border border-slate-200 bg-white" />
+          <div key={index} className="h-32 animate-pulse rounded-lg border border-slate-200 bg-white" />
         ))}
       </div>
       <div className="grid gap-5 xl:grid-cols-[minmax(0,7fr)_minmax(320px,3fr)]">
-        <div className="h-[440px] animate-pulse rounded-2xl border border-slate-200 bg-white" />
-        <div className="h-[440px] animate-pulse rounded-2xl border border-slate-200 bg-white" />
+        <div className="h-[440px] animate-pulse rounded-lg border border-slate-200 bg-white" />
+        <div className="h-[440px] animate-pulse rounded-lg border border-slate-200 bg-white" />
       </div>
-      <div className="h-[420px] animate-pulse rounded-2xl border border-slate-200 bg-white" />
+      <div className="h-[420px] animate-pulse rounded-lg border border-slate-200 bg-white" />
     </div>
   );
 }

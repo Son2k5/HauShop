@@ -67,6 +67,10 @@ export const adminService = {
     return http.put<AdminUserDetailDto>(`/admin/users/${userId}`, dto);
   },
 
+  deleteUser(userId: string) {
+    return http.delete(`/admin/users/${userId}`);
+  },
+
   getOrders(filters: AdminOrderFilters = {}) {
     return http.get<AdminPagedResultDto<AdminOrderListItemDto>>("/admin/orders", {
       params: filters,

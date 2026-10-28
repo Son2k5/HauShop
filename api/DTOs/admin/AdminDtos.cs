@@ -31,6 +31,7 @@ namespace api.DTOs.admin
         public int TotalOrders { get; set; }
         public decimal TotalSpent { get; set; }
         public DateTime? LastOrderAt { get; set; }
+        public List<RecentOrderDto> RecentOrders { get; set; } = new();
     }
 
     public class AdminUpdateUserRoleDto

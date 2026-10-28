@@ -124,6 +124,20 @@ namespace api.controllers.admin
             }
         }
 
+        [HttpDelete("users/{userId}")]
+        public async Task<IActionResult> DeleteUser(string userId, CancellationToken ct)
+        {
+            try
+            {
+                await _managementService.DeleteUserAsync(userId, ct);
+                return Ok(new { message = "Đã xóa tài khoản thành công" });
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { message = ClientErrorMessages.NotFoundDetail });
+            }
+        }
+
         [HttpGet("orders")]
         [ProducesResponseType(typeof(AdminPagedResultDto<AdminOrderListItemDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetOrders(

@@ -80,6 +80,19 @@ export function useUpdateAdminUser() {
   });
 }
 
+export function useDeleteAdminUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (userId: string) => adminService.deleteUser(userId),
+    onSuccess: (_, userId) => {
+      queryClient.removeQueries({ queryKey: queryKeys.admin.user(userId) });
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
+    },
+  });
+}
+
 export function useAdminOrders(filters: AdminOrderFilters) {
   const normalizedFilters = useMemo(
     () => ({

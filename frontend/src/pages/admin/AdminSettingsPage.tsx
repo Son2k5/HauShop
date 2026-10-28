@@ -12,6 +12,7 @@ import {
   AdminPrimaryButton,
   AdminSecondaryButton,
   AdminStatCard,
+  formatRoleLabel,
   getInitials,
 } from "./adminShared";
 
@@ -136,7 +137,7 @@ export default function AdminSettingsPage() {
     });
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...savedSettings, savedAt: nextSavedAt }));
     setSavedAt(nextSavedAt);
-    setSettingsMessage("Đã lưu cấu hình cục bộ cho khu vực admin.");
+    setSettingsMessage("Đã lưu cấu hình cho khu vực quản trị.");
   };
 
   const hasProfileChanges =
@@ -216,7 +217,7 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const fullName = `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() || "Admin";
+  const fullName = `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() || "Quản trị viên";
 
   return (
     <div className="space-y-6">
@@ -225,12 +226,12 @@ export default function AdminSettingsPage() {
           icon="mdi:store-outline"
           label="Tên cửa hàng"
           value={settings.storeName}
-          meta="Hiển thị trong admin"
+          meta="Hiển thị trong trang quản trị"
           accentClass="bg-blue-50 text-blue-700"
         />
         <AdminStatCard
           icon="mdi:package-variant-closed"
-          label="Ngưỡng low stock"
+          label="Ngưỡng sắp hết hàng"
           value={String(settings.lowStockThreshold)}
           meta="Áp dụng cho theo dõi kho"
           accentClass="bg-cyan-50 text-cyan-700"
@@ -239,38 +240,35 @@ export default function AdminSettingsPage() {
           icon="mdi:clipboard-text-outline"
           label="Đơn gần đây"
           value={String(settings.recentOrdersLimit)}
-          meta="Hiển thị trên dashboard"
+          meta="Hiển thị trên trang tổng quan"
           accentClass="bg-sky-50 text-sky-700"
         />
         <AdminStatCard
           icon="mdi:clock-outline"
           label="Cập nhật gần nhất"
           value={savedAt ?? "--"}
-          meta="Lưu trong localStorage"
+          meta="Đã đồng bộ cấu hình"
           accentClass="bg-violet-50 text-violet-700"
         />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
         <AdminPanel>
-          <AdminPanelHeader
-            title="Tài khoản quản trị"
-          
-          />
+          <AdminPanelHeader title="Tài khoản quản trị" />
 
           <div className="space-y-5 p-5 sm:p-6">
-            <div className="rounded-[26px] border border-sky-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f0f9ff_100%)] p-5">
+            <div className="rounded-lg border border-sky-200/80 bg-white p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                 <div className="relative shrink-0">
-                  <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[26px] bg-[linear-gradient(135deg,#2563eb,#06b6d4)] text-2xl font-semibold text-white shadow-[0_18px_40px_rgba(37,99,235,0.2)]">
+                  <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg bg-[linear-gradient(135deg,#2563eb,#06b6d4)] text-2xl font-semibold text-white shadow-[0_18px_40px_rgba(37,99,235,0.2)]">
                     {user?.avatar ? (
-                      <img src={user.avatar} alt="Avatar" className="h-full w-full object-cover" />
+                      <img src={user.avatar} alt="Ảnh đại diện" className="h-full w-full object-cover" />
                     ) : (
                       getInitials(fullName)
                     )}
                   </div>
                   {uploadingAvatar ? (
-                    <div className="absolute inset-0 flex items-center justify-center rounded-[26px] bg-black/45">
+                    <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/45">
                       <div className="h-7 w-7 animate-spin rounded-full border-2 border-white border-t-transparent" />
                     </div>
                   ) : null}
@@ -280,7 +278,9 @@ export default function AdminSettingsPage() {
                   <p className="text-lg font-semibold text-slate-900">{fullName}</p>
                   <p className="truncate text-sm text-slate-500">{user?.email ?? "--"}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <AdminBadge className="bg-blue-100 text-blue-700">{user?.role ?? "Admin"}</AdminBadge>
+                    <AdminBadge className="bg-blue-100 text-blue-700">
+                      {user?.role ? formatRoleLabel(user.role) : "Quản trị viên"}
+                    </AdminBadge>
                     <AdminBadge className={user?.isOnline ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-700"}>
                       {user?.isOnline ? "Đang hoạt động" : "Ngoại tuyến"}
                     </AdminBadge>
@@ -319,7 +319,7 @@ export default function AdminSettingsPage() {
             {profileMessage ? (
               <div
                 className={[
-                  "rounded-[20px] px-4 py-3 text-sm",
+                  "rounded-lg px-4 py-3 text-sm",
                   profileMessage.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700",
                 ].join(" ")}
               >
@@ -332,27 +332,27 @@ export default function AdminSettingsPage() {
                 <input
                   value={profileForm.firstName ?? ""}
                   onChange={(event) => handleProfileChange("firstName", event.target.value)}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none"
                 />
               </Field>
               <Field label="Họ">
                 <input
                   value={profileForm.lastName ?? ""}
                   onChange={(event) => handleProfileChange("lastName", event.target.value)}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none"
                 />
               </Field>
               <Field label="Số điện thoại">
                 <input
                   value={profileForm.phoneNumber ?? ""}
                   onChange={(event) => handleProfileChange("phoneNumber", event.target.value)}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none"
                 />
               </Field>
             </div>
 
-            <div className="rounded-[22px] border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
-              Backend hiện hỗ trợ cập nhật 3 trường: <strong>Tên</strong>, <strong>Họ</strong>, <strong>Số điện thoại</strong>.
+            <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
+              Hệ thống hiện hỗ trợ cập nhật 3 trường: <strong>Tên</strong>, <strong>Họ</strong>, <strong>Số điện thoại</strong>.
             </div>
 
             <AdminPrimaryButton type="button" onClick={() => void handleSaveProfile()} disabled={savingProfile || !hasProfileChanges} className="w-full">
@@ -363,31 +363,31 @@ export default function AdminSettingsPage() {
 
         <div className="space-y-6">
           <AdminPanel>
-            <AdminPanelHeader title="Thông tin cửa hàng"  />
+            <AdminPanelHeader title="Thông tin cửa hàng" />
             <div className="grid gap-4 px-5 py-5 sm:grid-cols-2 sm:px-6">
               <Field label="Tên cửa hàng">
                 <input
                   value={settings.storeName}
                   onChange={(event) => updateField("storeName", event.target.value)}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none"
                 />
               </Field>
-              <Field label="Email hỗ trợ">
+              <Field label="Thư điện tử hỗ trợ">
                 <input
                   type="email"
                   value={settings.supportEmail}
                   onChange={(event) => updateField("supportEmail", event.target.value)}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none"
                 />
               </Field>
               <Field label="Số điện thoại hỗ trợ">
                 <input
                   value={settings.supportPhone}
                   onChange={(event) => updateField("supportPhone", event.target.value)}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none"
                 />
               </Field>
-              <Field label="Số đơn gần đây trên dashboard">
+              <Field label="Số đơn gần đây trên trang tổng quan">
                 <input
                   type="number"
                   min={1}
@@ -396,7 +396,7 @@ export default function AdminSettingsPage() {
                   onChange={(event) =>
                     updateField("recentOrdersLimit", Math.min(20, Math.max(1, Number(event.target.value) || 1)))
                   }
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none"
                 />
               </Field>
               <Field label="Ngưỡng cảnh báo kho">
@@ -407,14 +407,14 @@ export default function AdminSettingsPage() {
                   onChange={(event) =>
                     updateField("lowStockThreshold", Math.max(0, Number(event.target.value) || 0))
                   }
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none"
                 />
               </Field>
             </div>
           </AdminPanel>
 
           <AdminPanel>
-            <AdminPanelHeader title="Thông báo"  />
+            <AdminPanelHeader title="Thông báo" />
             <div className="space-y-4 px-5 py-5 sm:px-6">
               <ToggleRow
                 label="Thông báo đơn hàng mới"
@@ -432,12 +432,12 @@ export default function AdminSettingsPage() {
                 onChange={(checked) => updateField("enableWeeklySummary", checked)}
               />
 
-              <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                Các mục bên dưới đang được lưu cục bộ trên frontend. Nếu cần, mình có thể nối tiếp sang API backend sau.
+              <div className="rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                Các tùy chọn thông báo bên dưới được đồng bộ với cấu hình quản trị.
               </div>
 
               {settingsMessage ? (
-                <div className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                <div className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
                   {settingsMessage}
                 </div>
               ) : null}
@@ -448,7 +448,7 @@ export default function AdminSettingsPage() {
                 className="w-full"
                 disabled={updateSettingsMutation.isPending}
               >
-                Lưu cài đặt admin
+                Lưu cài đặt quản trị
               </AdminPrimaryButton>
             </div>
           </AdminPanel>
@@ -483,7 +483,7 @@ function ToggleRow({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-lg border border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <span className="text-sm font-medium text-gray-800">{label}</span>
       <button
         type="button"
