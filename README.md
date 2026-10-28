@@ -16,13 +16,7 @@ HauShop is a full-stack fashion e-commerce platform built with React and ASP.NET
 
 ![HauShop product grid](frontend/src/assets/images/banner/Screenshot%202026-06-04%20222809.png)
 
-## Team Members
 
-| Member | Responsibilities |
-| --- | --- |
-| Do Minh Son (Đỗ Minh Sơn) | Developer, Team Leader |
-| Do Anh Khoa (Đỗ Anh Khoa) | Tester, Frontend Developer |
-| Le Thanh Dat (Lê Thành Đạt) | Designer, Frontend Developer |
 
 ## Main Features
 
