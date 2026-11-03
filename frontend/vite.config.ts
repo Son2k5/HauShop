@@ -1,15 +1,14 @@
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react';
-import basicSsl from '@vitejs/plugin-basic-ssl';
+import react from '@vitejs/plugin-react'
+import fs from 'fs'
 
 export default defineConfig({
-  plugins: [
-    react(),
-    basicSsl(), // Plugin này sẽ tự tạo certificate cho bạn
-  ],
+  plugins: [react()], // KHÔNG dùng @vitejs/plugin-basic-ssl
   server: {
     port: 3000,
-    strictPort: true,
-    host: true,// SỬA Ở ĐÂY: Bật true để nhận chứng chỉ từ plugin basicSsl
-  }
+    https: {
+      key: fs.readFileSync('./certs/localhost.key'),
+      cert: fs.readFileSync('./certs/localhost.pem'),
+    },
+  },
 })
